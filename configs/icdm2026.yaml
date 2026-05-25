@@ -1,0 +1,40 @@
+project:
+  name: icdm2026_t1fa_ad_staging
+  target_conference: ICDM 2026 Applied Data Science Track
+  label_mapping:
+    1: CN
+    2: SCD
+    3: MCI
+    4: AD
+
+data:
+  excel_path: data/data_information.xlsx
+  excel_sheet: re_order
+  split_json: data/processed/dataset_splits.json
+  processed_root: data/processed
+  raw_root: data/ZHU_T1_and_FA_space-MNI152NLin6Asym_res-02
+  image_size: 224
+  slices_per_subject: 50
+
+evaluation:
+  main_metrics: [PSNR, SSIM, MSE, MAE]
+  medical_metrics:
+    - Brain_Masked_MAE
+    - WM_Masked_MAE
+    - Gradient_Error
+    - ROI_CCC
+    - WM_Hist_Wasserstein
+  classification_tasks:
+    - four_class
+    - cn_vs_ad
+    - cn_vs_mci_ad
+    - cn_scd_vs_mci_ad
+
+outputs:
+  root: outputs/icdm2026
+  subject_index: outputs/icdm2026/subject_index.csv
+  metrics_root: outputs/icdm2026/metrics
+  predictions_root: outputs/icdm2026/predictions
+  tables_root: outputs/icdm2026/tables
+  figures_root: outputs/icdm2026/figures
+

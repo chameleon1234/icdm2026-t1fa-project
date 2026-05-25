@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE and local agent settings
+.idea/
+.vscode/
+.claude/
+
+# Data, papers, and large experiment artifacts
+/data/
+/papers/
+/outputs/
+/checkpoints*/
+/images*/
+/analysis_outputs/
+/evolution_vis/
+/paper_figures/
+/physics_visualizations/
+/pix2pix/
+/pytorch-CycleGAN-and-pix2pix-master/
+/MeanFlow-main/
+/MOTFM-main/
+
+# Model weights, arrays, and scientific binary artifacts
+*.pt
+*.pth
+*.ckpt
+*.npy
+*.npz
+*.mat
+
+# Generated plots/tables/logs from experiments
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.csv
+*.tex
+*.log
+log*.txt
+
+# Keep project source files trackable despite broad artifact ignores
+!main.tex
+!configs/*.yaml
+!docs/**/*.md
+!src/**/*.py
+!scripts/**/*.py
+!pmrf_t1fa/**/*.py
+!preprocessing/**/*.py

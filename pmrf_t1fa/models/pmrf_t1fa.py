@@ -1,5 +1,5 @@
 import math
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -12,6 +12,43 @@ def reduce_rgb_to_single_channel(x: torch.Tensor) -> torch.Tensor:
     if x.shape[1] == 1:
         return x
     return x.mean(dim=1, keepdim=True)
+
+
+def center_channel(x: torch.Tensor) -> torch.Tensor:
+    if x.dim() != 4:
+        raise ValueError(f"Expected BCHW tensor, got shape {tuple(x.shape)}")
+    center = x.shape[1] // 2
+    return x[:, center : center + 1]
+
+
+def prepare_stage1_input(x: torch.Tensor, expected_channels: int) -> torch.Tensor:
+    if x.dim() != 4:
+        raise ValueError(f"Expected BCHW tensor, got shape {tuple(x.shape)}")
+    if expected_channels == 1:
+        return reduce_rgb_to_single_channel(x)
+    if x.shape[1] != expected_channels:
+        raise ValueError(
+            f"Stage 1 expects {expected_channels} input channels, got tensor shape {tuple(x.shape)}"
+        )
+    return x
+
+
+def checkpoint_state_dict(checkpoint: Any) -> dict:
+    if isinstance(checkpoint, dict) and "model" in checkpoint:
+        return checkpoint["model"]
+    return checkpoint
+
+
+def infer_stage1_in_channels(checkpoint: Any) -> int:
+    if isinstance(checkpoint, dict):
+        args = checkpoint.get("args", {})
+        if "context_slices" in args:
+            return int(args["context_slices"])
+    state_dict = checkpoint_state_dict(checkpoint)
+    weight = state_dict.get("patch_embed.weight") if isinstance(state_dict, dict) else None
+    if weight is None:
+        return 1
+    return int(weight.shape[1])
 
 
 def _expand_time(t: torch.Tensor, ref: torch.Tensor) -> torch.Tensor:
@@ -297,7 +334,7 @@ def predict_stage1_fa(
 ) -> torch.Tensor:
     pred = model(t1_img)
     if prediction_mode == "residual":
-        coarse = t1_img + pred
+        coarse = center_channel(t1_img) + pred
     elif prediction_mode == "absolute":
         coarse = pred
     else:

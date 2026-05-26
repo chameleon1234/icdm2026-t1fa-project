@@ -79,7 +79,7 @@ def parse_args():
     parser.add_argument("--roi_cols", type=int, default=4)
     parser.add_argument("--roi_min_pixels", type=int, default=16)
     parser.add_argument("--grad_clip", type=float, default=1.0)
-    parser.add_argument("--best_metric", default="paired", choices=["psnr", "mse", "mae", "fid", "sharpness", "balanced", "paired"])
+    parser.add_argument("--best_metric", default="wm_paired", choices=["psnr", "mse", "mae", "fid", "sharpness", "balanced", "paired", "wm_paired"])
     parser.add_argument("--early_stop_patience", type=int, default=10)
     parser.add_argument("--degrade_patience", type=int, default=4)
     parser.add_argument("--degrade_margin_psnr", type=float, default=0.05)
@@ -95,6 +95,11 @@ def parse_args():
     parser.add_argument("--paired_ssim_weight", type=float, default=10.0)
     parser.add_argument("--paired_mse_weight", type=float, default=200.0)
     parser.add_argument("--paired_mae_weight", type=float, default=10.0)
+    parser.add_argument("--paired_brain_mae_weight", type=float, default=4.0)
+    parser.add_argument("--paired_wm_mae_weight", type=float, default=8.0)
+    parser.add_argument("--paired_grad_weight", type=float, default=0.8)
+    parser.add_argument("--paired_roi_weight", type=float, default=4.0)
+    parser.add_argument("--paired_sharp_weight", type=float, default=2.0)
     parser.add_argument("--skip_nonfinite_batches", action="store_true")
     parser.add_argument("--rollback_on_degrade", action="store_true")
     parser.set_defaults(condition_on_coarse=True, skip_nonfinite_batches=True, rollback_on_degrade=True)
@@ -148,6 +153,17 @@ def compute_paired_score(metrics: Dict[str, float], args) -> float:
         + args.paired_ssim_weight * metrics["ssim"]
         - args.paired_mse_weight * metrics["mse_proxy"]
         - args.paired_mae_weight * metrics["l1"]
+    )
+
+
+def compute_wm_paired_score(metrics: Dict[str, float], args) -> float:
+    return (
+        compute_paired_score(metrics, args)
+        - args.paired_brain_mae_weight * metrics["brain_l1"]
+        - args.paired_wm_mae_weight * metrics["wm_l1"]
+        - args.paired_grad_weight * metrics["grad"]
+        - args.paired_roi_weight * metrics["roi"]
+        + args.paired_sharp_weight * metrics["sharp_ratio"]
     )
 
 
@@ -205,6 +221,8 @@ def is_better(metrics: Dict[str, float], best_metrics: Dict[str, float], best_me
         return metrics["balanced_score"] > best_metrics["balanced_score"]
     if best_metric == "paired":
         return metrics["paired_score"] > best_metrics["paired_score"]
+    if best_metric == "wm_paired":
+        return metrics["wm_paired_score"] > best_metrics["wm_paired_score"]
     if metrics["psnr"] > best_metrics["psnr"] + 1e-6:
         return True
     if abs(metrics["psnr"] - best_metrics["psnr"]) <= 1e-6 and metrics["ssim"] > best_metrics["ssim"]:
@@ -472,6 +490,7 @@ def main():
         "sharp_ratio": float("-inf"),
         "balanced_score": float("-inf"),
         "paired_score": float("-inf"),
+        "wm_paired_score": float("-inf"),
     }
     start_epoch = 0
     global_step = 0
@@ -504,6 +523,7 @@ def main():
         best_metrics["sharp_ratio"] = checkpoint.get("best_sharp_ratio", best_metrics["sharp_ratio"])
         best_metrics["balanced_score"] = checkpoint.get("best_balanced_score", best_metrics["balanced_score"])
         best_metrics["paired_score"] = checkpoint.get("best_paired_score", best_metrics["paired_score"])
+        best_metrics["wm_paired_score"] = checkpoint.get("best_wm_paired_score", best_metrics["wm_paired_score"])
         start_epoch = checkpoint.get("epoch", 0) + 1
         global_step = checkpoint.get("global_step", 0)
         no_improve_epochs = checkpoint.get("no_improve_epochs", 0)
@@ -661,6 +681,10 @@ def main():
             "coarse_ssim": 0.0,
             "sharpness": 0.0,
             "target_sharpness": 0.0,
+            "brain_l1": 0.0,
+            "wm_l1": 0.0,
+            "wm_grad": 0.0,
+            "roi": 0.0,
         }
         val_batches = 0
         with torch.no_grad():
@@ -698,6 +722,14 @@ def main():
                 coarse_fp32 = coarse.float()
                 ssim_loss = ssim_loss_fn(refined, fa_img)
                 coarse_ssim_loss = ssim_loss_fn(coarse_fp32, fa_fp32)
+                brain_mask, wm_mask = build_training_masks(
+                    t1_img,
+                    fa_img,
+                    brain_t1_threshold=args.brain_t1_threshold,
+                    brain_fa_threshold=args.brain_fa_threshold,
+                    wm_quantile=args.wm_quantile,
+                    wm_min_threshold=args.wm_min_threshold,
+                )
 
                 val_total["psnr"] += compute_psnr(refined, fa_fp32).item()
                 val_total["ssim"] += (1.0 - ssim_loss).item()
@@ -705,6 +737,17 @@ def main():
                 val_total["l1"] += F.l1_loss(refined, fa_fp32).item()
                 val_total["grad"] += grad_loss_fn(refined, fa_fp32).item()
                 val_total["hf"] += F.l1_loss(laplacian_filter(refined), laplacian_filter(fa_fp32)).item()
+                val_total["brain_l1"] += masked_l1_loss(refined, fa_fp32, brain_mask).item()
+                val_total["wm_l1"] += masked_l1_loss(refined, fa_fp32, wm_mask).item()
+                val_total["wm_grad"] += masked_gradient_l1_loss(refined, fa_fp32, wm_mask, grad_loss_fn).item()
+                val_total["roi"] += roi_consistency_loss(
+                    refined,
+                    fa_fp32,
+                    wm_mask,
+                    rows=args.roi_rows,
+                    cols=args.roi_cols,
+                    min_pixels=args.roi_min_pixels,
+                ).item()
                 with torch.autocast(device_type=accelerator.device.type, enabled=False):
                     val_total["lpips"] += lpips_loss_fn(
                         refined.repeat(1, 3, 1, 1), fa_fp32.repeat(1, 3, 1, 1)
@@ -733,6 +776,7 @@ def main():
         metrics["sharp_ratio"] = metrics["sharpness"] / max(metrics["target_sharpness"], 1e-8)
         metrics["balanced_score"] = compute_balanced_score(metrics, args)
         metrics["paired_score"] = compute_paired_score(metrics, args)
+        metrics["wm_paired_score"] = compute_wm_paired_score(metrics, args)
         with torch.no_grad():
             fixed_condition = fixed_coarse if args.condition_on_coarse else None
             fixed_preview = clamp_to_image_range(
@@ -769,6 +813,7 @@ def main():
             "best_sharp_ratio": best_metrics["sharp_ratio"] if not is_best else metrics["sharp_ratio"],
             "best_balanced_score": best_metrics["balanced_score"] if not is_best else metrics["balanced_score"],
             "best_paired_score": best_metrics["paired_score"] if not is_best else metrics["paired_score"],
+            "best_wm_paired_score": best_metrics["wm_paired_score"] if not is_best else metrics["wm_paired_score"],
             "no_improve_epochs": no_improve_epochs,
             "degrade_epochs": degrade_epochs,
             "args": vars(args),
@@ -782,9 +827,12 @@ def main():
                     f"train_roi={running['roi'] / max(len(train_loader), 1):.6f} "
                     f"val_psnr={metrics['psnr']:.4f} val_ssim={metrics['ssim']:.4f} val_mse={metrics['mse_proxy']:.6f} "
                     f"val_l1={metrics['l1']:.6f} val_grad={metrics['grad']:.6f} val_hf={metrics['hf']:.6f} "
+                    f"val_brain_l1={metrics['brain_l1']:.6f} val_wm_l1={metrics['wm_l1']:.6f} "
+                    f"val_wm_grad={metrics['wm_grad']:.6f} val_roi={metrics['roi']:.6f} "
                     f"val_lpips={metrics['lpips']:.6f} val_fid={metrics['fid']:.4f} val_kid={metrics['kid']:.6f} "
                     f"sharp={metrics['sharpness']:.6f} sharp_ratio={metrics['sharp_ratio']:.4f} "
-                    f"balanced={metrics['balanced_score']:.4f} paired={metrics['paired_score']:.4f} coarse_psnr={metrics['coarse_psnr']:.4f} "
+                    f"balanced={metrics['balanced_score']:.4f} paired={metrics['paired_score']:.4f} "
+                    f"wm_paired={metrics['wm_paired_score']:.4f} coarse_psnr={metrics['coarse_psnr']:.4f} "
                     f"coarse_ssim={metrics['coarse_ssim']:.4f} "
                     f"no_improve_epochs={no_improve_epochs} degrade_epochs={degrade_epochs} "
                     f"skipped_nonfinite={skipped_nonfinite}\n"
@@ -813,6 +861,7 @@ def main():
                 best_metrics["sharp_ratio"] = metrics["sharp_ratio"]
                 best_metrics["balanced_score"] = metrics["balanced_score"]
                 best_metrics["paired_score"] = metrics["paired_score"]
+                best_metrics["wm_paired_score"] = metrics["wm_paired_score"]
                 checkpoint["best_psnr"] = best_metrics["psnr"]
                 checkpoint["best_ssim"] = best_metrics["ssim"]
                 checkpoint["best_mse_proxy"] = best_metrics["mse_proxy"]
@@ -824,20 +873,23 @@ def main():
                 checkpoint["best_sharp_ratio"] = best_metrics["sharp_ratio"]
                 checkpoint["best_balanced_score"] = best_metrics["balanced_score"]
                 checkpoint["best_paired_score"] = best_metrics["paired_score"]
+                checkpoint["best_wm_paired_score"] = best_metrics["wm_paired_score"]
                 torch.save(checkpoint, best_path)
                 accelerator.print(
                     f"New best Stage 2 checkpoint: PSNR={best_metrics['psnr']:.4f}, "
                     f"SSIM={best_metrics['ssim']:.4f}, MSE={best_metrics['mse_proxy']:.6f}, "
-                    f"L1={best_metrics['l1']:.6f}, Paired={best_metrics['paired_score']:.4f} -> {best_path}"
+                    f"L1={best_metrics['l1']:.6f}, WM_Paired={best_metrics['wm_paired_score']:.4f} -> {best_path}"
                 )
 
         accelerator.print(
             f"[Stage 2][Epoch {epoch + 1}] refined_PSNR={metrics['psnr']:.4f} "
             f"refined_SSIM={metrics['ssim']:.4f} refined_MSE={metrics['mse_proxy']:.6f} "
             f"coarse_PSNR={metrics['coarse_psnr']:.4f} coarse_SSIM={metrics['coarse_ssim']:.4f} L1={metrics['l1']:.6f} "
-            f"Grad={metrics['grad']:.6f} HF={metrics['hf']:.6f} LPIPS={metrics['lpips']:.6f} "
+            f"Grad={metrics['grad']:.6f} WM_L1={metrics['wm_l1']:.6f} ROI={metrics['roi']:.6f} "
+            f"HF={metrics['hf']:.6f} LPIPS={metrics['lpips']:.6f} "
             f"FID={metrics['fid']:.4f} SharpRatio={metrics['sharp_ratio']:.4f} "
             f"Score={metrics['balanced_score']:.4f} Paired={metrics['paired_score']:.4f} "
+            f"WM_Paired={metrics['wm_paired_score']:.4f} "
             f"NoImprove={no_improve_epochs} Degrade={degrade_epochs} SkippedNonFinite={skipped_nonfinite}"
         )
 

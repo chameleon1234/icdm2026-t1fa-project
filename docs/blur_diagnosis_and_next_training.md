@@ -54,7 +54,7 @@ accelerate launch pmrf_t1fa/train_pmrf_t1fa_stage2.py `
   --source_noise_std 0.01 `
   --eval_steps 1 `
   --condition_on_coarse `
-  --best_metric balanced `
+  --best_metric wm_paired `
   --early_stop_patience 25 `
   --degrade_patience 10 `
   --no_auto_resume
@@ -64,7 +64,7 @@ If PowerShell has not been initialized for conda, use:
 
 ```powershell
 conda run -n dinov3test accelerate launch pmrf_t1fa/train_pmrf_t1fa_stage1.py --run_name pmrf_t1fa_stage1_3slice_pm --context_slices 3 --posterior_mean_preset --batch_size 4 --epochs 200 --early_stop_patience 20 --no_auto_resume
-conda run -n dinov3test accelerate launch pmrf_t1fa/train_pmrf_t1fa_stage2.py --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt --run_name pm_dirf_wm_residual_3slice --batch_size 4 --epochs 150 --source_noise_std 0.01 --eval_steps 1 --condition_on_coarse --best_metric balanced --early_stop_patience 25 --degrade_patience 10 --no_auto_resume
+conda run -n dinov3test accelerate launch pmrf_t1fa/train_pmrf_t1fa_stage2.py --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt --run_name pm_dirf_wm_residual_3slice --batch_size 4 --epochs 150 --source_noise_std 0.01 --eval_steps 1 --condition_on_coarse --best_metric wm_paired --early_stop_patience 25 --degrade_patience 10 --no_auto_resume
 ```
 
 ## After Training
@@ -79,3 +79,7 @@ python scripts/evaluate_method_folder.py --pred_dir outputs/icdm2026/predictions
 ```
 
 Decision rule: keep the 3-slice version only if it improves WM-masked MAE, gradient error, sharpness ratio, and visual lesion/WM tract readability without a meaningful PSNR/SSIM collapse.
+
+Use `wm_paired` for the main paper branch because the paper target is paired FA fidelity with disease-relevant WM preservation. Reserve `balanced` for a separate sharpness/perceptual ablation branch; it still includes FID/LPIPS and should not decide the main checkpoint.
+
+The WM masks used during supervised training are target-derived proxy WM masks from FA intensity quantiles, not anatomical segmentation labels.

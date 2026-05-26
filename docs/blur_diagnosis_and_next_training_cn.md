@@ -54,7 +54,7 @@ accelerate launch pmrf_t1fa/train_pmrf_t1fa_stage2.py `
   --source_noise_std 0.01 `
   --eval_steps 1 `
   --condition_on_coarse `
-  --best_metric balanced `
+  --best_metric wm_paired `
   --early_stop_patience 25 `
   --degrade_patience 10 `
   --no_auto_resume
@@ -64,7 +64,7 @@ accelerate launch pmrf_t1fa/train_pmrf_t1fa_stage2.py `
 
 ```powershell
 conda run -n dinov3test accelerate launch pmrf_t1fa/train_pmrf_t1fa_stage1.py --run_name pmrf_t1fa_stage1_3slice_pm --context_slices 3 --posterior_mean_preset --batch_size 4 --epochs 200 --early_stop_patience 20 --no_auto_resume
-conda run -n dinov3test accelerate launch pmrf_t1fa/train_pmrf_t1fa_stage2.py --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt --run_name pm_dirf_wm_residual_3slice --batch_size 4 --epochs 150 --source_noise_std 0.01 --eval_steps 1 --condition_on_coarse --best_metric balanced --early_stop_patience 25 --degrade_patience 10 --no_auto_resume
+conda run -n dinov3test accelerate launch pmrf_t1fa/train_pmrf_t1fa_stage2.py --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt --run_name pm_dirf_wm_residual_3slice --batch_size 4 --epochs 150 --source_noise_std 0.01 --eval_steps 1 --condition_on_coarse --best_metric wm_paired --early_stop_patience 25 --degrade_patience 10 --no_auto_resume
 ```
 
 ## 训练后要做什么
@@ -79,3 +79,7 @@ python scripts/evaluate_method_folder.py --pred_dir outputs/icdm2026/predictions
 ```
 
 判断标准：只有当 3-slice 版本能提升 WM-masked MAE、gradient error、sharpness ratio 和肉眼可见的白质/病灶可读性，同时 PSNR/SSIM 不明显崩掉时，才把它作为论文主实验路线。
+
+主论文路线使用 `wm_paired`，因为论文目标是 paired FA fidelity 和疾病相关白质区域保真。`balanced` 保留给单独的 sharp/perceptual 消融分支；它仍包含 FID/LPIPS，不应该决定主实验 checkpoint。
+
+训练阶段的 WM mask 是根据 target FA 分位数动态生成的 proxy WM mask，不是解剖分割真值。论文和日志里需要明确这一点。

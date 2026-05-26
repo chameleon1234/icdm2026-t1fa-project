@@ -57,3 +57,61 @@ def test_predict_stage1_residual_uses_center_slice_for_stacked_input():
 
     assert coarse.shape == torch.Size([1, 1, 1, 1])
     assert coarse.item() == 0.25
+
+
+def test_stage1_checkpoint_channel_inference_supports_export_and_stage2_eval(tmp_path):
+    from pmrf_t1fa.models.pmrf_t1fa import Stage1Net, infer_stage1_in_channels
+    from scripts.export_pm_dirf_predictions import load_stage1 as load_export_stage1
+    from pmrf_t1fa.evaluate_pmrf_t1fa_stage2 import load_stage1 as load_eval_stage1
+
+    checkpoint_path = tmp_path / "stage1_3slice.pt"
+    torch.save(
+        {
+            "model": Stage1Net(in_channels=3, out_channels=1).state_dict(),
+            "args": {"context_slices": 3, "stage1_prediction_mode": "residual"},
+        },
+        checkpoint_path,
+    )
+
+    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    assert infer_stage1_in_channels(checkpoint) == 3
+
+    export_model, export_mode, export_channels = load_export_stage1(checkpoint_path, torch.device("cpu"))
+    eval_model, eval_mode, eval_channels = load_eval_stage1(checkpoint_path, torch.device("cpu"))
+
+    assert export_model.patch_embed.weight.shape[1] == 3
+    assert eval_model.patch_embed.weight.shape[1] == 3
+    assert export_mode == eval_mode == "residual"
+    assert export_channels == eval_channels == 3
+
+
+def test_wm_paired_score_prefers_white_matter_and_roi_fidelity():
+    from types import SimpleNamespace
+
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import compute_wm_paired_score
+
+    args = SimpleNamespace(
+        paired_psnr_weight=1.0,
+        paired_ssim_weight=10.0,
+        paired_mse_weight=200.0,
+        paired_mae_weight=10.0,
+        paired_brain_mae_weight=4.0,
+        paired_wm_mae_weight=8.0,
+        paired_grad_weight=0.8,
+        paired_roi_weight=4.0,
+        paired_sharp_weight=2.0,
+    )
+    base = {
+        "psnr": 28.0,
+        "ssim": 0.90,
+        "mse_proxy": 0.0017,
+        "l1": 0.018,
+        "brain_l1": 0.052,
+        "wm_l1": 0.060,
+        "grad": 0.112,
+        "roi": 0.020,
+        "sharp_ratio": 0.70,
+    }
+    worse_wm = dict(base, wm_l1=0.090, roi=0.050, sharp_ratio=0.50)
+
+    assert compute_wm_paired_score(base, args) > compute_wm_paired_score(worse_wm, args)

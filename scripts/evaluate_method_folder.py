@@ -54,6 +54,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--method", required=True, help="Method name used in output files.")
     parser.add_argument("--config", default="configs/icdm2026.yaml")
     parser.add_argument("--metrics_root", default="", help="Override metrics output directory from config.")
+    parser.add_argument("--figures_root", default="", help="Override figure output directory from config.")
+    parser.add_argument("--visualize_count", type=int, default=8, help="Number of fixed slices to visualize.")
+    parser.add_argument("--visualize_manifest", default="", help="CSV manifest controlling the fixed visualization order.")
+    parser.add_argument("--reset_visualize_manifest", action="store_true", help="Recreate visualization manifest from the current evaluated slice set.")
     parser.add_argument("--test_t1_dir", default="", help="Override test T1 slice directory from config.")
     parser.add_argument("--test_fa_dir", default="", help="Override test FA slice directory from config.")
     parser.add_argument("--limit", type=int, default=0, help="Evaluate only the first N target slices for smoke tests.")
@@ -84,6 +88,11 @@ def _read_grayscale_tensor(path: str | Path, target_shape: tuple[int, int] | Non
         image = cv2.resize(image, (target_shape[1], target_shape[0]), interpolation=cv2.INTER_CUBIC)
     tensor = torch.from_numpy(image).float().unsqueeze(0).unsqueeze(0) / 255.0
     return tensor.clamp(0.0, 1.0)
+
+
+def _read_grayscale_uint8(path: str | Path, target_shape: tuple[int, int] | None = None) -> np.ndarray:
+    tensor = _read_grayscale_tensor(path, target_shape=target_shape)
+    return (tensor.squeeze().numpy() * 255.0).round().astype(np.uint8)
 
 
 def _parse_slice_id(filename: str) -> int:
@@ -125,6 +134,97 @@ def _subject_metadata_lookup(subject_index: pd.DataFrame) -> dict[str, dict[str,
     }
 
 
+def _write_png(path: str | Path, image: np.ndarray) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    ok, encoded = cv2.imencode(".png", image)
+    if not ok:
+        raise ValueError(f"Failed to encode PNG: {path}")
+    encoded.tofile(str(path))
+
+
+def _label_tile(tile: np.ndarray, label: str) -> np.ndarray:
+    if tile.ndim == 2:
+        tile = cv2.cvtColor(tile, cv2.COLOR_GRAY2BGR)
+    labelled = tile.copy()
+    cv2.rectangle(labelled, (0, 0), (labelled.shape[1], 24), (0, 0, 0), thickness=-1)
+    cv2.putText(labelled, label, (6, 17), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+    return labelled
+
+
+def _make_visual_panel(t1_path: Path, pred_path: Path, target_path: Path, method: str) -> np.ndarray:
+    target = _read_grayscale_uint8(target_path)
+    pred = _read_grayscale_uint8(pred_path, target_shape=target.shape)
+    t1 = _read_grayscale_uint8(t1_path, target_shape=target.shape)
+    error = cv2.absdiff(pred, target)
+    error = np.clip(error.astype(np.float32) * 4.0, 0, 255).astype(np.uint8)
+    error_color = cv2.applyColorMap(error, cv2.COLORMAP_JET)
+    tiles = [
+        _label_tile(t1, "T1"),
+        _label_tile(pred, method),
+        _label_tile(target, "FA_GT"),
+        _label_tile(error_color, "ABS_ERR_X4"),
+    ]
+    return np.concatenate(tiles, axis=1)
+
+
+def _load_or_create_visual_manifest(
+    manifest_path: Path,
+    slice_df: pd.DataFrame,
+    visualize_count: int,
+    reset: bool = False,
+) -> pd.DataFrame:
+    if manifest_path.exists() and not reset:
+        manifest = pd.read_csv(manifest_path)
+        if "fname" not in manifest.columns:
+            raise ValueError(f"Visualization manifest missing fname column: {manifest_path}")
+        return manifest
+
+    sorted_df = slice_df.sort_values(["subject_id", "slice_id"]).reset_index(drop=True)
+    count = min(max(visualize_count, 0), len(sorted_df))
+    if count == 0:
+        selected = sorted_df.head(0).copy()
+    else:
+        selected_indices = np.linspace(0, len(sorted_df) - 1, num=count).round().astype(int)
+        selected = sorted_df.iloc[selected_indices].copy()
+    manifest = selected[["fname", "subject_id", "slice_id", "group_name"]].reset_index(drop=True)
+    manifest.insert(0, "visual_index", range(len(manifest)))
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest.to_csv(manifest_path, index=False, encoding="utf-8")
+    return manifest
+
+
+def _write_visualizations(
+    method: str,
+    pred_dir: Path,
+    test_t1_dir: Path,
+    test_fa_dir: Path,
+    figures_root: Path,
+    manifest_path: Path,
+    slice_df: pd.DataFrame,
+    visualize_count: int,
+    reset_manifest: bool,
+) -> tuple[int, Path]:
+    if visualize_count <= 0:
+        return 0, manifest_path
+
+    manifest = _load_or_create_visual_manifest(manifest_path, slice_df, visualize_count, reset=reset_manifest)
+    available = set(slice_df["fname"].tolist())
+    method_dir = figures_root / "method_slices" / method
+    method_dir.mkdir(parents=True, exist_ok=True)
+    for stale_png in method_dir.glob("*.png"):
+        stale_png.unlink()
+    written = 0
+    for _, row in manifest.head(visualize_count).iterrows():
+        filename = str(row["fname"])
+        if filename not in available:
+            continue
+        panel = _make_visual_panel(test_t1_dir / filename, pred_dir / filename, test_fa_dir / filename, method)
+        _write_png(method_dir / f"{Path(filename).stem}_{method}.png", panel)
+        written += 1
+    return written, manifest_path
+
+
 def evaluate_folder(args: argparse.Namespace) -> dict[str, Any]:
     config = _read_yaml(args.config)
     processed_root = Path(config["data"]["processed_root"])
@@ -132,7 +232,10 @@ def evaluate_folder(args: argparse.Namespace) -> dict[str, Any]:
     test_t1_dir = Path(args.test_t1_dir) if args.test_t1_dir else processed_root / "test" / "t1_slices"
     test_fa_dir = Path(args.test_fa_dir) if args.test_fa_dir else processed_root / "test" / "fa_slices"
     metrics_root = Path(args.metrics_root) if args.metrics_root else Path(config["outputs"]["metrics_root"])
+    figures_root = Path(args.figures_root) if args.figures_root else Path(config["outputs"]["figures_root"])
+    visualize_manifest = Path(args.visualize_manifest) if args.visualize_manifest else figures_root / "visualization_manifest.csv"
     metrics_root.mkdir(parents=True, exist_ok=True)
+    figures_root.mkdir(parents=True, exist_ok=True)
 
     subject_index = load_subject_index(
         excel_path=config["data"]["excel_path"],
@@ -259,6 +362,20 @@ def evaluate_folder(args: argparse.Namespace) -> dict[str, Any]:
         }
         for group_name, group_df in slice_df.groupby("group_name")
     }
+    visualization_count, visualization_manifest = _write_visualizations(
+        args.method,
+        pred_dir,
+        test_t1_dir,
+        test_fa_dir,
+        figures_root,
+        visualize_manifest,
+        slice_df,
+        args.visualize_count,
+        args.reset_visualize_manifest,
+    )
+    summary["visualization_count"] = int(visualization_count)
+    summary["visualization_manifest"] = str(visualization_manifest)
+    summary["visualization_dir"] = str(figures_root / "method_slices" / args.method)
 
     slice_path = metrics_root / f"{args.method}_slice_metrics.csv"
     subject_path = metrics_root / f"{args.method}_subject_metrics.csv"
@@ -281,4 +398,3 @@ def evaluate_folder(args: argparse.Namespace) -> dict[str, Any]:
 
 if __name__ == "__main__":
     evaluate_folder(parse_args())
-

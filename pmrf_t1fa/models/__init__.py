@@ -3,13 +3,16 @@ from .pmrf_t1fa import (
     RefinementFlowUNet,
     SSIMLoss,
     Stage1Net,
+    build_stage2_condition,
     build_xt,
     center_channel,
     euler_refine,
     infer_stage1_in_channels,
+    infer_stage2_condition_mode,
     project_endpoint,
     prepare_stage1_input,
     reduce_rgb_to_single_channel,
+    stage2_condition_channels,
 )
 
 __all__ = [
@@ -17,11 +20,14 @@ __all__ = [
     "RefinementFlowUNet",
     "SSIMLoss",
     "Stage1Net",
+    "build_stage2_condition",
     "build_xt",
     "center_channel",
     "euler_refine",
     "infer_stage1_in_channels",
+    "infer_stage2_condition_mode",
     "project_endpoint",
     "prepare_stage1_input",
     "reduce_rgb_to_single_channel",
+    "stage2_condition_channels",
 ]

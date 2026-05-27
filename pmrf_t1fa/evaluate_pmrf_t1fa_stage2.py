@@ -17,13 +17,16 @@ from tqdm import tqdm
 from pmrf_t1fa.models.pmrf_t1fa import (
     RefinementFlowUNet,
     Stage1Net,
+    build_stage2_condition,
     center_channel,
     euler_refine,
     infer_stage1_in_channels,
     infer_stage1_prediction_mode,
+    infer_stage2_condition_mode,
     prepare_stage1_input,
     predict_stage1_fa,
     reduce_rgb_to_single_channel,
+    stage2_condition_channels,
 )
 from src.data.t1fa_stack_dataset import T1FAStackDataset
 from src.datasets import T1FADataset
@@ -52,7 +55,13 @@ def parse_args():
     parser.add_argument(
         "--auto_condition_from_ckpt",
         action="store_true",
-        help="Use condition_on_coarse from checkpoint args when available",
+        help="Use condition settings from checkpoint args when available",
+    )
+    parser.add_argument(
+        "--condition_mode",
+        default="auto",
+        choices=["auto", "none", "coarse", "t1", "coarse_t1"],
+        help="Stage 2 conditioning. auto reads the checkpoint and keeps old coarse-only checkpoints compatible.",
     )
     parser.add_argument("--kid_subset_size", type=int, default=100)
     parser.add_argument("--save_predictions", action="store_true")
@@ -103,9 +112,14 @@ def make_slice_dataset(t1_dir: str, fa_dir: str, stage1_channels: int):
     return T1FADataset(t1_dir, fa_dir, preload_ram=False)
 
 
-def load_stage2(stage2_ckpt: str, device: torch.device, condition_on_coarse: bool) -> RefinementFlowUNet:
+def load_stage2(
+    stage2_ckpt: str,
+    device: torch.device,
+    condition_mode: str,
+    stage1_channels: int,
+) -> RefinementFlowUNet:
     checkpoint = torch.load(stage2_ckpt, map_location="cpu")
-    condition_channels = 1 if condition_on_coarse else 0
+    condition_channels = stage2_condition_channels(condition_mode, stage1_channels)
     model = RefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
     model.load_state_dict(checkpoint_state_dict(checkpoint))
     model.to(device)
@@ -281,8 +295,15 @@ def evaluate(args):
     stage2_args = checkpoint_args(stage2_checkpoint)
 
     condition_on_coarse = args.condition_on_coarse
-    if args.auto_condition_from_ckpt or not args.condition_on_coarse:
+    if args.auto_condition_from_ckpt or not args.condition_on_coarse or args.condition_mode == "auto":
         condition_on_coarse = bool(stage2_args.get("condition_on_coarse", condition_on_coarse))
+    if args.condition_mode == "auto":
+        condition_mode = infer_stage2_condition_mode(stage2_args)
+    else:
+        condition_mode = infer_stage2_condition_mode(
+            {"condition_mode": args.condition_mode, "condition_on_coarse": condition_on_coarse}
+        )
+    condition_on_coarse = condition_mode in {"coarse", "coarse_t1"}
 
     eval_steps = args.eval_steps if args.eval_steps > 0 else int(stage2_args.get("eval_steps", 1))
 
@@ -296,7 +317,12 @@ def evaluate(args):
         num_workers=args.num_workers,
     )
 
-    stage2 = load_stage2(args.stage2_ckpt, device, condition_on_coarse=condition_on_coarse)
+    stage2 = load_stage2(
+        args.stage2_ckpt,
+        device,
+        condition_mode=condition_mode,
+        stage1_channels=stage1_channels,
+    )
 
     psnr_metric = PeakSignalNoiseRatio(data_range=1.0).to(device)
     ssim_metric = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
@@ -346,6 +372,7 @@ def evaluate(args):
         f"Evaluating Stage 2 checkpoint: {args.stage2_ckpt}\n"
         f"Stage 1 checkpoint: {args.stage1_ckpt}\n"
         f"Device: {device}\n"
+        f"Condition mode: {condition_mode}\n"
         f"Condition on coarse: {condition_on_coarse}\n"
         f"Eval steps: {eval_steps}\n"
         f"Stage 1 input channels: {stage1_channels}\n"
@@ -357,7 +384,7 @@ def evaluate(args):
         fa_real = reduce_rgb_to_single_channel(batch["fa_slice"].to(device))
 
         coarse = predict_stage1_fa(stage1, t1_img, clamp=True, prediction_mode=stage1_prediction_mode)
-        condition = coarse if condition_on_coarse else None
+        condition = build_stage2_condition(coarse, t1_img, condition_mode)
         refined = clamp_to_image_range(
             euler_refine(stage2, coarse, num_steps=eval_steps, condition=condition).float()
         )
@@ -445,6 +472,7 @@ def evaluate(args):
         "stage2_ckpt": os.path.abspath(args.stage2_ckpt),
         "stage1_ckpt": os.path.abspath(args.stage1_ckpt),
         "stage1_channels": stage1_channels,
+        "condition_mode": condition_mode,
         "condition_on_coarse": condition_on_coarse,
         "eval_steps": eval_steps,
         "test_slices": len(test_dataset),

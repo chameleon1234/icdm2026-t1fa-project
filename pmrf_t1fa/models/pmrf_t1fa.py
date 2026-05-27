@@ -326,6 +326,46 @@ def infer_stage1_prediction_mode(checkpoint_args: Optional[dict]) -> str:
     return mode
 
 
+STAGE2_CONDITION_MODES = {"none", "coarse", "t1", "coarse_t1"}
+
+
+def infer_stage2_condition_mode(checkpoint_args: Optional[dict]) -> str:
+    if not checkpoint_args:
+        return "coarse"
+    mode = checkpoint_args.get("condition_mode")
+    if mode in STAGE2_CONDITION_MODES:
+        return str(mode)
+    return "coarse" if checkpoint_args.get("condition_on_coarse", True) else "none"
+
+
+def stage2_condition_channels(condition_mode: str, stage1_channels: int) -> int:
+    if condition_mode not in STAGE2_CONDITION_MODES:
+        raise ValueError(f"Unsupported Stage 2 condition mode: {condition_mode}")
+    if condition_mode == "none":
+        return 0
+    if condition_mode == "coarse":
+        return 1
+    if condition_mode == "t1":
+        return int(stage1_channels)
+    return 1 + int(stage1_channels)
+
+
+def build_stage2_condition(
+    coarse: torch.Tensor,
+    t1_img: torch.Tensor,
+    condition_mode: str,
+) -> Optional[torch.Tensor]:
+    if condition_mode not in STAGE2_CONDITION_MODES:
+        raise ValueError(f"Unsupported Stage 2 condition mode: {condition_mode}")
+    if condition_mode == "none":
+        return None
+    if condition_mode == "coarse":
+        return coarse
+    if condition_mode == "t1":
+        return t1_img
+    return torch.cat([coarse, t1_img], dim=1)
+
+
 def predict_stage1_fa(
     model: nn.Module,
     t1_img: torch.Tensor,

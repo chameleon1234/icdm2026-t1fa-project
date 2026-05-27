@@ -6,7 +6,7 @@ import lpips
 import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from torchmetrics.image.fid import FrechetInceptionDistance
 from torchmetrics.image.kid import KernelInceptionDistance
 from torchvision.utils import save_image
@@ -17,15 +17,18 @@ from pmrf_t1fa.models.pmrf_t1fa import (
     RefinementFlowUNet,
     SSIMLoss,
     Stage1Net,
+    build_stage2_condition,
     build_xt,
     center_channel,
     euler_refine,
     infer_stage1_in_channels,
+    infer_stage2_condition_mode,
     infer_stage1_prediction_mode,
     prepare_stage1_input,
     predict_stage1_fa,
     project_endpoint,
     reduce_rgb_to_single_channel,
+    stage2_condition_channels,
 )
 from src.data.t1fa_stack_dataset import T1FAStackDataset
 from src.datasets import T1FADataset
@@ -49,11 +52,19 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--weight_decay", type=float, default=0.0)
     parser.add_argument("--num_workers", type=int, default=0)
+    parser.add_argument("--train_limit", type=int, default=0, help="Use only the first N training slices for smoke tests.")
+    parser.add_argument("--val_limit", type=int, default=0, help="Use only the first N validation slices for smoke tests.")
     parser.add_argument("--mixed_precision", default="bf16", choices=["no", "fp16", "bf16"])
     parser.add_argument("--source_noise_std", type=float, default=0.01)
     parser.add_argument("--eval_steps", type=int, default=1)
     parser.add_argument("--condition_on_coarse", action="store_true")
     parser.add_argument("--disable_condition_on_coarse", action="store_false", dest="condition_on_coarse")
+    parser.add_argument(
+        "--condition_mode",
+        default="coarse_t1",
+        choices=["none", "coarse", "t1", "coarse_t1"],
+        help="Stage 2 conditioning. coarse_t1 gives the refiner both coarse FA and the Stage 1 T1 stack.",
+    )
     parser.add_argument("--save_every", type=int, default=10)
     parser.add_argument("--preview_every", type=int, default=500)
     parser.add_argument("--resume", action="store_true")
@@ -103,7 +114,10 @@ def parse_args():
     parser.add_argument("--skip_nonfinite_batches", action="store_true")
     parser.add_argument("--rollback_on_degrade", action="store_true")
     parser.set_defaults(condition_on_coarse=True, skip_nonfinite_batches=True, rollback_on_degrade=True)
-    return parser.parse_args()
+    args = parser.parse_args()
+    if not args.condition_on_coarse and args.condition_mode == "coarse_t1":
+        args.condition_mode = "none"
+    return args
 
 
 def ensure_dirs(run_name: str):
@@ -236,6 +250,12 @@ def make_slice_dataset(t1_dir: str, fa_dir: str, stage1_channels: int):
     return T1FADataset(t1_dir, fa_dir, preload_ram=False)
 
 
+def maybe_limit_dataset(dataset, limit: int):
+    if limit <= 0:
+        return dataset
+    return Subset(dataset, range(min(limit, len(dataset))))
+
+
 def masked_l1_loss(pred: torch.Tensor, target: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
     mask = mask.to(device=pred.device, dtype=pred.dtype)
     denom = mask.sum().clamp_min(1.0)
@@ -280,7 +300,7 @@ def build_training_masks(
         if values.numel() == 0:
             wm_masks.append(torch.zeros_like(brain_i))
             continue
-        threshold = max(float(torch.quantile(values.float(), wm_quantile).item()), wm_min_threshold)
+        threshold = max(float(torch.quantile(values.detach().float().cpu(), wm_quantile).item()), wm_min_threshold)
         wm_masks.append(close_mask((brain_i.bool() & (target_01[i : i + 1] >= threshold)).float()))
     return brain, torch.cat(wm_masks, dim=0)
 
@@ -439,6 +459,8 @@ def main():
     stage1, stage1_prediction_mode, stage1_channels = load_stage1_model(args.stage1_ckpt, accelerator.device)
     train_dataset = make_slice_dataset(args.train_t1_dir, args.train_fa_dir, stage1_channels)
     val_dataset = make_slice_dataset(args.val_t1_dir, args.val_fa_dir, stage1_channels)
+    train_dataset = maybe_limit_dataset(train_dataset, args.train_limit)
+    val_dataset = maybe_limit_dataset(val_dataset, args.val_limit)
 
     train_loader = DataLoader(
         train_dataset,
@@ -455,7 +477,11 @@ def main():
         num_workers=args.num_workers,
     )
 
-    condition_channels = 1 if args.condition_on_coarse else 0
+    args.condition_mode = infer_stage2_condition_mode(
+        {"condition_mode": args.condition_mode, "condition_on_coarse": args.condition_on_coarse}
+    )
+    args.condition_on_coarse = args.condition_mode in {"coarse", "coarse_t1"}
+    condition_channels = stage2_condition_channels(args.condition_mode, stage1_channels)
     flow_model = RefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
     optimizer = torch.optim.AdamW(flow_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     ssim_loss_fn = SSIMLoss()
@@ -532,6 +558,7 @@ def main():
 
     accelerator.print(
         f"Stage 2 training on {len(train_dataset)} train slices / {len(val_dataset)} val slices | "
+        f"condition_mode={args.condition_mode} condition_channels={condition_channels} | "
         f"condition_on_coarse={args.condition_on_coarse} | Device={accelerator.device} | "
         f"mixed_precision={args.mixed_precision} | stage1_channels={stage1_channels} | "
         f"source_noise_std={args.source_noise_std}"
@@ -577,7 +604,7 @@ def main():
                 t=t,
                 source_noise_std=args.source_noise_std,
             )
-            condition = coarse if args.condition_on_coarse else None
+            condition = build_stage2_condition(coarse, t1_img, args.condition_mode)
             v_pred = flow_model(x_t, t, condition=condition)
             brain_mask, wm_mask = build_training_masks(
                 t1_img,
@@ -655,7 +682,7 @@ def main():
                 if global_step % args.preview_every == 0:
                     flow_model.eval()
                     with torch.no_grad():
-                        condition = fixed_coarse if args.condition_on_coarse else None
+                        condition = build_stage2_condition(fixed_coarse, fixed_t1, args.condition_mode)
                         preview_refined = euler_refine(
                             flow_model,
                             fixed_coarse,
@@ -707,7 +734,7 @@ def main():
                     source_noise_std=args.source_noise_std,
                     deterministic_source=True,
                 )
-                condition = coarse if args.condition_on_coarse else None
+                condition = build_stage2_condition(coarse, t1_img, args.condition_mode)
                 v_pred = flow_model(x_t, t_eval, condition=condition)
                 val_total["vel"] += F.mse_loss(v_pred.float(), v_target.float()).item()
 
@@ -778,7 +805,7 @@ def main():
         metrics["paired_score"] = compute_paired_score(metrics, args)
         metrics["wm_paired_score"] = compute_wm_paired_score(metrics, args)
         with torch.no_grad():
-            fixed_condition = fixed_coarse if args.condition_on_coarse else None
+            fixed_condition = build_stage2_condition(fixed_coarse, fixed_t1, args.condition_mode)
             fixed_preview = clamp_to_image_range(
                 euler_refine(flow_model, fixed_coarse, num_steps=args.eval_steps, condition=fixed_condition).float()
             )

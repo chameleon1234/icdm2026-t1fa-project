@@ -115,3 +115,35 @@ def test_wm_paired_score_prefers_white_matter_and_roi_fidelity():
     worse_wm = dict(base, wm_l1=0.090, roi=0.050, sharp_ratio=0.50)
 
     assert compute_wm_paired_score(base, args) > compute_wm_paired_score(worse_wm, args)
+
+
+def test_stage2_coarse_t1_condition_uses_coarse_and_full_t1_stack():
+    from pmrf_t1fa.models.pmrf_t1fa import (
+        build_stage2_condition,
+        stage2_condition_channels,
+    )
+
+    coarse = torch.full((2, 1, 4, 4), 0.25)
+    t1_stack = torch.stack(
+        [
+            torch.full((4, 4), -0.5),
+            torch.full((4, 4), 0.0),
+            torch.full((4, 4), 0.5),
+        ],
+        dim=0,
+    ).unsqueeze(0).repeat(2, 1, 1, 1)
+
+    condition = build_stage2_condition(coarse, t1_stack, "coarse_t1")
+
+    assert stage2_condition_channels("coarse_t1", stage1_channels=3) == 4
+    assert condition.shape == torch.Size([2, 4, 4, 4])
+    assert torch.allclose(condition[:, :1], coarse)
+    assert torch.allclose(condition[:, 1:], t1_stack)
+
+
+def test_stage2_condition_mode_defaults_keep_old_coarse_checkpoints_compatible():
+    from pmrf_t1fa.models.pmrf_t1fa import infer_stage2_condition_mode
+
+    assert infer_stage2_condition_mode({"condition_on_coarse": True}) == "coarse"
+    assert infer_stage2_condition_mode({"condition_on_coarse": False}) == "none"
+    assert infer_stage2_condition_mode({"condition_mode": "coarse_t1", "condition_on_coarse": True}) == "coarse_t1"

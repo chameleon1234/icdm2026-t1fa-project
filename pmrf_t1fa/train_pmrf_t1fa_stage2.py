@@ -56,6 +56,9 @@ def parse_args():
     parser.add_argument("--val_limit", type=int, default=0, help="Use only the first N validation slices for smoke tests.")
     parser.add_argument("--mixed_precision", default="bf16", choices=["no", "fp16", "bf16"])
     parser.add_argument("--source_noise_std", type=float, default=0.01)
+    parser.add_argument("--t_sampling", default="endpoint", choices=["endpoint", "uniform", "low_t"])
+    parser.add_argument("--t_min", type=float, default=0.0)
+    parser.add_argument("--t_max", type=float, default=0.25)
     parser.add_argument("--eval_steps", type=int, default=1)
     parser.add_argument("--condition_on_coarse", action="store_true")
     parser.add_argument("--disable_condition_on_coarse", action="store_false", dest="condition_on_coarse")
@@ -78,6 +81,7 @@ def parse_args():
     parser.add_argument("--grad_weight", type=float, default=0.06)
     parser.add_argument("--detail_weight", type=float, default=0.07)
     parser.add_argument("--hf_weight", type=float, default=0.04)
+    parser.add_argument("--residual_hf_weight", type=float, default=0.12)
     parser.add_argument("--brain_l1_weight", type=float, default=0.08)
     parser.add_argument("--wm_l1_weight", type=float, default=0.12)
     parser.add_argument("--wm_grad_weight", type=float, default=0.04)
@@ -90,7 +94,7 @@ def parse_args():
     parser.add_argument("--roi_cols", type=int, default=4)
     parser.add_argument("--roi_min_pixels", type=int, default=16)
     parser.add_argument("--grad_clip", type=float, default=1.0)
-    parser.add_argument("--best_metric", default="wm_paired", choices=["psnr", "mse", "mae", "fid", "sharpness", "balanced", "paired", "wm_paired"])
+    parser.add_argument("--best_metric", default="detail_paired", choices=["psnr", "mse", "mae", "fid", "sharpness", "balanced", "paired", "wm_paired", "detail_paired"])
     parser.add_argument("--early_stop_patience", type=int, default=10)
     parser.add_argument("--degrade_patience", type=int, default=4)
     parser.add_argument("--degrade_margin_psnr", type=float, default=0.05)
@@ -111,6 +115,8 @@ def parse_args():
     parser.add_argument("--paired_grad_weight", type=float, default=0.8)
     parser.add_argument("--paired_roi_weight", type=float, default=4.0)
     parser.add_argument("--paired_sharp_weight", type=float, default=2.0)
+    parser.add_argument("--detail_sharp_weight", type=float, default=8.0)
+    parser.add_argument("--detail_coarse_penalty_weight", type=float, default=8.0)
     parser.add_argument("--skip_nonfinite_batches", action="store_true")
     parser.add_argument("--rollback_on_degrade", action="store_true")
     parser.set_defaults(condition_on_coarse=True, skip_nonfinite_batches=True, rollback_on_degrade=True)
@@ -181,6 +187,36 @@ def compute_wm_paired_score(metrics: Dict[str, float], args) -> float:
     )
 
 
+def compute_detail_paired_score(metrics: Dict[str, float], args) -> float:
+    coarse_sharp_ratio = metrics.get("coarse_sharp_ratio", 0.0)
+    sharp_gain = metrics["sharp_ratio"] - coarse_sharp_ratio
+    smooth_penalty = max(coarse_sharp_ratio - metrics["sharp_ratio"], 0.0)
+    return (
+        compute_wm_paired_score(metrics, args)
+        + args.detail_sharp_weight * sharp_gain
+        - args.detail_coarse_penalty_weight * smooth_penalty
+    )
+
+
+def sample_stage2_time(
+    batch_size: int,
+    device: torch.device,
+    dtype: torch.dtype,
+    mode: str,
+    t_min: float,
+    t_max: float,
+) -> torch.Tensor:
+    if mode == "endpoint":
+        return torch.zeros((batch_size,), device=device, dtype=dtype)
+    if mode == "uniform":
+        return torch.rand((batch_size,), device=device, dtype=dtype)
+    if mode == "low_t":
+        low = max(0.0, min(float(t_min), 1.0))
+        high = max(low, min(float(t_max), 1.0))
+        return low + (high - low) * torch.rand((batch_size,), device=device, dtype=dtype)
+    raise ValueError(f"Unsupported t_sampling mode: {mode}")
+
+
 def summarize_prediction_health(pred: torch.Tensor, target: torch.Tensor) -> Dict[str, float]:
     pred_01 = torch.clamp((pred + 1.0) / 2.0, 0.0, 1.0)
     target_01 = torch.clamp((target + 1.0) / 2.0, 0.0, 1.0)
@@ -237,6 +273,8 @@ def is_better(metrics: Dict[str, float], best_metrics: Dict[str, float], best_me
         return metrics["paired_score"] > best_metrics["paired_score"]
     if best_metric == "wm_paired":
         return metrics["wm_paired_score"] > best_metrics["wm_paired_score"]
+    if best_metric == "detail_paired":
+        return metrics["detail_paired_score"] > best_metrics["detail_paired_score"]
     if metrics["psnr"] > best_metrics["psnr"] + 1e-6:
         return True
     if abs(metrics["psnr"] - best_metrics["psnr"]) <= 1e-6 and metrics["ssim"] > best_metrics["ssim"]:
@@ -374,6 +412,7 @@ def build_stage2_loss(
     brain_l1_weight: float,
     wm_l1_weight: float,
     wm_grad_weight: float,
+    residual_hf_weight: float,
     roi_consistency_weight: float,
     roi_rows: int,
     roi_cols: int,
@@ -393,6 +432,7 @@ def build_stage2_loss(
     detail_target = target_fp32 - coarse_fp32
     loss_detail = F.l1_loss(detail_pred, detail_target)
     loss_hf = F.l1_loss(laplacian_filter(x_hat), laplacian_filter(target_fp32))
+    loss_residual_hf = F.l1_loss(laplacian_filter(detail_pred), laplacian_filter(detail_target))
     loss_brain_l1 = masked_l1_loss(x_hat, target_fp32, brain_mask)
     loss_wm_l1 = masked_l1_loss(x_hat, target_fp32, wm_mask)
     loss_wm_grad = masked_gradient_l1_loss(x_hat, target_fp32, wm_mask, grad_loss_fn)
@@ -420,6 +460,7 @@ def build_stage2_loss(
         + brain_l1_weight * loss_brain_l1
         + wm_l1_weight * loss_wm_l1
         + wm_grad_weight * loss_wm_grad
+        + residual_hf_weight * loss_residual_hf
         + roi_consistency_weight * loss_roi
         + w_lpips * loss_lpips
     )
@@ -434,6 +475,7 @@ def build_stage2_loss(
         "lpips": loss_lpips,
         "detail": loss_detail,
         "hf": loss_hf,
+        "residual_hf": loss_residual_hf,
         "brain_l1": loss_brain_l1,
         "wm_l1": loss_wm_l1,
         "wm_grad": loss_wm_grad,
@@ -517,6 +559,7 @@ def main():
         "balanced_score": float("-inf"),
         "paired_score": float("-inf"),
         "wm_paired_score": float("-inf"),
+        "detail_paired_score": float("-inf"),
     }
     start_epoch = 0
     global_step = 0
@@ -550,6 +593,7 @@ def main():
         best_metrics["balanced_score"] = checkpoint.get("best_balanced_score", best_metrics["balanced_score"])
         best_metrics["paired_score"] = checkpoint.get("best_paired_score", best_metrics["paired_score"])
         best_metrics["wm_paired_score"] = checkpoint.get("best_wm_paired_score", best_metrics["wm_paired_score"])
+        best_metrics["detail_paired_score"] = checkpoint.get("best_detail_paired_score", best_metrics["detail_paired_score"])
         start_epoch = checkpoint.get("epoch", 0) + 1
         global_step = checkpoint.get("global_step", 0)
         no_improve_epochs = checkpoint.get("no_improve_epochs", 0)
@@ -576,6 +620,7 @@ def main():
             "lpips": 0.0,
             "detail": 0.0,
             "hf": 0.0,
+            "residual_hf": 0.0,
             "brain_l1": 0.0,
             "wm_l1": 0.0,
             "wm_grad": 0.0,
@@ -597,12 +642,20 @@ def main():
                     stage1, t1_img, clamp=True, prediction_mode=stage1_prediction_mode
                 )
 
-            t = torch.rand((t1_img.shape[0],), device=accelerator.device, dtype=t1_img.dtype)
+            t = sample_stage2_time(
+                batch_size=t1_img.shape[0],
+                device=accelerator.device,
+                dtype=t1_img.dtype,
+                mode=args.t_sampling,
+                t_min=args.t_min,
+                t_max=args.t_max,
+            )
             x_t, _, v_target = build_xt(
                 target=fa_img,
                 coarse=coarse,
                 t=t,
                 source_noise_std=args.source_noise_std,
+                deterministic_source=args.t_sampling == "endpoint",
             )
             condition = build_stage2_condition(coarse, t1_img, args.condition_mode)
             v_pred = flow_model(x_t, t, condition=condition)
@@ -640,6 +693,7 @@ def main():
                 brain_l1_weight=args.brain_l1_weight,
                 wm_l1_weight=args.wm_l1_weight,
                 wm_grad_weight=args.wm_grad_weight,
+                residual_hf_weight=args.residual_hf_weight,
                 roi_consistency_weight=args.roi_consistency_weight,
                 roi_rows=args.roi_rows,
                 roi_cols=args.roi_cols,
@@ -676,6 +730,7 @@ def main():
                     loss=losses["total"].item(),
                     detail=losses["detail"].item(),
                     hf=losses["hf"].item(),
+                    rhf=losses["residual_hf"].item(),
                     wm=losses["wm_l1"].item(),
                     lpips_w=losses["w_lpips"].item(),
                 )
@@ -706,6 +761,8 @@ def main():
             "vel": 0.0,
             "coarse_psnr": 0.0,
             "coarse_ssim": 0.0,
+            "coarse_sharpness": 0.0,
+            "coarse_target_sharpness": 0.0,
             "sharpness": 0.0,
             "target_sharpness": 0.0,
             "brain_l1": 0.0,
@@ -726,7 +783,14 @@ def main():
                     stage1, t1_img, clamp=True, prediction_mode=stage1_prediction_mode
                 )
 
-                t_eval = torch.full((t1_img.shape[0],), 0.5, device=accelerator.device, dtype=t1_img.dtype)
+                t_eval = sample_stage2_time(
+                    batch_size=t1_img.shape[0],
+                    device=accelerator.device,
+                    dtype=t1_img.dtype,
+                    mode=args.t_sampling,
+                    t_min=args.t_min,
+                    t_max=args.t_max,
+                )
                 x_t, _, v_target = build_xt(
                     target=fa_img,
                     coarse=coarse,
@@ -781,6 +845,8 @@ def main():
                     ).mean().item()
                 val_total["sharpness"] += laplacian_variance(refined).item()
                 val_total["target_sharpness"] += laplacian_variance(fa_fp32).item()
+                val_total["coarse_sharpness"] += laplacian_variance(coarse_fp32).item()
+                val_total["coarse_target_sharpness"] += laplacian_variance(fa_fp32).item()
                 if (epoch + 1) % args.fid_eval_every == 0:
                     refined_01_3c = torch.clamp((refined + 1.0) / 2.0, 0.0, 1.0).repeat(1, 3, 1, 1)
                     fa_01_3c = torch.clamp((fa_fp32 + 1.0) / 2.0, 0.0, 1.0).repeat(1, 3, 1, 1)
@@ -801,9 +867,11 @@ def main():
             metrics["fid"] = best_metrics["fid"] if torch.isfinite(torch.tensor(best_metrics["fid"])) else float("inf")
             metrics["kid"] = best_metrics["kid"] if torch.isfinite(torch.tensor(best_metrics["kid"])) else float("inf")
         metrics["sharp_ratio"] = metrics["sharpness"] / max(metrics["target_sharpness"], 1e-8)
+        metrics["coarse_sharp_ratio"] = metrics["coarse_sharpness"] / max(metrics["coarse_target_sharpness"], 1e-8)
         metrics["balanced_score"] = compute_balanced_score(metrics, args)
         metrics["paired_score"] = compute_paired_score(metrics, args)
         metrics["wm_paired_score"] = compute_wm_paired_score(metrics, args)
+        metrics["detail_paired_score"] = compute_detail_paired_score(metrics, args)
         with torch.no_grad():
             fixed_condition = build_stage2_condition(fixed_coarse, fixed_t1, args.condition_mode)
             fixed_preview = clamp_to_image_range(
@@ -841,6 +909,7 @@ def main():
             "best_balanced_score": best_metrics["balanced_score"] if not is_best else metrics["balanced_score"],
             "best_paired_score": best_metrics["paired_score"] if not is_best else metrics["paired_score"],
             "best_wm_paired_score": best_metrics["wm_paired_score"] if not is_best else metrics["wm_paired_score"],
+            "best_detail_paired_score": best_metrics["detail_paired_score"] if not is_best else metrics["detail_paired_score"],
             "no_improve_epochs": no_improve_epochs,
             "degrade_epochs": degrade_epochs,
             "args": vars(args),
@@ -858,8 +927,10 @@ def main():
                     f"val_wm_grad={metrics['wm_grad']:.6f} val_roi={metrics['roi']:.6f} "
                     f"val_lpips={metrics['lpips']:.6f} val_fid={metrics['fid']:.4f} val_kid={metrics['kid']:.6f} "
                     f"sharp={metrics['sharpness']:.6f} sharp_ratio={metrics['sharp_ratio']:.4f} "
+                    f"coarse_sharp_ratio={metrics['coarse_sharp_ratio']:.4f} "
                     f"balanced={metrics['balanced_score']:.4f} paired={metrics['paired_score']:.4f} "
-                    f"wm_paired={metrics['wm_paired_score']:.4f} coarse_psnr={metrics['coarse_psnr']:.4f} "
+                    f"wm_paired={metrics['wm_paired_score']:.4f} detail_paired={metrics['detail_paired_score']:.4f} "
+                    f"coarse_psnr={metrics['coarse_psnr']:.4f} "
                     f"coarse_ssim={metrics['coarse_ssim']:.4f} "
                     f"no_improve_epochs={no_improve_epochs} degrade_epochs={degrade_epochs} "
                     f"skipped_nonfinite={skipped_nonfinite}\n"
@@ -889,6 +960,7 @@ def main():
                 best_metrics["balanced_score"] = metrics["balanced_score"]
                 best_metrics["paired_score"] = metrics["paired_score"]
                 best_metrics["wm_paired_score"] = metrics["wm_paired_score"]
+                best_metrics["detail_paired_score"] = metrics["detail_paired_score"]
                 checkpoint["best_psnr"] = best_metrics["psnr"]
                 checkpoint["best_ssim"] = best_metrics["ssim"]
                 checkpoint["best_mse_proxy"] = best_metrics["mse_proxy"]
@@ -901,11 +973,12 @@ def main():
                 checkpoint["best_balanced_score"] = best_metrics["balanced_score"]
                 checkpoint["best_paired_score"] = best_metrics["paired_score"]
                 checkpoint["best_wm_paired_score"] = best_metrics["wm_paired_score"]
+                checkpoint["best_detail_paired_score"] = best_metrics["detail_paired_score"]
                 torch.save(checkpoint, best_path)
                 accelerator.print(
                     f"New best Stage 2 checkpoint: PSNR={best_metrics['psnr']:.4f}, "
                     f"SSIM={best_metrics['ssim']:.4f}, MSE={best_metrics['mse_proxy']:.6f}, "
-                    f"L1={best_metrics['l1']:.6f}, WM_Paired={best_metrics['wm_paired_score']:.4f} -> {best_path}"
+                    f"L1={best_metrics['l1']:.6f}, Detail_Paired={best_metrics['detail_paired_score']:.4f} -> {best_path}"
                 )
 
         accelerator.print(
@@ -915,8 +988,9 @@ def main():
             f"Grad={metrics['grad']:.6f} WM_L1={metrics['wm_l1']:.6f} ROI={metrics['roi']:.6f} "
             f"HF={metrics['hf']:.6f} LPIPS={metrics['lpips']:.6f} "
             f"FID={metrics['fid']:.4f} SharpRatio={metrics['sharp_ratio']:.4f} "
+            f"CoarseSharpRatio={metrics['coarse_sharp_ratio']:.4f} "
             f"Score={metrics['balanced_score']:.4f} Paired={metrics['paired_score']:.4f} "
-            f"WM_Paired={metrics['wm_paired_score']:.4f} "
+            f"WM_Paired={metrics['wm_paired_score']:.4f} Detail_Paired={metrics['detail_paired_score']:.4f} "
             f"NoImprove={no_improve_epochs} Degrade={degrade_epochs} SkippedNonFinite={skipped_nonfinite}"
         )
 

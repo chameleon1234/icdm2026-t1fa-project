@@ -147,3 +147,53 @@ def test_stage2_condition_mode_defaults_keep_old_coarse_checkpoints_compatible()
     assert infer_stage2_condition_mode({"condition_on_coarse": True}) == "coarse"
     assert infer_stage2_condition_mode({"condition_on_coarse": False}) == "none"
     assert infer_stage2_condition_mode({"condition_mode": "coarse_t1", "condition_on_coarse": True}) == "coarse_t1"
+
+
+def test_stage2_endpoint_time_sampler_matches_one_step_inference():
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import sample_stage2_time
+
+    t = sample_stage2_time(
+        batch_size=4,
+        device=torch.device("cpu"),
+        dtype=torch.float32,
+        mode="endpoint",
+        t_min=0.0,
+        t_max=1.0,
+    )
+
+    assert torch.equal(t, torch.zeros(4))
+
+
+def test_detail_paired_score_rewards_sharpness_over_smoothing():
+    from types import SimpleNamespace
+
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import compute_detail_paired_score
+
+    args = SimpleNamespace(
+        paired_psnr_weight=1.0,
+        paired_ssim_weight=10.0,
+        paired_mse_weight=200.0,
+        paired_mae_weight=10.0,
+        paired_brain_mae_weight=4.0,
+        paired_wm_mae_weight=8.0,
+        paired_grad_weight=0.8,
+        paired_roi_weight=4.0,
+        paired_sharp_weight=2.0,
+        detail_sharp_weight=8.0,
+        detail_coarse_penalty_weight=8.0,
+    )
+    base = {
+        "psnr": 28.0,
+        "ssim": 0.90,
+        "mse_proxy": 0.0017,
+        "l1": 0.018,
+        "brain_l1": 0.052,
+        "wm_l1": 0.060,
+        "grad": 0.112,
+        "roi": 0.020,
+        "sharp_ratio": 0.72,
+        "coarse_sharp_ratio": 0.55,
+    }
+    smoother = dict(base, psnr=28.2, sharp_ratio=0.45)
+
+    assert compute_detail_paired_score(base, args) > compute_detail_paired_score(smoother, args)

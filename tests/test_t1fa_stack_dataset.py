@@ -149,6 +149,55 @@ def test_stage2_condition_mode_defaults_keep_old_coarse_checkpoints_compatible()
     assert infer_stage2_condition_mode({"condition_mode": "coarse_t1", "condition_on_coarse": True}) == "coarse_t1"
 
 
+def test_stage2_coarse_t1_edge_condition_keeps_structure_and_detail_guides():
+    from pmrf_t1fa.models.pmrf_t1fa import (
+        build_stage2_condition,
+        stage2_condition_channels,
+    )
+
+    coarse = torch.zeros((1, 1, 4, 4))
+    coarse[:, :, 1:3, 1:3] = 0.5
+    t1_stack = torch.zeros((1, 3, 4, 4))
+    t1_stack[:, 0] = -0.25
+    t1_stack[:, 1, 1:3, 1:3] = 0.25
+    t1_stack[:, 2, :, 2:] = 0.75
+
+    condition = build_stage2_condition(coarse, t1_stack, "coarse_t1_edge")
+
+    assert stage2_condition_channels("coarse_t1_edge", stage1_channels=3) == 10
+    assert condition.shape == torch.Size([1, 10, 4, 4])
+    assert torch.allclose(condition[:, :1], coarse)
+    assert torch.allclose(condition[:, 1:4], t1_stack)
+    assert torch.any(condition[:, 4:5].abs() > 0.0)  # T1 center edge
+    assert torch.any(condition[:, 7:8].abs() > 0.0)  # coarse edge
+    assert torch.allclose(condition[:, 8:9], coarse - t1_stack[:, 1:2])
+    assert torch.any(condition[:, 9:10].abs() > 0.0)  # residual edge
+
+
+def test_euler_refine_train_backpropagates_through_multistep_rollout():
+    from pmrf_t1fa.models.pmrf_t1fa import euler_refine_train
+
+    class LinearVelocity(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.weight = torch.nn.Parameter(torch.tensor(0.25))
+
+        def forward(self, x_t, t, condition=None):
+            return self.weight * x_t
+
+    model = LinearVelocity()
+    coarse = torch.ones((1, 1, 3, 3), requires_grad=True)
+
+    refined = euler_refine_train(model, coarse, num_steps=4, condition=None, clamp=False)
+    loss = refined.mean()
+    loss.backward()
+
+    assert model.weight.grad is not None
+    assert model.weight.grad.abs().item() > 0.0
+    assert coarse.grad is not None
+    assert coarse.grad.abs().mean().item() > 0.0
+
+
 def test_stage2_endpoint_time_sampler_matches_one_step_inference():
     from pmrf_t1fa.train_pmrf_t1fa_stage2 import sample_stage2_time
 
@@ -162,6 +211,25 @@ def test_stage2_endpoint_time_sampler_matches_one_step_inference():
     )
 
     assert torch.equal(t, torch.zeros(4))
+
+
+def test_stage2_rollout_step_parser_supports_multistep_training():
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import parse_step_list
+
+    assert parse_step_list("4, 8,10") == [4, 8, 10]
+
+
+def test_zero_lpips_loss_keeps_stage2_smoke_tests_lightweight():
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import ZeroLPIPSLoss
+
+    loss_fn = ZeroLPIPSLoss()
+    pred = torch.ones((2, 3, 4, 4))
+    target = torch.zeros((2, 3, 4, 4))
+
+    loss = loss_fn(pred, target)
+
+    assert loss.shape == torch.Size([2])
+    assert torch.equal(loss, torch.zeros(2))
 
 
 def test_detail_paired_score_rewards_sharpness_over_smoothing():

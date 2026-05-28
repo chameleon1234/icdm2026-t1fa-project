@@ -1,78 +1,110 @@
-# T1-aware PM-DIRF Stage 2 快速测试
+# Stage1 引导的多步 PM-DIRF 快速测试
 
-这个测试用来判断新的 Stage 2 是否能缓解 FA 生成图像模糊：新的 refinement flow 不再只看 coarse FA，而是同时条件化 coarse FA 和 3-slice T1 stack。
+这次测试直接针对“生成 FA 图模糊”的问题。新的 Stage 2 不再只按一步 endpoint 学 residual，而是加入类似 DIRF 的多步 rollout 损失；条件模式使用 `coarse_t1_edge`，把 Stage1 coarse FA、完整 3-slice T1、T1 边缘、邻片变化、coarse 边缘以及 Stage1 学到的 coarse-minus-T1 residual 都保留下来，用来约束 Stage2 生成的高频细节。
 
-## 训练
-
-先用下面这个命令做代码路径 smoke test：
+## Smoke Test
 
 ```powershell
 conda activate dinov3test
 python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --run_name pm_dirf_t1aware_3slice_smoke `
-  --condition_mode coarse_t1 `
+  --run_name pm_dirf_stage1guided_multistep_smoke `
+  --condition_mode coarse_t1_edge `
+  --t_sampling endpoint `
+  --rollout_train_steps 2,4 `
+  --eval_steps 4 `
   --epochs 1 `
   --batch_size 1 `
-  --train_limit 16 `
-  --val_limit 8 `
+  --train_limit 8 `
+  --val_limit 4 `
   --fid_eval_every 999 `
   --preview_every 999 `
   --save_every 999 `
+  --disable_lpips `
   --no_auto_resume
 ```
 
-真正用于判断细节是否改善的快速实验再跑：
+## 快速可视化测试
+
+如果当前 GPU 已经被桌面、浏览器或其他程序占用很多显存，Stage1 推理可能会 OOM。这种情况下可以额外加 `--stage1_device cpu`，Stage2 仍然在加速设备上训练，只是 Stage1 coarse 预测临时 offload 到 CPU。
 
 ```powershell
 conda activate dinov3test
 python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --run_name pm_dirf_t1aware_endpoint_3slice_detail `
-  --condition_mode coarse_t1 `
+  --run_name pm_dirf_stage1guided_multistep_3slice `
+  --condition_mode coarse_t1_edge `
   --t_sampling endpoint `
+  --rollout_train_steps 4,8,10 `
   --epochs 40 `
-  --batch_size 2 `
+  --batch_size 1 `
   --lr 8e-5 `
   --source_noise_std 0.01 `
-  --eval_steps 1 `
+  --eval_steps 10 `
   --best_metric detail_paired `
-  --hf_weight 0.08 `
+  --hf_weight 0.10 `
+  --residual_hf_weight 0.25 `
+  --rollout_hf_weight 0.30 `
+  --rollout_residual_hf_weight 0.35 `
+  --rollout_l1_weight 0.30 `
+  --rollout_ssim_weight 0.30 `
+  --rollout_wm_l1_weight 0.12 `
+  --rollout_wm_grad_weight 0.08 `
+  --detail_weight 0.12 `
   --grad_weight 0.10 `
   --wm_grad_weight 0.08 `
-  --detail_weight 0.12 `
-  --residual_hf_weight 0.20 `
-  --paired_sharp_weight 4.0 `
-  --detail_sharp_weight 10.0 `
-  --detail_coarse_penalty_weight 12.0 `
+  --paired_sharp_weight 5.0 `
+  --detail_sharp_weight 12.0 `
+  --detail_coarse_penalty_weight 8.0 `
+  --disable_lpips `
   --no_auto_resume
 ```
 
-## 导出
+## 导出 K10
 
 ```powershell
 python scripts/export_pm_dirf_predictions.py `
   --stage stage2 `
   --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --stage2_ckpt outputs/pm_dirf_t1aware_endpoint_3slice_detail/checkpoints/best_stage2.pt `
-  --output_dir outputs/icdm2026/predictions/PM_DIRF_T1AWARE_ENDPOINT_3SLICE_DETAIL `
+  --stage2_ckpt outputs/pm_dirf_stage1guided_multistep_3slice/checkpoints/best_stage2.pt `
+  --output_dir outputs/icdm2026/predictions/PM_DIRF_STAGE1GUIDED_MULTISTEP_K10 `
   --device cuda `
-  --condition_mode auto
+  --condition_mode auto `
+  --eval_steps 10
+```
+
+## 可选导出 K25
+
+```powershell
+python scripts/export_pm_dirf_predictions.py `
+  --stage stage2 `
+  --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
+  --stage2_ckpt outputs/pm_dirf_stage1guided_multistep_3slice/checkpoints/best_stage2.pt `
+  --output_dir outputs/icdm2026/predictions/PM_DIRF_STAGE1GUIDED_MULTISTEP_K25 `
+  --device cuda `
+  --condition_mode auto `
+  --eval_steps 25
 ```
 
 ## 评估和可视化
 
 ```powershell
 python scripts/evaluate_method_folder.py `
-  --pred_dir outputs/icdm2026/predictions/PM_DIRF_T1AWARE_ENDPOINT_3SLICE_DETAIL `
-  --method PM_DIRF_T1AWARE_ENDPOINT_3SLICE_DETAIL `
+  --pred_dir outputs/icdm2026/predictions/PM_DIRF_STAGE1GUIDED_MULTISTEP_K10 `
+  --method PM_DIRF_STAGE1GUIDED_MULTISTEP_K10 `
+  --visualize_count 8
+
+python scripts/evaluate_method_folder.py `
+  --pred_dir outputs/icdm2026/predictions/PM_DIRF_STAGE1GUIDED_MULTISTEP_K25 `
+  --method PM_DIRF_STAGE1GUIDED_MULTISTEP_K25 `
   --visualize_count 8
 ```
 
-新的可视化结果会写到：
+新的可视化结果会写入：
 
 ```text
-outputs/icdm2026/figures/method_slices/PM_DIRF_T1AWARE_ENDPOINT_3SLICE_DETAIL
+outputs/icdm2026/figures/method_slices/PM_DIRF_STAGE1GUIDED_MULTISTEP_K10
+outputs/icdm2026/figures/method_slices/PM_DIRF_STAGE1GUIDED_MULTISTEP_K25
 ```
 
-只有在 `Sharpness_Ratio` 和 `Gradient_Error` 改善、同时 PSNR/MAE 没有明显下降时，才把这条线作为下一版主实验。
+只有在 K10 或 K25 肉眼白质细节明显变清晰，并且没有明显假纹理、PSNR/SSIM 没有大幅崩掉时，才把这条线作为下一版主实验候选。

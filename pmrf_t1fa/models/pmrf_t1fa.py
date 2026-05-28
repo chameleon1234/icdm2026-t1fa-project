@@ -21,6 +21,13 @@ def center_channel(x: torch.Tensor) -> torch.Tensor:
     return x[:, center : center + 1]
 
 
+def single_channel_laplacian(x: torch.Tensor) -> torch.Tensor:
+    if x.dim() != 4 or x.shape[1] != 1:
+        raise ValueError(f"Expected B1HW tensor, got shape {tuple(x.shape)}")
+    kernel = x.new_tensor([[0.0, -1.0, 0.0], [-1.0, 4.0, -1.0], [0.0, -1.0, 0.0]]).view(1, 1, 3, 3)
+    return F.conv2d(x, kernel, padding=1)
+
+
 def prepare_stage1_input(x: torch.Tensor, expected_channels: int) -> torch.Tensor:
     if x.dim() != 4:
         raise ValueError(f"Expected BCHW tensor, got shape {tuple(x.shape)}")
@@ -326,7 +333,7 @@ def infer_stage1_prediction_mode(checkpoint_args: Optional[dict]) -> str:
     return mode
 
 
-STAGE2_CONDITION_MODES = {"none", "coarse", "t1", "coarse_t1"}
+STAGE2_CONDITION_MODES = {"none", "coarse", "t1", "coarse_t1", "coarse_t1_edge"}
 
 
 def infer_stage2_condition_mode(checkpoint_args: Optional[dict]) -> str:
@@ -347,7 +354,11 @@ def stage2_condition_channels(condition_mode: str, stage1_channels: int) -> int:
         return 1
     if condition_mode == "t1":
         return int(stage1_channels)
-    return 1 + int(stage1_channels)
+    if condition_mode == "coarse_t1":
+        return 1 + int(stage1_channels)
+    if condition_mode == "coarse_t1_edge":
+        return 7 + int(stage1_channels)
+    raise ValueError(f"Unsupported Stage 2 condition mode: {condition_mode}")
 
 
 def build_stage2_condition(
@@ -363,7 +374,30 @@ def build_stage2_condition(
         return coarse
     if condition_mode == "t1":
         return t1_img
-    return torch.cat([coarse, t1_img], dim=1)
+    if condition_mode == "coarse_t1":
+        return torch.cat([coarse, t1_img], dim=1)
+
+    center_t1 = center_channel(t1_img)
+    stack_mean = t1_img.mean(dim=1, keepdim=True)
+    stack_range = t1_img.max(dim=1, keepdim=True).values - t1_img.min(dim=1, keepdim=True).values
+    t1_edge = single_channel_laplacian(center_t1)
+    center_offset = center_t1 - stack_mean
+    coarse_edge = single_channel_laplacian(coarse)
+    coarse_residual = coarse - center_t1
+    residual_edge = single_channel_laplacian(coarse_residual)
+    return torch.cat(
+        [
+            coarse,
+            t1_img,
+            t1_edge,
+            center_offset,
+            stack_range,
+            coarse_edge,
+            coarse_residual,
+            residual_edge,
+        ],
+        dim=1,
+    )
 
 
 def predict_stage1_fa(
@@ -535,4 +569,29 @@ def euler_refine(
 
     if clamp:
         x_pred = torch.clamp(x_pred, -1.0, 1.0)
+    return x_pred
+
+
+def euler_refine_train(
+    model: nn.Module,
+    coarse: torch.Tensor,
+    num_steps: int,
+    condition: Optional[torch.Tensor] = None,
+    clamp: bool = True,
+) -> torch.Tensor:
+    if num_steps <= 0:
+        raise ValueError(f"num_steps must be positive, got {num_steps}")
+
+    x_pred = coarse
+    dt = 1.0 / num_steps
+    batch_size = coarse.shape[0]
+    device = coarse.device
+
+    for i in range(num_steps):
+        t_val = i * dt
+        t_tensor = torch.full((batch_size,), t_val, device=device, dtype=coarse.dtype)
+        v_pred = model(x_pred, t_tensor, condition=condition)
+        x_pred = x_pred + v_pred * dt
+        if clamp:
+            x_pred = torch.clamp(x_pred, -1.0, 1.0)
     return x_pred

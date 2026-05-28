@@ -52,7 +52,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--condition_mode",
         default="auto",
-        choices=["auto", "none", "coarse", "t1", "coarse_t1"],
+        choices=["auto", "none", "coarse", "t1", "coarse_t1", "coarse_t1_edge"],
         help="Stage 2 conditioning. auto reads the checkpoint and keeps old coarse-only checkpoints compatible.",
     )
     parser.add_argument("--auto_condition_from_ckpt", action="store_true")
@@ -121,7 +121,7 @@ def resolve_stage2_settings(args: argparse.Namespace) -> tuple[str, bool, int]:
         condition_mode = infer_stage2_condition_mode(
             {"condition_mode": args.condition_mode, "condition_on_coarse": condition_on_coarse}
         )
-    condition_on_coarse = condition_mode in {"coarse", "coarse_t1"}
+    condition_on_coarse = condition_mode in {"coarse", "coarse_t1", "coarse_t1_edge"}
     eval_steps = args.eval_steps if args.eval_steps > 0 else int(ckpt_args.get("eval_steps", 1))
     return condition_mode, condition_on_coarse, eval_steps
 

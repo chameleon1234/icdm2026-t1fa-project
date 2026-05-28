@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument(
         "--condition_mode",
         default="auto",
-        choices=["auto", "none", "coarse", "t1", "coarse_t1"],
+        choices=["auto", "none", "coarse", "t1", "coarse_t1", "coarse_t1_edge"],
         help="Stage 2 conditioning. auto reads the checkpoint and keeps old coarse-only checkpoints compatible.",
     )
     parser.add_argument("--kid_subset_size", type=int, default=100)
@@ -303,7 +303,7 @@ def evaluate(args):
         condition_mode = infer_stage2_condition_mode(
             {"condition_mode": args.condition_mode, "condition_on_coarse": condition_on_coarse}
         )
-    condition_on_coarse = condition_mode in {"coarse", "coarse_t1"}
+    condition_on_coarse = condition_mode in {"coarse", "coarse_t1", "coarse_t1_edge"}
 
     eval_steps = args.eval_steps if args.eval_steps > 0 else int(stage2_args.get("eval_steps", 1))
 

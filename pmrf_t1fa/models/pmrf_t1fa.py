@@ -520,6 +520,82 @@ class RefinementFlowUNet(nn.Module):
         return self.outc(u3)
 
 
+class DetailRefinementFlowUNet(nn.Module):
+    def __init__(
+        self,
+        input_channels: int = 1,
+        condition_channels: int = 0,
+        base_channels: int = 64,
+        time_dim: int = 128,
+    ):
+        super().__init__()
+        total_in_channels = input_channels + condition_channels
+        self.condition_channels = condition_channels
+        self.time_emb = SinusoidalPosEmb(time_dim)
+        hidden_time_dim = time_dim * 2
+        self.time_mlp = nn.Sequential(
+            nn.Linear(time_dim, hidden_time_dim),
+            nn.SiLU(),
+            nn.Linear(hidden_time_dim, hidden_time_dim),
+        )
+
+        self.inc = nn.Conv2d(total_in_channels, base_channels, 3, padding=1)
+        self.down1 = UNetBlock(base_channels, base_channels * 2, hidden_time_dim)
+        self.down2 = UNetBlock(base_channels * 2, base_channels * 4, hidden_time_dim)
+        self.down3 = UNetBlock(base_channels * 4, base_channels * 8, hidden_time_dim)
+        self.attn = AttentionBlock(base_channels * 8)
+        self.up1 = UNetBlock(base_channels * 8 + base_channels * 4, base_channels * 4, hidden_time_dim)
+        self.up2 = UNetBlock(base_channels * 4 + base_channels * 2, base_channels * 2, hidden_time_dim)
+        self.up3 = UNetBlock(base_channels * 2 + base_channels, base_channels, hidden_time_dim)
+        self.out_avg_velocity = nn.Conv2d(base_channels, 1, 3, padding=1)
+        self.out_detail = nn.Conv2d(base_channels, 1, 3, padding=1)
+        self.pool = nn.MaxPool2d(2)
+        self.up = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
+
+    def forward(
+        self,
+        x_t: torch.Tensor,
+        t: torch.Tensor,
+        condition: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        if self.condition_channels > 0:
+            if condition is None:
+                raise ValueError("Condition tensor is required when condition_channels > 0")
+            x_t = torch.cat([x_t, condition], dim=1)
+
+        t_emb = self.time_mlp(self.time_emb(t))
+        x0 = self.inc(x_t)
+        x1 = self.down1(self.pool(x0), t_emb)
+        x2 = self.down2(self.pool(x1), t_emb)
+        x3 = self.down3(self.pool(x2), t_emb)
+        x3 = self.attn(x3)
+
+        u1 = self.up1(torch.cat([self.up(x3), x2], dim=1), t_emb)
+        u2 = self.up2(torch.cat([self.up(u1), x1], dim=1), t_emb)
+        u3 = self.up3(torch.cat([self.up(u2), x0], dim=1), t_emb)
+        return self.out_avg_velocity(u3), self.out_detail(u3)
+
+
+def compose_stage2_velocity(
+    model_output: torch.Tensor | Tuple[torch.Tensor, torch.Tensor],
+    t: torch.Tensor,
+    detail_boost: float = 0.0,
+) -> torch.Tensor:
+    if not isinstance(model_output, tuple):
+        return model_output
+    v_avg, v_detail = model_output
+    gate = 0.65 + 0.35 * (1.0 - _expand_time(t, v_avg))
+    return v_avg + float(detail_boost) * gate * v_detail
+
+
+def split_stage2_output(
+    model_output: torch.Tensor | Tuple[torch.Tensor, torch.Tensor],
+) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+    if isinstance(model_output, tuple):
+        return model_output
+    return model_output, None
+
+
 def build_xt(
     target: torch.Tensor,
     coarse: torch.Tensor,
@@ -552,6 +628,7 @@ def euler_refine(
     num_steps: int,
     condition: Optional[torch.Tensor] = None,
     clamp: bool = True,
+    detail_boost: float = 0.0,
 ) -> torch.Tensor:
     if num_steps <= 0:
         raise ValueError(f"num_steps must be positive, got {num_steps}")
@@ -564,7 +641,11 @@ def euler_refine(
     for i in range(num_steps):
         t_val = i * dt
         t_tensor = torch.full((batch_size,), t_val, device=device, dtype=coarse.dtype)
-        v_pred = model(x_pred, t_tensor, condition=condition)
+        v_pred = compose_stage2_velocity(
+            model(x_pred, t_tensor, condition=condition),
+            t_tensor,
+            detail_boost=detail_boost,
+        )
         x_pred = x_pred + v_pred * dt
 
     if clamp:
@@ -578,6 +659,7 @@ def euler_refine_train(
     num_steps: int,
     condition: Optional[torch.Tensor] = None,
     clamp: bool = True,
+    detail_boost: float = 0.0,
 ) -> torch.Tensor:
     if num_steps <= 0:
         raise ValueError(f"num_steps must be positive, got {num_steps}")
@@ -590,7 +672,11 @@ def euler_refine_train(
     for i in range(num_steps):
         t_val = i * dt
         t_tensor = torch.full((batch_size,), t_val, device=device, dtype=coarse.dtype)
-        v_pred = model(x_pred, t_tensor, condition=condition)
+        v_pred = compose_stage2_velocity(
+            model(x_pred, t_tensor, condition=condition),
+            t_tensor,
+            detail_boost=detail_boost,
+        )
         x_pred = x_pred + v_pred * dt
         if clamp:
             x_pred = torch.clamp(x_pred, -1.0, 1.0)

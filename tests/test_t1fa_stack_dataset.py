@@ -198,6 +198,35 @@ def test_euler_refine_train_backpropagates_through_multistep_rollout():
     assert coarse.grad.abs().mean().item() > 0.0
 
 
+def test_detail_refinement_velocity_boosts_detail_head_at_early_steps():
+    from pmrf_t1fa.models.pmrf_t1fa import compose_stage2_velocity
+
+    avg = torch.full((1, 1, 2, 2), 0.2)
+    detail = torch.full((1, 1, 2, 2), 0.5)
+    t0 = torch.zeros(1)
+    t1 = torch.ones(1)
+
+    early = compose_stage2_velocity((avg, detail), t0, detail_boost=1.0)
+    late = compose_stage2_velocity((avg, detail), t1, detail_boost=1.0)
+
+    assert torch.allclose(early, torch.full((1, 1, 2, 2), 0.7))
+    assert torch.allclose(late, torch.full((1, 1, 2, 2), 0.525))
+
+
+def test_detail_refinement_unet_returns_avg_and_detail_heads():
+    from pmrf_t1fa.models.pmrf_t1fa import DetailRefinementFlowUNet
+
+    model = DetailRefinementFlowUNet(input_channels=1, condition_channels=2, base_channels=8)
+    x = torch.zeros((1, 1, 16, 16))
+    condition = torch.zeros((1, 2, 16, 16))
+    t = torch.zeros(1)
+
+    avg, detail = model(x, t, condition=condition)
+
+    assert avg.shape == torch.Size([1, 1, 16, 16])
+    assert detail.shape == torch.Size([1, 1, 16, 16])
+
+
 def test_stage2_endpoint_time_sampler_matches_one_step_inference():
     from pmrf_t1fa.train_pmrf_t1fa_stage2 import sample_stage2_time
 

@@ -17,6 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from pmrf_t1fa.models.pmrf_t1fa import (
+    DetailRefinementFlowUNet,
     RefinementFlowUNet,
     Stage1Net,
     build_stage2_condition,
@@ -107,9 +108,9 @@ def make_slice_dataset(t1_dir: Path, fa_dir: Path, stage1_channels: int):
     return T1FADataset(str(t1_dir), str(fa_dir), preload_ram=False)
 
 
-def resolve_stage2_settings(args: argparse.Namespace) -> tuple[str, bool, int]:
+def resolve_stage2_settings(args: argparse.Namespace) -> tuple[str, bool, int, float]:
     if args.stage != "stage2":
-        return "none", False, 0
+        return "none", False, 0, 0.0
     checkpoint = torch.load(args.stage2_ckpt, map_location="cpu")
     ckpt_args = checkpoint_args(checkpoint)
     condition_on_coarse = bool(args.condition_on_coarse)
@@ -123,7 +124,8 @@ def resolve_stage2_settings(args: argparse.Namespace) -> tuple[str, bool, int]:
         )
     condition_on_coarse = condition_mode in {"coarse", "coarse_t1", "coarse_t1_edge"}
     eval_steps = args.eval_steps if args.eval_steps > 0 else int(ckpt_args.get("eval_steps", 1))
-    return condition_mode, condition_on_coarse, eval_steps
+    detail_boost = float(ckpt_args.get("detail_boost", 0.0))
+    return condition_mode, condition_on_coarse, eval_steps, detail_boost
 
 
 def load_stage2(
@@ -134,7 +136,11 @@ def load_stage2(
 ) -> RefinementFlowUNet:
     checkpoint = torch.load(stage2_ckpt, map_location="cpu")
     condition_channels = stage2_condition_channels(condition_mode, stage1_channels)
-    model = RefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
+    ckpt_args = checkpoint_args(checkpoint)
+    if ckpt_args.get("stage2_model_variant", "single") == "detail":
+        model = DetailRefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
+    else:
+        model = RefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
     model.load_state_dict(checkpoint_state_dict(checkpoint))
     model.to(device)
     model.eval()
@@ -185,7 +191,7 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
     stage1, stage1_prediction_mode, stage1_channels = load_stage1(args.stage1_ckpt, device)
     dataset = make_slice_dataset(test_t1_dir, test_fa_dir, stage1_channels)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
-    condition_mode, condition_on_coarse, eval_steps = resolve_stage2_settings(args)
+    condition_mode, condition_on_coarse, eval_steps, detail_boost = resolve_stage2_settings(args)
     stage2 = None
     if args.stage == "stage2":
         stage2 = load_stage2(
@@ -206,7 +212,14 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
         else:
             assert stage2 is not None
             condition = build_stage2_condition(coarse, t1_img, condition_mode)
-            prediction = euler_refine(stage2, coarse, num_steps=eval_steps, condition=condition, clamp=True)
+            prediction = euler_refine(
+                stage2,
+                coarse,
+                num_steps=eval_steps,
+                condition=condition,
+                clamp=True,
+                detail_boost=detail_boost,
+            )
 
         batch_filenames = batch["fname"]
         for i, filename in enumerate(batch_filenames):
@@ -240,6 +253,7 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
         "condition_mode": condition_mode if args.stage == "stage2" else "none",
         "condition_on_coarse": condition_on_coarse if args.stage == "stage2" else False,
         "eval_steps": eval_steps if args.stage == "stage2" else 0,
+        "detail_boost": detail_boost if args.stage == "stage2" else 0.0,
         "manifest": str(manifest_path),
     }
     with open(output_dir / "export_summary.json", "w", encoding="utf-8") as handle:

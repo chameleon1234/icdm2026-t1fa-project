@@ -13,6 +13,7 @@ from torchvision.utils import save_image
 from tqdm import tqdm
 
 from pmrf_t1fa.models.pmrf_t1fa import (
+    DetailRefinementFlowUNet,
     GradientLoss,
     RefinementFlowUNet,
     SSIMLoss,
@@ -20,6 +21,7 @@ from pmrf_t1fa.models.pmrf_t1fa import (
     build_stage2_condition,
     build_xt,
     center_channel,
+    compose_stage2_velocity,
     euler_refine,
     euler_refine_train,
     infer_stage1_in_channels,
@@ -29,6 +31,7 @@ from pmrf_t1fa.models.pmrf_t1fa import (
     predict_stage1_fa,
     project_endpoint,
     reduce_rgb_to_single_channel,
+    split_stage2_output,
     stage2_condition_channels,
 )
 from src.data.t1fa_stack_dataset import T1FAStackDataset
@@ -63,6 +66,7 @@ def parse_args():
     parser.add_argument("--stage1_ckpt", default="outputs/pmrf_t1fa_stage1/checkpoints/best_stage1.pt")
     parser.add_argument("--stage1_device", default="auto", choices=["auto", "cuda", "cpu"])
     parser.add_argument("--run_name", default="pmrf_t1fa_stage2_b")
+    parser.add_argument("--stage2_model_variant", default="single", choices=["single", "detail"])
     parser.add_argument("--epochs", type=int, default=150)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--lr", type=float, default=1e-4)
@@ -73,6 +77,7 @@ def parse_args():
     parser.add_argument("--preview_batch_size", type=int, default=1)
     parser.add_argument("--mixed_precision", default="bf16", choices=["no", "fp16", "bf16"])
     parser.add_argument("--source_noise_std", type=float, default=0.01)
+    parser.add_argument("--detail_boost", type=float, default=0.90)
     parser.add_argument("--t_sampling", default="endpoint", choices=["endpoint", "uniform", "low_t"])
     parser.add_argument("--t_min", type=float, default=0.0)
     parser.add_argument("--t_max", type=float, default=0.25)
@@ -105,6 +110,7 @@ def parse_args():
     parser.add_argument("--detail_weight", type=float, default=0.07)
     parser.add_argument("--hf_weight", type=float, default=0.04)
     parser.add_argument("--residual_hf_weight", type=float, default=0.12)
+    parser.add_argument("--detail_velocity_weight", type=float, default=0.10)
     parser.add_argument("--rollout_l1_weight", type=float, default=0.35)
     parser.add_argument("--rollout_ssim_weight", type=float, default=0.35)
     parser.add_argument("--rollout_hf_weight", type=float, default=0.18)
@@ -431,6 +437,7 @@ def predict_stage1_batch(
 def build_stage2_loss(
     x_t: torch.Tensor,
     v_pred: torch.Tensor,
+    v_detail: torch.Tensor | None,
     v_target: torch.Tensor,
     coarse: torch.Tensor,
     target: torch.Tensor,
@@ -455,6 +462,7 @@ def build_stage2_loss(
     wm_l1_weight: float,
     wm_grad_weight: float,
     residual_hf_weight: float,
+    detail_velocity_weight: float,
     rollout_l1_weight: float,
     rollout_ssim_weight: float,
     rollout_hf_weight: float,
@@ -481,6 +489,10 @@ def build_stage2_loss(
     loss_detail = F.l1_loss(detail_pred, detail_target)
     loss_hf = F.l1_loss(laplacian_filter(x_hat), laplacian_filter(target_fp32))
     loss_residual_hf = F.l1_loss(laplacian_filter(detail_pred), laplacian_filter(detail_target))
+    if v_detail is None:
+        loss_detail_velocity = x_t.new_tensor(0.0)
+    else:
+        loss_detail_velocity = F.l1_loss(v_detail.float(), laplacian_filter(target_fp32 - x_t.float()))
     loss_brain_l1 = masked_l1_loss(x_hat, target_fp32, brain_mask)
     loss_wm_l1 = masked_l1_loss(x_hat, target_fp32, wm_mask)
     loss_wm_grad = masked_gradient_l1_loss(x_hat, target_fp32, wm_mask, grad_loss_fn)
@@ -517,6 +529,7 @@ def build_stage2_loss(
         + wm_l1_weight * loss_wm_l1
         + wm_grad_weight * loss_wm_grad
         + residual_hf_weight * loss_residual_hf
+        + detail_velocity_weight * loss_detail_velocity
         + rollout_l1_weight * loss_rollout_l1
         + rollout_ssim_weight * loss_rollout_ssim
         + rollout_hf_weight * loss_rollout_hf
@@ -538,6 +551,7 @@ def build_stage2_loss(
         "detail": loss_detail,
         "hf": loss_hf,
         "residual_hf": loss_residual_hf,
+        "detail_velocity": loss_detail_velocity,
         "rollout_l1": loss_rollout_l1,
         "rollout_ssim": loss_rollout_ssim,
         "rollout_hf": loss_rollout_hf,
@@ -598,7 +612,10 @@ def main():
     )
     args.condition_on_coarse = args.condition_mode in {"coarse", "coarse_t1", "coarse_t1_edge"}
     condition_channels = stage2_condition_channels(args.condition_mode, stage1_channels)
-    flow_model = RefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
+    if args.stage2_model_variant == "detail":
+        flow_model = DetailRefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
+    else:
+        flow_model = RefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
     optimizer = torch.optim.AdamW(flow_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     ssim_loss_fn = SSIMLoss()
     grad_loss_fn = GradientLoss()
@@ -683,7 +700,8 @@ def main():
         f"condition_on_coarse={args.condition_on_coarse} | Device={accelerator.device} | "
         f"mixed_precision={args.mixed_precision} | stage1_channels={stage1_channels} | "
         f"source_noise_std={args.source_noise_std} | rollout_train_steps={args.rollout_train_steps} | "
-        f"eval_steps={args.eval_steps} | stage1_device={stage1_device}"
+        f"eval_steps={args.eval_steps} | stage1_device={stage1_device} | "
+        f"stage2_model_variant={args.stage2_model_variant} | detail_boost={args.detail_boost}"
     )
 
     for epoch in range(start_epoch, args.epochs):
@@ -699,6 +717,7 @@ def main():
             "detail": 0.0,
             "hf": 0.0,
             "residual_hf": 0.0,
+            "detail_velocity": 0.0,
             "rollout_l1": 0.0,
             "rollout_ssim": 0.0,
             "rollout_hf": 0.0,
@@ -741,7 +760,9 @@ def main():
                     deterministic_source=args.t_sampling == "endpoint",
                 )
                 condition = build_stage2_condition(coarse, t1_img, args.condition_mode)
-                v_pred = flow_model(x_t, t, condition=condition)
+                raw_output = flow_model(x_t, t, condition=condition)
+                v_pred = compose_stage2_velocity(raw_output, t, detail_boost=args.detail_boost)
+                _, v_detail = split_stage2_output(raw_output)
                 rollout_index = int(
                     torch.randint(
                         low=0,
@@ -757,6 +778,7 @@ def main():
                     num_steps=rollout_steps,
                     condition=condition,
                     clamp=True,
+                    detail_boost=args.detail_boost,
                 )
                 brain_mask, wm_mask = build_training_masks(
                     t1_img,
@@ -770,6 +792,7 @@ def main():
                 losses = build_stage2_loss(
                     x_t=x_t,
                     v_pred=v_pred,
+                    v_detail=v_detail,
                     v_target=v_target,
                     coarse=coarse,
                     target=fa_img,
@@ -794,6 +817,7 @@ def main():
                     wm_l1_weight=args.wm_l1_weight,
                     wm_grad_weight=args.wm_grad_weight,
                     residual_hf_weight=args.residual_hf_weight,
+                    detail_velocity_weight=args.detail_velocity_weight,
                     rollout_l1_weight=args.rollout_l1_weight,
                     rollout_ssim_weight=args.rollout_ssim_weight,
                     rollout_hf_weight=args.rollout_hf_weight,
@@ -837,6 +861,7 @@ def main():
                     detail=losses["detail"].item(),
                     hf=losses["hf"].item(),
                     rhf=losses["residual_hf"].item(),
+                    dv=losses["detail_velocity"].item(),
                     roll_hf=losses["rollout_hf"].item(),
                     wm=losses["wm_l1"].item(),
                     lpips_w=losses["w_lpips"].item(),
@@ -850,6 +875,7 @@ def main():
                             fixed_coarse,
                             num_steps=args.eval_steps,
                             condition=condition,
+                            detail_boost=args.detail_boost,
                         )
                         save_preview(preview_dir, global_step, fixed_t1, fixed_coarse, preview_refined, fixed_fa)
                     flow_model.train()
@@ -905,12 +931,14 @@ def main():
                         deterministic_source=True,
                     )
                     condition = build_stage2_condition(coarse, t1_img, args.condition_mode)
-                    v_pred = flow_model(x_t, t_eval, condition=condition)
+                    raw_output = flow_model(x_t, t_eval, condition=condition)
+                    v_pred = compose_stage2_velocity(raw_output, t_eval, detail_boost=args.detail_boost)
                     refined = euler_refine(
                         flow_model,
                         coarse,
                         num_steps=args.eval_steps,
                         condition=condition,
+                        detail_boost=args.detail_boost,
                     )
                 val_total["vel"] += F.mse_loss(v_pred.float(), v_target.float()).item()
                 refined = clamp_to_image_range(refined.float())
@@ -980,7 +1008,13 @@ def main():
         with torch.no_grad():
             fixed_condition = build_stage2_condition(fixed_coarse, fixed_t1, args.condition_mode)
             fixed_preview = clamp_to_image_range(
-                euler_refine(flow_model, fixed_coarse, num_steps=args.eval_steps, condition=fixed_condition).float()
+                euler_refine(
+                    flow_model,
+                    fixed_coarse,
+                    num_steps=args.eval_steps,
+                    condition=fixed_condition,
+                    detail_boost=args.detail_boost,
+                ).float()
             )
         is_degraded, degrade_reasons, degrade_stats = detect_stage2_anomaly(
             refined=fixed_preview,

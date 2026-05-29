@@ -62,25 +62,32 @@ def test_load_stage2_uses_checkpoint_condition_mode_for_t1_aware_model(tmp_path)
         },
     )()
 
-    condition_mode, condition_on_coarse, eval_steps = resolve_stage2_settings(args)
+    condition_mode, condition_on_coarse, eval_steps, detail_boost = resolve_stage2_settings(args)
     loaded = load_stage2(ckpt_path, torch.device("cpu"), condition_mode=condition_mode, stage1_channels=3)
 
     assert condition_mode == "coarse_t1"
     assert condition_on_coarse is True
     assert eval_steps == 1
+    assert detail_boost == 0.0
     assert loaded.inc.weight.shape[1] == 5
 
 
 def test_load_stage2_supports_stage1_guided_edge_condition_mode(tmp_path):
-    from pmrf_t1fa.models.pmrf_t1fa import RefinementFlowUNet
+    from pmrf_t1fa.models.pmrf_t1fa import DetailRefinementFlowUNet
     from scripts.export_pm_dirf_predictions import load_stage2, resolve_stage2_settings
 
     ckpt_path = tmp_path / "stage2_coarse_t1_edge.pt"
-    model = RefinementFlowUNet(input_channels=1, condition_channels=10)
+    model = DetailRefinementFlowUNet(input_channels=1, condition_channels=10)
     torch.save(
         {
             "model": model.state_dict(),
-            "args": {"condition_mode": "coarse_t1_edge", "condition_on_coarse": True, "eval_steps": 10},
+            "args": {
+                "condition_mode": "coarse_t1_edge",
+                "condition_on_coarse": True,
+                "eval_steps": 10,
+                "stage2_model_variant": "detail",
+                "detail_boost": 0.9,
+            },
         },
         ckpt_path,
     )
@@ -98,10 +105,12 @@ def test_load_stage2_supports_stage1_guided_edge_condition_mode(tmp_path):
         },
     )()
 
-    condition_mode, condition_on_coarse, eval_steps = resolve_stage2_settings(args)
+    condition_mode, condition_on_coarse, eval_steps, detail_boost = resolve_stage2_settings(args)
     loaded = load_stage2(ckpt_path, torch.device("cpu"), condition_mode=condition_mode, stage1_channels=3)
 
     assert condition_mode == "coarse_t1_edge"
     assert condition_on_coarse is True
     assert eval_steps == 10
+    assert detail_boost == 0.9
     assert loaded.inc.weight.shape[1] == 11
+    assert hasattr(loaded, "out_detail")

@@ -15,6 +15,7 @@ from torchmetrics.image import (
 from tqdm import tqdm
 
 from pmrf_t1fa.models.pmrf_t1fa import (
+    DetailRefinementFlowUNet,
     RefinementFlowUNet,
     Stage1Net,
     build_stage2_condition,
@@ -120,7 +121,11 @@ def load_stage2(
 ) -> RefinementFlowUNet:
     checkpoint = torch.load(stage2_ckpt, map_location="cpu")
     condition_channels = stage2_condition_channels(condition_mode, stage1_channels)
-    model = RefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
+    stage2_args = checkpoint_args(checkpoint)
+    if stage2_args.get("stage2_model_variant", "single") == "detail":
+        model = DetailRefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
+    else:
+        model = RefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
     model.load_state_dict(checkpoint_state_dict(checkpoint))
     model.to(device)
     model.eval()
@@ -306,6 +311,7 @@ def evaluate(args):
     condition_on_coarse = condition_mode in {"coarse", "coarse_t1", "coarse_t1_edge"}
 
     eval_steps = args.eval_steps if args.eval_steps > 0 else int(stage2_args.get("eval_steps", 1))
+    detail_boost = float(stage2_args.get("detail_boost", 0.0))
 
     stage1, stage1_prediction_mode, stage1_channels = load_stage1(args.stage1_ckpt, device)
     test_dataset = make_slice_dataset(args.test_t1_dir, args.test_fa_dir, stage1_channels)
@@ -375,6 +381,7 @@ def evaluate(args):
         f"Condition mode: {condition_mode}\n"
         f"Condition on coarse: {condition_on_coarse}\n"
         f"Eval steps: {eval_steps}\n"
+        f"Detail boost: {detail_boost}\n"
         f"Stage 1 input channels: {stage1_channels}\n"
         f"Test slices: {len(test_dataset)}"
     )
@@ -386,7 +393,13 @@ def evaluate(args):
         coarse = predict_stage1_fa(stage1, t1_img, clamp=True, prediction_mode=stage1_prediction_mode)
         condition = build_stage2_condition(coarse, t1_img, condition_mode)
         refined = clamp_to_image_range(
-            euler_refine(stage2, coarse, num_steps=eval_steps, condition=condition).float()
+            euler_refine(
+                stage2,
+                coarse,
+                num_steps=eval_steps,
+                condition=condition,
+                detail_boost=detail_boost,
+            ).float()
         )
 
         coarse_01 = torch.clamp((coarse + 1.0) / 2.0, 0.0, 1.0)
@@ -475,6 +488,7 @@ def evaluate(args):
         "condition_mode": condition_mode,
         "condition_on_coarse": condition_on_coarse,
         "eval_steps": eval_steps,
+        "detail_boost": detail_boost,
         "test_slices": len(test_dataset),
         "PSNR_mean": float(np.mean(per_image["PSNR"])),
         "PSNR_std": float(np.std(per_image["PSNR"])),

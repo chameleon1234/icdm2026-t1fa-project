@@ -1,6 +1,6 @@
-# Stage1-Guided Multi-Step PM-DIRF Quick Test
+# Detail-Head Stage1-Guided Multi-Step PM-DIRF Quick Test
 
-This test targets the blur issue directly. The Stage 2 refiner is trained with DIRF-style multi-step rollout loss and the `coarse_t1_edge` condition, which keeps coarse FA, the full T1 stack, T1 edge cues, coarse edge cues, and the Stage1 coarse-minus-T1 residual in the conditioning path.
+This test targets the blur issue directly. The earlier `PM_DIRF_STAGE1GUIDED_MULTISTEP_K10` run still used a single-head velocity model, so Stage 2 was pulled back toward a smooth posterior mean. This version uses `--stage2_model_variant detail`, which splits Stage 2 into average-velocity and detail-velocity heads, then boosts the detail head during multi-step rollout.
 
 ## Smoke Test
 
@@ -8,8 +8,10 @@ This test targets the blur issue directly. The Stage 2 refiner is trained with D
 conda activate dinov3test
 python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --run_name pm_dirf_stage1guided_multistep_smoke `
+  --run_name pm_dirf_detailhead_stage1guided_smoke `
+  --stage2_model_variant detail `
   --condition_mode coarse_t1_edge `
+  --detail_boost 0.90 `
   --t_sampling endpoint `
   --rollout_train_steps 2,4 `
   --eval_steps 4 `
@@ -32,8 +34,10 @@ If your GPU is already heavily occupied and Stage1 inference causes OOM, add `--
 conda activate dinov3test
 python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --run_name pm_dirf_stage1guided_multistep_3slice `
+  --run_name pm_dirf_detailhead_stage1guided_3slice `
+  --stage2_model_variant detail `
   --condition_mode coarse_t1_edge `
+  --detail_boost 0.90 `
   --t_sampling endpoint `
   --rollout_train_steps 4,8,10 `
   --epochs 40 `
@@ -44,6 +48,7 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --best_metric detail_paired `
   --hf_weight 0.10 `
   --residual_hf_weight 0.25 `
+  --detail_velocity_weight 0.18 `
   --rollout_hf_weight 0.30 `
   --rollout_residual_hf_weight 0.35 `
   --rollout_l1_weight 0.30 `
@@ -66,8 +71,8 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
 python scripts/export_pm_dirf_predictions.py `
   --stage stage2 `
   --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --stage2_ckpt outputs/pm_dirf_stage1guided_multistep_3slice/checkpoints/best_stage2.pt `
-  --output_dir outputs/icdm2026/predictions/PM_DIRF_STAGE1GUIDED_MULTISTEP_K10 `
+  --stage2_ckpt outputs/pm_dirf_detailhead_stage1guided_3slice/checkpoints/best_stage2.pt `
+  --output_dir outputs/icdm2026/predictions/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K10 `
   --device cuda `
   --condition_mode auto `
   --eval_steps 10
@@ -79,8 +84,8 @@ python scripts/export_pm_dirf_predictions.py `
 python scripts/export_pm_dirf_predictions.py `
   --stage stage2 `
   --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --stage2_ckpt outputs/pm_dirf_stage1guided_multistep_3slice/checkpoints/best_stage2.pt `
-  --output_dir outputs/icdm2026/predictions/PM_DIRF_STAGE1GUIDED_MULTISTEP_K25 `
+  --stage2_ckpt outputs/pm_dirf_detailhead_stage1guided_3slice/checkpoints/best_stage2.pt `
+  --output_dir outputs/icdm2026/predictions/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K25 `
   --device cuda `
   --condition_mode auto `
   --eval_steps 25
@@ -90,21 +95,21 @@ python scripts/export_pm_dirf_predictions.py `
 
 ```powershell
 python scripts/evaluate_method_folder.py `
-  --pred_dir outputs/icdm2026/predictions/PM_DIRF_STAGE1GUIDED_MULTISTEP_K10 `
-  --method PM_DIRF_STAGE1GUIDED_MULTISTEP_K10 `
+  --pred_dir outputs/icdm2026/predictions/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K10 `
+  --method PM_DIRF_DETAILHEAD_STAGE1GUIDED_K10 `
   --visualize_count 8
 
 python scripts/evaluate_method_folder.py `
-  --pred_dir outputs/icdm2026/predictions/PM_DIRF_STAGE1GUIDED_MULTISTEP_K25 `
-  --method PM_DIRF_STAGE1GUIDED_MULTISTEP_K25 `
+  --pred_dir outputs/icdm2026/predictions/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K25 `
+  --method PM_DIRF_DETAILHEAD_STAGE1GUIDED_K25 `
   --visualize_count 8
 ```
 
 The new visual panels are written to:
 
 ```text
-outputs/icdm2026/figures/method_slices/PM_DIRF_STAGE1GUIDED_MULTISTEP_K10
-outputs/icdm2026/figures/method_slices/PM_DIRF_STAGE1GUIDED_MULTISTEP_K25
+outputs/icdm2026/figures/method_slices/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K10
+outputs/icdm2026/figures/method_slices/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K25
 ```
 
 Keep this line only if K10 or K25 visibly improves white-matter detail without obvious false texture or major PSNR/SSIM collapse.

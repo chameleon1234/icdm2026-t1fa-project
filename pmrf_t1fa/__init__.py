@@ -1,11 +1,13 @@
 from .models.pmrf_t1fa import (
     GradientLoss,
+    DetailRefinementFlowUNet,
     RefinementFlowUNet,
     SSIMLoss,
     Stage1Net,
     build_stage2_condition,
     build_xt,
     center_channel,
+    compose_stage2_velocity,
     euler_refine,
     euler_refine_train,
     infer_stage1_in_channels,
@@ -13,17 +15,20 @@ from .models.pmrf_t1fa import (
     project_endpoint,
     prepare_stage1_input,
     reduce_rgb_to_single_channel,
+    split_stage2_output,
     stage2_condition_channels,
 )
 
 __all__ = [
     "GradientLoss",
+    "DetailRefinementFlowUNet",
     "RefinementFlowUNet",
     "SSIMLoss",
     "Stage1Net",
     "build_stage2_condition",
     "build_xt",
     "center_channel",
+    "compose_stage2_velocity",
     "euler_refine",
     "euler_refine_train",
     "infer_stage1_in_channels",
@@ -31,5 +36,6 @@ __all__ = [
     "project_endpoint",
     "prepare_stage1_input",
     "reduce_rgb_to_single_channel",
+    "split_stage2_output",
     "stage2_condition_channels",
 ]

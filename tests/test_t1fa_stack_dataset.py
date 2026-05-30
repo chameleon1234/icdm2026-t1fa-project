@@ -44,6 +44,57 @@ def test_stack_dataset_returns_center_target_with_clamped_context(tmp_path):
     ]
 
 
+def test_select_resume_checkpoint_prefers_healthy_latest(tmp_path):
+    from pmrf_t1fa.checkpointing import select_resume_checkpoint
+
+    ckpt_dir = tmp_path / "checkpoints"
+    ckpt_dir.mkdir()
+    latest = ckpt_dir / "latest_stage1.pt"
+    healthy = ckpt_dir / "healthy_latest_stage1.pt"
+    latest.write_bytes(b"latest")
+    healthy.write_bytes(b"healthy")
+
+    assert select_resume_checkpoint(ckpt_dir, "stage1") == str(healthy)
+    assert select_resume_checkpoint(ckpt_dir, "stage1", prefer_healthy=False) == str(latest)
+
+
+def test_select_resume_checkpoint_uses_explicit_path_and_errors_if_missing(tmp_path):
+    import pytest
+
+    from pmrf_t1fa.checkpointing import select_resume_checkpoint
+
+    explicit = tmp_path / "epoch_010.pt"
+    explicit.write_bytes(b"checkpoint")
+
+    assert select_resume_checkpoint(tmp_path, "stage2", explicit_path=explicit, auto_resume=False) == str(explicit)
+    with pytest.raises(FileNotFoundError):
+        select_resume_checkpoint(tmp_path, "stage2", explicit_path=tmp_path / "missing.pt")
+
+
+def test_validate_resume_args_rejects_incompatible_stage1_checkpoint():
+    import pytest
+    from types import SimpleNamespace
+
+    from pmrf_t1fa.checkpointing import validate_resume_args
+
+    checkpoint = {"args": {"context_slices": 3, "stage1_model_variant": "detail"}}
+    args = SimpleNamespace(context_slices=5, stage1_model_variant="detail")
+
+    with pytest.raises(ValueError, match="context_slices"):
+        validate_resume_args(checkpoint, args, ["context_slices", "stage1_model_variant"], "bad.pt")
+
+
+def test_validate_resume_args_accepts_equivalent_checkpoint_paths():
+    from types import SimpleNamespace
+
+    from pmrf_t1fa.checkpointing import validate_resume_args
+
+    checkpoint = {"args": {"stage1_ckpt": "outputs/foo/checkpoints/best_stage1.pt"}}
+    args = SimpleNamespace(stage1_ckpt="outputs\\foo\\checkpoints\\best_stage1.pt")
+
+    validate_resume_args(checkpoint, args, ["stage1_ckpt"], "resume.pt")
+
+
 def test_predict_stage1_residual_uses_center_slice_for_stacked_input():
     from pmrf_t1fa.models.pmrf_t1fa import predict_stage1_fa
 

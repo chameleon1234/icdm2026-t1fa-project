@@ -2,6 +2,8 @@
 
 The K10/K25 Stage2-only detail-head runs stayed blurry because they were still refining a smooth Stage1 posterior-mean checkpoint. This quick test moves the anti-blur intervention to Stage1 first: train a 3-slice base+detail Stage1, select the checkpoint with `detail_paired`, then let Stage2 refine from that sharper coarse FA. The `detail_paired` score uses a bounded sharpness bonus, so it rewards recovering missing high-frequency structure without selecting obviously over-sharp noisy checkpoints.
 
+Checkpoint resume is enabled by default. Re-running the same `--run_name` continues from `healthy_latest_*.pt` or `latest_*.pt`; use `--resume_from path\to\checkpoint.pt` when you want to resume a specific epoch checkpoint. Keep `--epochs` as the final target epoch count, not the number of extra epochs.
+
 ## 1. Smoke Test Stage1 Detail
 
 ```powershell
@@ -26,8 +28,7 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage1 `
   --paired_sharp_weight 8.0 `
   --detail_target_sharp_ratio 0.90 `
   --detail_max_sharp_ratio 1.20 `
-  --detail_oversharp_penalty_weight 12.0 `
-  --no_auto_resume
+  --detail_oversharp_penalty_weight 12.0
 ```
 
 ## 2. Train Stage1 Detail Candidate
@@ -58,8 +59,7 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage1 `
   --detail_max_sharp_ratio 1.20 `
   --detail_oversharp_penalty_weight 12.0 `
   --disable_lpips `
-  --fid_eval_every 999 `
-  --no_auto_resume
+  --fid_eval_every 999
 ```
 
 ## 3. Export and Inspect Stage1
@@ -121,8 +121,7 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --detail_target_sharp_ratio 0.90 `
   --detail_max_sharp_ratio 1.20 `
   --detail_oversharp_penalty_weight 12.0 `
-  --disable_lpips `
-  --no_auto_resume
+  --disable_lpips
 ```
 
 ## 5. Export and Visualize K10/K25

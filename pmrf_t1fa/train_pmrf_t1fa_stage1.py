@@ -12,6 +12,7 @@ from torchmetrics.image.kid import KernelInceptionDistance
 from torchvision.utils import save_image
 from tqdm import tqdm
 
+from pmrf_t1fa.checkpointing import select_resume_checkpoint, validate_resume_args
 from pmrf_t1fa.models.pmrf_t1fa import (
     DetailStage1Net,
     GradientLoss,
@@ -62,6 +63,7 @@ def parse_args():
     parser.add_argument("--save_every", type=int, default=10)
     parser.add_argument("--preview_every", type=int, default=500)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--resume_from", default=None, help="Explicit Stage 1 checkpoint path to resume from.")
     parser.add_argument("--no_auto_resume", action="store_true")
     parser.add_argument("--lpips_max_weight", type=float, default=0.03)
     parser.add_argument("--disable_lpips", action="store_true")
@@ -440,16 +442,28 @@ def main():
     healthy_latest_path = os.path.join(ckpt_dir, "healthy_latest_stage1.pt")
     best_path = os.path.join(ckpt_dir, "best_stage1.pt")
 
-    auto_resume = (not args.no_auto_resume) or args.resume
-    resume_path = None
-    if auto_resume:
-        if os.path.exists(healthy_latest_path):
-            resume_path = healthy_latest_path
-        elif os.path.exists(latest_path):
-            resume_path = latest_path
+    auto_resume = ((not args.no_auto_resume) or args.resume) and args.resume_from is None
+    resume_path = select_resume_checkpoint(
+        ckpt_dir,
+        "stage1",
+        explicit_path=args.resume_from,
+        auto_resume=auto_resume,
+        prefer_healthy=True,
+    )
 
     if resume_path is not None:
         checkpoint = torch.load(resume_path, map_location="cpu")
+        validate_resume_args(
+            checkpoint,
+            args,
+            required_keys=[
+                "context_slices",
+                "stage1_model_variant",
+                "stage1_prediction_mode",
+                "stage1_detail_scale",
+            ],
+            checkpoint_path=resume_path,
+        )
         accelerator.unwrap_model(model).load_state_dict(checkpoint["model"])
         optimizer.load_state_dict(checkpoint["optimizer"])
         best_metrics["psnr"] = checkpoint.get("best_psnr", best_metrics["psnr"])

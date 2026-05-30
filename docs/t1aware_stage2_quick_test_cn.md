@@ -2,6 +2,8 @@
 
 这次 K10/K25 的 Stage2-only detail-head 版本仍然模糊，核心原因是它们还在细化一个已经很平滑的 Stage1 posterior-mean checkpoint。这个快速测试把“抗模糊”的动作前移到 Stage1：先训练 3-slice base+detail 双头 Stage1，用 `detail_paired` 选择更清晰的 checkpoint，再让 Stage2 从这个更清晰的 coarse FA 上做细化。这里的 `detail_paired` 使用有上限的 sharpness bonus，目标是奖励缺失高频结构，而不是把明显过锐的噪声 checkpoint 选出来。
 
+断点续训默认开启。重复运行同一个 `--run_name` 会自动从 `healthy_latest_*.pt` 或 `latest_*.pt` 继续；如果要指定某个 epoch checkpoint，用 `--resume_from path\to\checkpoint.pt`。注意 `--epochs` 表示最终训练到第几代，不是额外再训练几代。
+
 ## 1. Stage1 Detail 烟雾测试
 
 ```powershell
@@ -26,8 +28,7 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage1 `
   --paired_sharp_weight 8.0 `
   --detail_target_sharp_ratio 0.90 `
   --detail_max_sharp_ratio 1.20 `
-  --detail_oversharp_penalty_weight 12.0 `
-  --no_auto_resume
+  --detail_oversharp_penalty_weight 12.0
 ```
 
 ## 2. 训练 Stage1 Detail 候选模型
@@ -58,8 +59,7 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage1 `
   --detail_max_sharp_ratio 1.20 `
   --detail_oversharp_penalty_weight 12.0 `
   --disable_lpips `
-  --fid_eval_every 999 `
-  --no_auto_resume
+  --fid_eval_every 999
 ```
 
 ## 3. 先导出并检查 Stage1
@@ -121,8 +121,7 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --detail_target_sharp_ratio 0.90 `
   --detail_max_sharp_ratio 1.20 `
   --detail_oversharp_penalty_weight 12.0 `
-  --disable_lpips `
-  --no_auto_resume
+  --disable_lpips
 ```
 
 ## 5. 导出并可视化 K10/K25

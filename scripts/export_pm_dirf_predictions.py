@@ -18,11 +18,14 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from pmrf_t1fa.models.pmrf_t1fa import (
     DetailRefinementFlowUNet,
+    DetailStage1Net,
     RefinementFlowUNet,
     Stage1Net,
     build_stage2_condition,
     euler_refine,
+    infer_stage1_detail_scale,
     infer_stage1_in_channels,
+    infer_stage1_model_variant,
     infer_stage1_prediction_mode,
     infer_stage2_condition_mode,
     prepare_stage1_input,
@@ -92,14 +95,23 @@ def checkpoint_args(checkpoint: Any) -> dict[str, Any]:
     return {}
 
 
-def load_stage1(stage1_ckpt: str | Path, device: torch.device) -> tuple[Stage1Net, str, int]:
+def load_stage1(stage1_ckpt: str | Path, device: torch.device) -> tuple[torch.nn.Module, str, int, float]:
     checkpoint = torch.load(stage1_ckpt, map_location="cpu")
     stage1_channels = infer_stage1_in_channels(checkpoint)
-    model = Stage1Net(in_channels=stage1_channels, out_channels=1)
+    ckpt_args = checkpoint_args(checkpoint)
+    if infer_stage1_model_variant(ckpt_args) == "detail":
+        model = DetailStage1Net(in_channels=stage1_channels, out_channels=1)
+    else:
+        model = Stage1Net(in_channels=stage1_channels, out_channels=1)
     model.load_state_dict(checkpoint_state_dict(checkpoint))
     model.to(device)
     model.eval()
-    return model, infer_stage1_prediction_mode(checkpoint_args(checkpoint)), stage1_channels
+    return (
+        model,
+        infer_stage1_prediction_mode(ckpt_args),
+        stage1_channels,
+        infer_stage1_detail_scale(ckpt_args),
+    )
 
 
 def make_slice_dataset(t1_dir: Path, fa_dir: Path, stage1_channels: int):
@@ -188,7 +200,7 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
         raise FileNotFoundError(f"Missing Stage 2 checkpoint: {args.stage2_ckpt}")
 
     device = torch.device(args.device)
-    stage1, stage1_prediction_mode, stage1_channels = load_stage1(args.stage1_ckpt, device)
+    stage1, stage1_prediction_mode, stage1_channels, stage1_detail_scale = load_stage1(args.stage1_ckpt, device)
     dataset = make_slice_dataset(test_t1_dir, test_fa_dir, stage1_channels)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
     condition_mode, condition_on_coarse, eval_steps, detail_boost = resolve_stage2_settings(args)
@@ -206,7 +218,13 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
     method = stage_to_method(args.stage)
     for batch in tqdm(loader, desc=f"Exporting {method}", leave=False):
         t1_img = prepare_stage1_input(batch["t1_slice"].to(device), stage1_channels)
-        coarse = predict_stage1_fa(stage1, t1_img, clamp=True, prediction_mode=stage1_prediction_mode)
+        coarse = predict_stage1_fa(
+            stage1,
+            t1_img,
+            clamp=True,
+            prediction_mode=stage1_prediction_mode,
+            detail_scale=stage1_detail_scale,
+        )
         if args.stage == "stage1":
             prediction = coarse
         else:
@@ -248,6 +266,7 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
         "exported": exported,
         "stage1_ckpt": str(args.stage1_ckpt),
         "stage1_prediction_mode": stage1_prediction_mode,
+        "stage1_detail_scale": stage1_detail_scale,
         "stage1_channels": stage1_channels,
         "stage2_ckpt": str(args.stage2_ckpt) if args.stage == "stage2" else "",
         "condition_mode": condition_mode if args.stage == "stage2" else "none",

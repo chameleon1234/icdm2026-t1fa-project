@@ -1,20 +1,18 @@
-# Detail-head Stage1 引导多步 PM-DIRF 快速测试
+# Detail-Stage1 PM-DIRF 快速测试
 
-这次测试直接针对“生成 FA 图模糊”的问题。之前的 `PM_DIRF_STAGE1GUIDED_MULTISTEP_K10` 仍然是单头 velocity 模型，所以 Stage 2 还是容易被 L1/SSIM/PSNR 拉回平滑的 posterior mean。这一版使用 `--stage2_model_variant detail`，把 Stage 2 拆成 average-velocity head 和 detail-velocity head，再在多步 rollout 里用 `detail_boost` 放大细节分支。
+这次 K10/K25 的 Stage2-only detail-head 版本仍然模糊，核心原因是它们还在细化一个已经很平滑的 Stage1 posterior-mean checkpoint。这个快速测试把“抗模糊”的动作前移到 Stage1：先训练 3-slice base+detail 双头 Stage1，用 `detail_paired` 选择更清晰的 checkpoint，再让 Stage2 从这个更清晰的 coarse FA 上做细化。这里的 `detail_paired` 使用有上限的 sharpness bonus，目标是奖励缺失高频结构，而不是把明显过锐的噪声 checkpoint 选出来。
 
-## Smoke Test
+## 1. Stage1 Detail 烟雾测试
 
 ```powershell
 conda activate dinov3test
-python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
-  --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --run_name pm_dirf_detailhead_stage1guided_smoke `
-  --stage2_model_variant detail `
-  --condition_mode coarse_t1_edge `
-  --detail_boost 0.90 `
-  --t_sampling endpoint `
-  --rollout_train_steps 2,4 `
-  --eval_steps 4 `
+python -m pmrf_t1fa.train_pmrf_t1fa_stage1 `
+  --run_name pmrf_t1fa_stage1_detail_smoke `
+  --context_slices 3 `
+  --stage1_model_variant detail `
+  --stage1_prediction_mode residual `
+  --stage1_detail_scale 0.60 `
+  --best_metric detail_paired `
   --epochs 1 `
   --batch_size 1 `
   --train_limit 8 `
@@ -23,18 +21,77 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --preview_every 999 `
   --save_every 999 `
   --disable_lpips `
+  --detail_hf_weight 0.35 `
+  --detail_lap_weight 0.20 `
+  --paired_sharp_weight 8.0 `
+  --detail_target_sharp_ratio 0.90 `
+  --detail_max_sharp_ratio 1.20 `
+  --detail_oversharp_penalty_weight 12.0 `
   --no_auto_resume
 ```
 
-## 快速可视化测试
+## 2. 训练 Stage1 Detail 候选模型
 
-如果当前 GPU 已经被桌面、浏览器或其他程序占用很多显存，Stage1 推理可能会 OOM。这种情况下可以额外加 `--stage1_device cpu`，Stage2 仍然在加速设备上训练，只是 Stage1 coarse 预测临时 offload 到 CPU。
+```powershell
+conda activate dinov3test
+python -m pmrf_t1fa.train_pmrf_t1fa_stage1 `
+  --run_name pmrf_t1fa_stage1_detail_3slice `
+  --context_slices 3 `
+  --stage1_model_variant detail `
+  --stage1_prediction_mode residual `
+  --stage1_detail_scale 0.60 `
+  --best_metric detail_paired `
+  --epochs 80 `
+  --batch_size 2 `
+  --lr 8e-5 `
+  --mse_weight 0.35 `
+  --l1_start_weight 0.80 `
+  --l1_end_weight 0.45 `
+  --ssim_start_weight 0.65 `
+  --ssim_end_weight 0.35 `
+  --grad_weight 0.12 `
+  --hf_weight 0.12 `
+  --detail_hf_weight 0.35 `
+  --detail_lap_weight 0.20 `
+  --paired_sharp_weight 8.0 `
+  --detail_target_sharp_ratio 0.90 `
+  --detail_max_sharp_ratio 1.20 `
+  --detail_oversharp_penalty_weight 12.0 `
+  --disable_lpips `
+  --fid_eval_every 999 `
+  --no_auto_resume
+```
+
+## 3. 先导出并检查 Stage1
+
+```powershell
+python scripts/export_pm_dirf_predictions.py `
+  --stage stage1 `
+  --stage1_ckpt outputs/pmrf_t1fa_stage1_detail_3slice/checkpoints/best_stage1.pt `
+  --output_dir outputs/icdm2026/predictions/PM_STAGE1_DETAIL_3SLICE `
+  --device cuda
+
+python scripts/evaluate_method_folder.py `
+  --pred_dir outputs/icdm2026/predictions/PM_STAGE1_DETAIL_3SLICE `
+  --method PM_STAGE1_DETAIL_3SLICE `
+  --visualize_count 8
+```
+
+重点看这个目录：
+
+```text
+outputs/icdm2026/figures/method_slices/PM_STAGE1_DETAIL_3SLICE
+```
+
+只有当 Stage1 本身比 `PM_STAGE1_3SLICE` 肉眼更清晰时，才继续做 Stage2。
+
+## 4. 用 Detail Stage1 训练 Stage2
 
 ```powershell
 conda activate dinov3test
 python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
-  --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --run_name pm_dirf_detailhead_stage1guided_3slice `
+  --stage1_ckpt outputs/pmrf_t1fa_stage1_detail_3slice/checkpoints/best_stage1.pt `
+  --run_name pm_dirf_detailstage1_stage2_3slice `
   --stage2_model_variant detail `
   --condition_mode coarse_t1_edge `
   --detail_boost 0.90 `
@@ -61,55 +118,48 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --paired_sharp_weight 5.0 `
   --detail_sharp_weight 12.0 `
   --detail_coarse_penalty_weight 8.0 `
+  --detail_target_sharp_ratio 0.90 `
+  --detail_max_sharp_ratio 1.20 `
+  --detail_oversharp_penalty_weight 12.0 `
   --disable_lpips `
   --no_auto_resume
 ```
 
-## 导出 K10
-
-```powershell
-      python scripts/export_pm_dirf_predictions.py `
-  --stage stage2 `
-  --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --stage2_ckpt outputs/pm_dirf_detailhead_stage1guided_3slice/checkpoints/best_stage2.pt `
-  --output_dir outputs/icdm2026/predictions/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K10 `
-        --device cuda `
-        --condition_mode auto `
-        --eval_steps 10
-```
-
-## 可选导出 K25
+## 5. 导出并可视化 K10/K25
 
 ```powershell
 python scripts/export_pm_dirf_predictions.py `
   --stage stage2 `
-  --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --stage2_ckpt outputs/pm_dirf_detailhead_stage1guided_3slice/checkpoints/best_stage2.pt `
-  --output_dir outputs/icdm2026/predictions/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K25 `
+  --stage1_ckpt outputs/pmrf_t1fa_stage1_detail_3slice/checkpoints/best_stage1.pt `
+  --stage2_ckpt outputs/pm_dirf_detailstage1_stage2_3slice/checkpoints/best_stage2.pt `
+  --output_dir outputs/icdm2026/predictions/PM_DIRF_DETAILSTAGE1_K10 `
+  --device cuda `
+  --condition_mode auto `
+  --eval_steps 10
+
+python scripts/export_pm_dirf_predictions.py `
+  --stage stage2 `
+  --stage1_ckpt outputs/pmrf_t1fa_stage1_detail_3slice/checkpoints/best_stage1.pt `
+  --stage2_ckpt outputs/pm_dirf_detailstage1_stage2_3slice/checkpoints/best_stage2.pt `
+  --output_dir outputs/icdm2026/predictions/PM_DIRF_DETAILSTAGE1_K25 `
   --device cuda `
   --condition_mode auto `
   --eval_steps 25
-```
 
-## 评估和可视化
-
-```powershell
 python scripts/evaluate_method_folder.py `
-  --pred_dir outputs/icdm2026/predictions/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K10 `
-  --method PM_DIRF_DETAILHEAD_STAGE1GUIDED_K10 `
+  --pred_dir outputs/icdm2026/predictions/PM_DIRF_DETAILSTAGE1_K10 `
+  --method PM_DIRF_DETAILSTAGE1_K10 `
   --visualize_count 8
 
 python scripts/evaluate_method_folder.py `
-  --pred_dir outputs/icdm2026/predictions/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K25 `
-  --method PM_DIRF_DETAILHEAD_STAGE1GUIDED_K25 `
+  --pred_dir outputs/icdm2026/predictions/PM_DIRF_DETAILSTAGE1_K25 `
+  --method PM_DIRF_DETAILSTAGE1_K25 `
   --visualize_count 8
 ```
 
-新的可视化结果会写入：
+新的可视化目录：
 
 ```text
-outputs/icdm2026/figures/method_slices/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K10
-outputs/icdm2026/figures/method_slices/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K25
+outputs/icdm2026/figures/method_slices/PM_DIRF_DETAILSTAGE1_K10
+outputs/icdm2026/figures/method_slices/PM_DIRF_DETAILSTAGE1_K25
 ```
-
-只有在 K10 或 K25 肉眼白质细节明显变清晰，并且没有明显假纹理、PSNR/SSIM 没有大幅崩掉时，才把这条线作为下一版主实验候选。

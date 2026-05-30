@@ -16,12 +16,15 @@ from tqdm import tqdm
 
 from pmrf_t1fa.models.pmrf_t1fa import (
     DetailRefinementFlowUNet,
+    DetailStage1Net,
     RefinementFlowUNet,
     Stage1Net,
     build_stage2_condition,
     center_channel,
     euler_refine,
+    infer_stage1_detail_scale,
     infer_stage1_in_channels,
+    infer_stage1_model_variant,
     infer_stage1_prediction_mode,
     infer_stage2_condition_mode,
     prepare_stage1_input,
@@ -98,13 +101,16 @@ def checkpoint_args(checkpoint):
 def load_stage1(stage1_ckpt: str, device: torch.device):
     checkpoint = torch.load(stage1_ckpt, map_location="cpu")
     stage1_channels = infer_stage1_in_channels(checkpoint)
-    model = Stage1Net(in_channels=stage1_channels, out_channels=1)
+    ckpt_args = checkpoint_args(checkpoint)
+    if infer_stage1_model_variant(ckpt_args) == "detail":
+        model = DetailStage1Net(in_channels=stage1_channels, out_channels=1)
+    else:
+        model = Stage1Net(in_channels=stage1_channels, out_channels=1)
     model.load_state_dict(checkpoint_state_dict(checkpoint))
     model.to(device)
     model.eval()
-    ckpt_args = checkpoint_args(checkpoint)
     prediction_mode = infer_stage1_prediction_mode(ckpt_args)
-    return model, prediction_mode, stage1_channels
+    return model, prediction_mode, stage1_channels, infer_stage1_detail_scale(ckpt_args)
 
 
 def make_slice_dataset(t1_dir: str, fa_dir: str, stage1_channels: int):
@@ -313,7 +319,7 @@ def evaluate(args):
     eval_steps = args.eval_steps if args.eval_steps > 0 else int(stage2_args.get("eval_steps", 1))
     detail_boost = float(stage2_args.get("detail_boost", 0.0))
 
-    stage1, stage1_prediction_mode, stage1_channels = load_stage1(args.stage1_ckpt, device)
+    stage1, stage1_prediction_mode, stage1_channels, stage1_detail_scale = load_stage1(args.stage1_ckpt, device)
     test_dataset = make_slice_dataset(args.test_t1_dir, args.test_fa_dir, stage1_channels)
     test_loader = DataLoader(
         test_dataset,
@@ -390,7 +396,13 @@ def evaluate(args):
         t1_img = prepare_stage1_input(batch["t1_slice"].to(device), stage1_channels)
         fa_real = reduce_rgb_to_single_channel(batch["fa_slice"].to(device))
 
-        coarse = predict_stage1_fa(stage1, t1_img, clamp=True, prediction_mode=stage1_prediction_mode)
+        coarse = predict_stage1_fa(
+            stage1,
+            t1_img,
+            clamp=True,
+            prediction_mode=stage1_prediction_mode,
+            detail_scale=stage1_detail_scale,
+        )
         condition = build_stage2_condition(coarse, t1_img, condition_mode)
         refined = clamp_to_image_range(
             euler_refine(
@@ -489,6 +501,7 @@ def evaluate(args):
         "condition_on_coarse": condition_on_coarse,
         "eval_steps": eval_steps,
         "detail_boost": detail_boost,
+        "stage1_detail_scale": stage1_detail_scale,
         "test_slices": len(test_dataset),
         "PSNR_mean": float(np.mean(per_image["PSNR"])),
         "PSNR_std": float(np.std(per_image["PSNR"])),

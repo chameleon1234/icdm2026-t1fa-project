@@ -6,20 +6,24 @@ import lpips
 import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from torchmetrics.image.fid import FrechetInceptionDistance
 from torchmetrics.image.kid import KernelInceptionDistance
 from torchvision.utils import save_image
 from tqdm import tqdm
 
 from pmrf_t1fa.models.pmrf_t1fa import (
+    DetailStage1Net,
     GradientLoss,
     SSIMLoss,
     Stage1Net,
     center_channel,
+    compose_stage1_output,
+    highpass_residual,
     prepare_stage1_input,
     predict_stage1_fa,
     reduce_rgb_to_single_channel,
+    split_stage1_output,
 )
 from src.data.t1fa_stack_dataset import T1FAStackDataset
 from src.datasets import T1FADataset
@@ -30,6 +34,11 @@ torch.backends.cudnn.allow_tf32 = True
 torch.set_float32_matmul_precision("high")
 
 
+class ZeroLPIPSLoss(torch.nn.Module):
+    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        return pred.new_zeros((pred.shape[0],))
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Train PMRF-T1FA Stage 1 coarse predictor")
     parser.add_argument("--train_t1_dir", default="data/processed/train/t1_slices")
@@ -37,11 +46,15 @@ def parse_args():
     parser.add_argument("--val_t1_dir", default="data/processed/val/t1_slices")
     parser.add_argument("--val_fa_dir", default="data/processed/val/fa_slices")
     parser.add_argument("--run_name", default="pmrf_t1fa_stage1")
+    parser.add_argument("--stage1_model_variant", default="single", choices=["single", "detail"])
     parser.add_argument("--stage1_prediction_mode", default="residual", choices=["absolute", "residual"])
+    parser.add_argument("--stage1_detail_scale", type=float, default=0.60)
     parser.add_argument("--context_slices", type=int, default=1, help="Odd number of adjacent T1 slices used as Stage 1 input channels.")
     parser.add_argument("--posterior_mean_preset", action="store_true", help="Use PSNR/SSIM-oriented Stage 1 weights with little/no perceptual pressure.")
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--train_limit", type=int, default=0, help="Use only the first N training slices for smoke tests.")
+    parser.add_argument("--val_limit", type=int, default=0, help="Use only the first N validation slices for smoke tests.")
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--weight_decay", type=float, default=0.0)
     parser.add_argument("--num_workers", type=int, default=0)
@@ -51,6 +64,7 @@ def parse_args():
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--no_auto_resume", action="store_true")
     parser.add_argument("--lpips_max_weight", type=float, default=0.03)
+    parser.add_argument("--disable_lpips", action="store_true")
     parser.add_argument("--mse_weight", type=float, default=0.50)
     parser.add_argument("--l1_start_weight", type=float, default=1.00)
     parser.add_argument("--l1_end_weight", type=float, default=0.60)
@@ -58,12 +72,14 @@ def parse_args():
     parser.add_argument("--ssim_end_weight", type=float, default=0.50)
     parser.add_argument("--grad_weight", type=float, default=0.05)
     parser.add_argument("--hf_weight", type=float, default=0.02)
+    parser.add_argument("--detail_hf_weight", type=float, default=0.0)
+    parser.add_argument("--detail_lap_weight", type=float, default=0.0)
     parser.add_argument("--grad_clip", type=float, default=1.0)
     parser.add_argument("--image_check_start_epoch", type=int, default=5)
     parser.add_argument("--image_check_patience", type=int, default=2)
     parser.add_argument("--disable_strict_image_check", action="store_false", dest="strict_image_check")
     parser.set_defaults(strict_image_check=True)
-    parser.add_argument("--best_metric", default="paired", choices=["psnr", "mse", "mae", "fid", "sharpness", "balanced", "paired"])
+    parser.add_argument("--best_metric", default="paired", choices=["psnr", "mse", "mae", "fid", "sharpness", "balanced", "paired", "detail_paired"])
     parser.add_argument("--early_stop_patience", type=int, default=12)
     parser.add_argument("--fid_eval_every", type=int, default=1)
     parser.add_argument("--kid_subset_size", type=int, default=100)
@@ -76,6 +92,10 @@ def parse_args():
     parser.add_argument("--paired_ssim_weight", type=float, default=10.0)
     parser.add_argument("--paired_mse_weight", type=float, default=200.0)
     parser.add_argument("--paired_mae_weight", type=float, default=10.0)
+    parser.add_argument("--paired_sharp_weight", type=float, default=6.0)
+    parser.add_argument("--detail_target_sharp_ratio", type=float, default=0.90)
+    parser.add_argument("--detail_max_sharp_ratio", type=float, default=1.20)
+    parser.add_argument("--detail_oversharp_penalty_weight", type=float, default=12.0)
     parser.add_argument("--rollback_on_anomaly", action="store_true")
     parser.set_defaults(rollback_on_anomaly=True)
     parser.add_argument("--skip_nonfinite_batches", action="store_true")
@@ -84,6 +104,8 @@ def parse_args():
     if args.context_slices < 1 or args.context_slices % 2 == 0:
         raise ValueError(f"--context_slices must be a positive odd integer, got {args.context_slices}")
     if args.posterior_mean_preset:
+        args.stage1_model_variant = "single"
+        args.stage1_detail_scale = 0.0
         args.lpips_max_weight = 0.0
         args.mse_weight = 0.85
         args.l1_start_weight = 1.10
@@ -93,6 +115,12 @@ def parse_args():
         args.grad_weight = 0.03
         args.hf_weight = 0.01
         args.best_metric = "paired"
+    if args.stage1_model_variant == "single":
+        args.stage1_detail_scale = 0.0
+        args.detail_hf_weight = 0.0
+        args.detail_lap_weight = 0.0
+    if args.disable_lpips:
+        args.lpips_max_weight = 0.0
     return args
 
 
@@ -146,10 +174,29 @@ def compute_paired_score(metrics: Dict[str, float], args) -> float:
     )
 
 
+def compute_detail_paired_score(metrics: Dict[str, float], args) -> float:
+    target_ratio = max(float(getattr(args, "detail_target_sharp_ratio", 0.90)), 1e-6)
+    max_ratio = float(getattr(args, "detail_max_sharp_ratio", 1.20))
+    sharp_ratio = float(metrics["sharp_ratio"])
+    bounded_bonus = min(sharp_ratio, target_ratio) / target_ratio
+    oversharp_penalty = max(sharp_ratio - max_ratio, 0.0)
+    return (
+        compute_paired_score(metrics, args)
+        + args.paired_sharp_weight * bounded_bonus
+        - getattr(args, "detail_oversharp_penalty_weight", 12.0) * oversharp_penalty
+    )
+
+
 def make_slice_dataset(t1_dir: str, fa_dir: str, context_slices: int):
     if context_slices > 1:
         return T1FAStackDataset(t1_dir, fa_dir, context_slices=context_slices, target_size=(224, 224))
     return T1FADataset(t1_dir, fa_dir, preload_ram=False)
+
+
+def maybe_limit_dataset(dataset, limit: int):
+    if limit <= 0:
+        return dataset
+    return Subset(dataset, range(min(limit, len(dataset))))
 
 
 def pick_fixed_preview_batch(val_dataset, device: torch.device, stage1_channels: int):
@@ -219,6 +266,8 @@ def is_better(metrics: Dict[str, float], best_metrics: Dict[str, float], best_me
         return metrics["balanced_score"] > best_metrics["balanced_score"]
     if best_metric == "paired":
         return metrics["paired_score"] > best_metrics["paired_score"]
+    if best_metric == "detail_paired":
+        return metrics["detail_paired_score"] > best_metrics["detail_paired_score"]
     if metrics["psnr"] > best_metrics["psnr"] + 1e-6:
         return True
     if abs(metrics["psnr"] - best_metrics["psnr"]) <= 1e-6 and metrics["ssim"] > best_metrics["ssim"]:
@@ -229,6 +278,8 @@ def is_better(metrics: Dict[str, float], best_metrics: Dict[str, float], best_me
 def build_stage1_loss(
     pred: torch.Tensor,
     target: torch.Tensor,
+    t1_img: torch.Tensor,
+    detail_pred: torch.Tensor | None,
     ssim_loss_fn: SSIMLoss,
     grad_loss_fn: GradientLoss,
     lpips_loss_fn,
@@ -241,6 +292,10 @@ def build_stage1_loss(
     ssim_end_weight: float,
     grad_weight: float,
     hf_weight: float,
+    detail_hf_weight: float,
+    detail_lap_weight: float,
+    stage1_prediction_mode: str,
+    stage1_detail_scale: float,
     lpips_max_weight: float,
 ) -> Dict[str, torch.Tensor]:
     # Keep loss evaluation in fp32 even when the model runs with mixed precision.
@@ -252,6 +307,17 @@ def build_stage1_loss(
     loss_ssim = ssim_loss_fn(pred_clamp, target_fp32)
     loss_grad = grad_loss_fn(pred_clamp, target_fp32)
     loss_hf = F.l1_loss(laplacian_filter(pred_clamp), laplacian_filter(target_fp32))
+    if detail_pred is None:
+        loss_detail_hf = pred_fp32.new_tensor(0.0)
+        loss_detail_lap = pred_fp32.new_tensor(0.0)
+    else:
+        if stage1_prediction_mode == "residual":
+            detail_target = highpass_residual(target_fp32 - center_channel(t1_img).float())
+        else:
+            detail_target = highpass_residual(target_fp32)
+        detail_contrib = float(stage1_detail_scale) * highpass_residual(detail_pred.float())
+        loss_detail_hf = F.l1_loss(detail_contrib, detail_target)
+        loss_detail_lap = F.l1_loss(laplacian_filter(detail_contrib), laplacian_filter(detail_target))
     with torch.autocast(device_type=pred.device.type, enabled=False):
         loss_lpips = lpips_loss_fn(
             pred_clamp.repeat(1, 3, 1, 1),
@@ -271,6 +337,8 @@ def build_stage1_loss(
         + w_ssim * loss_ssim
         + w_grad * loss_grad
         + w_hf * loss_hf
+        + detail_hf_weight * loss_detail_hf
+        + detail_lap_weight * loss_detail_lap
         + w_lpips * loss_lpips
     )
     return {
@@ -280,6 +348,8 @@ def build_stage1_loss(
         "ssim": loss_ssim,
         "grad": loss_grad,
         "hf": loss_hf,
+        "detail_hf": loss_detail_hf,
+        "detail_lap": loss_detail_lap,
         "lpips": loss_lpips,
         "pred_clamp": pred_clamp,
         "w_l1": torch.tensor(w_l1, device=pred.device, dtype=pred.dtype),
@@ -307,6 +377,8 @@ def main():
     stage1_channels = int(args.context_slices)
     train_dataset = make_slice_dataset(args.train_t1_dir, args.train_fa_dir, stage1_channels)
     val_dataset = make_slice_dataset(args.val_t1_dir, args.val_fa_dir, stage1_channels)
+    train_dataset = maybe_limit_dataset(train_dataset, args.train_limit)
+    val_dataset = maybe_limit_dataset(val_dataset, args.val_limit)
 
     train_loader = DataLoader(
         train_dataset,
@@ -323,11 +395,18 @@ def main():
         num_workers=args.num_workers,
     )
 
-    model = Stage1Net(in_channels=stage1_channels, out_channels=1)
+    if args.stage1_model_variant == "detail":
+        model = DetailStage1Net(in_channels=stage1_channels, out_channels=1)
+    else:
+        model = Stage1Net(in_channels=stage1_channels, out_channels=1)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     ssim_loss_fn = SSIMLoss()
     grad_loss_fn = GradientLoss()
-    lpips_loss_fn = lpips.LPIPS(net="vgg")
+    if args.disable_lpips or args.lpips_max_weight <= 0.0:
+        args.lpips_max_weight = 0.0
+        lpips_loss_fn = ZeroLPIPSLoss()
+    else:
+        lpips_loss_fn = lpips.LPIPS(net="vgg")
     fid_metric = FrechetInceptionDistance(feature=2048, normalize=True)
     kid_metric = KernelInceptionDistance(subset_size=args.kid_subset_size, normalize=True)
     for param in lpips_loss_fn.parameters():
@@ -351,6 +430,7 @@ def main():
         "sharp_ratio": float("-inf"),
         "balanced_score": float("-inf"),
         "paired_score": float("-inf"),
+        "detail_paired_score": float("-inf"),
     }
     start_epoch = 0
     global_step = 0
@@ -383,6 +463,7 @@ def main():
         best_metrics["sharp_ratio"] = checkpoint.get("best_sharp_ratio", best_metrics["sharp_ratio"])
         best_metrics["balanced_score"] = checkpoint.get("best_balanced_score", best_metrics["balanced_score"])
         best_metrics["paired_score"] = checkpoint.get("best_paired_score", best_metrics["paired_score"])
+        best_metrics["detail_paired_score"] = checkpoint.get("best_detail_paired_score", best_metrics["detail_paired_score"])
         start_epoch = checkpoint.get("epoch", 0) + 1
         global_step = checkpoint.get("global_step", 0)
         anomaly_epochs = checkpoint.get("anomaly_epochs", 0)
@@ -390,12 +471,25 @@ def main():
         accelerator.print(f"Resume Stage 1 from {resume_path}")
 
     accelerator.print(f"Stage 1 training on {len(train_dataset)} train slices / {len(val_dataset)} val slices")
-    accelerator.print(f"Stage 1 input context_slices={stage1_channels} | posterior_mean_preset={args.posterior_mean_preset}")
+    accelerator.print(
+        f"Stage 1 input context_slices={stage1_channels} | posterior_mean_preset={args.posterior_mean_preset} | "
+        f"stage1_model_variant={args.stage1_model_variant} | stage1_detail_scale={args.stage1_detail_scale}"
+    )
     accelerator.print(f"Device={accelerator.device} | mixed_precision={args.mixed_precision}")
 
     for epoch in range(start_epoch, args.epochs):
         model.train()
-        running = {"total": 0.0, "mse": 0.0, "l1": 0.0, "ssim": 0.0, "grad": 0.0, "hf": 0.0, "lpips": 0.0}
+        running = {
+            "total": 0.0,
+            "mse": 0.0,
+            "l1": 0.0,
+            "ssim": 0.0,
+            "grad": 0.0,
+            "hf": 0.0,
+            "detail_hf": 0.0,
+            "detail_lap": 0.0,
+            "lpips": 0.0,
+        }
         skipped_nonfinite = 0
 
         progress = tqdm(
@@ -407,12 +501,18 @@ def main():
             t1_img = prepare_stage1_input(batch["t1_slice"].to(accelerator.device), stage1_channels)
             fa_img = reduce_rgb_to_single_channel(batch["fa_slice"].to(accelerator.device))
 
-            coarse_pred = predict_stage1_fa(
-                model, t1_img, clamp=False, prediction_mode=args.stage1_prediction_mode
-            )
+            raw_output = model(t1_img)
+            pred_delta = compose_stage1_output(raw_output, detail_scale=args.stage1_detail_scale)
+            if args.stage1_prediction_mode == "residual":
+                coarse_pred = center_channel(t1_img) + pred_delta
+            else:
+                coarse_pred = pred_delta
+            _, detail_pred = split_stage1_output(raw_output)
             losses = build_stage1_loss(
                 coarse_pred,
                 fa_img,
+                t1_img,
+                detail_pred,
                 ssim_loss_fn,
                 grad_loss_fn,
                 lpips_loss_fn,
@@ -425,6 +525,10 @@ def main():
                 args.ssim_end_weight,
                 args.grad_weight,
                 args.hf_weight,
+                args.detail_hf_weight,
+                args.detail_lap_weight,
+                args.stage1_prediction_mode,
+                args.stage1_detail_scale,
                 args.lpips_max_weight,
             )
 
@@ -459,12 +563,17 @@ def main():
                     l1_w=losses["w_l1"].item(),
                     ssim_w=losses["w_ssim"].item(),
                     lpips_w=losses["w_lpips"].item(),
+                    dhf=losses["detail_hf"].item(),
                 )
                 if global_step % args.preview_every == 0:
                     model.eval()
                     with torch.no_grad():
                         preview_pred = predict_stage1_fa(
-                            model, fixed_t1, clamp=False, prediction_mode=args.stage1_prediction_mode
+                            model,
+                            fixed_t1,
+                            clamp=False,
+                            prediction_mode=args.stage1_prediction_mode,
+                            detail_scale=args.stage1_detail_scale,
                         )
                         save_preview(preview_dir, global_step, fixed_t1, preview_pred, fixed_fa)
                         is_bad, reasons, stats = detect_image_anomaly(preview_pred, fixed_fa)
@@ -503,7 +612,11 @@ def main():
                 t1_img = prepare_stage1_input(batch["t1_slice"].to(accelerator.device), stage1_channels)
                 fa_img = reduce_rgb_to_single_channel(batch["fa_slice"].to(accelerator.device))
                 coarse_pred = predict_stage1_fa(
-                    model, t1_img, clamp=True, prediction_mode=args.stage1_prediction_mode
+                    model,
+                    t1_img,
+                    clamp=True,
+                    prediction_mode=args.stage1_prediction_mode,
+                    detail_scale=args.stage1_detail_scale,
                 )
 
                 val_total["mse"] += F.mse_loss(coarse_pred, fa_img).item()
@@ -539,9 +652,14 @@ def main():
         metrics["sharp_ratio"] = metrics["sharpness"] / max(metrics["target_sharpness"], 1e-8)
         metrics["balanced_score"] = compute_balanced_score(metrics, args)
         metrics["paired_score"] = compute_paired_score(metrics, args)
+        metrics["detail_paired_score"] = compute_detail_paired_score(metrics, args)
         with torch.no_grad():
             fixed_preview_eval = predict_stage1_fa(
-                model, fixed_t1, clamp=True, prediction_mode=args.stage1_prediction_mode
+                model,
+                fixed_t1,
+                clamp=True,
+                prediction_mode=args.stage1_prediction_mode,
+                detail_scale=args.stage1_detail_scale,
             )
         is_bad_epoch = False
         anomaly_reasons: List[str] = []
@@ -572,6 +690,7 @@ def main():
             "best_sharp_ratio": best_metrics["sharp_ratio"] if not is_best else metrics["sharp_ratio"],
             "best_balanced_score": best_metrics["balanced_score"] if not is_best else metrics["balanced_score"],
             "best_paired_score": best_metrics["paired_score"] if not is_best else metrics["paired_score"],
+            "best_detail_paired_score": best_metrics["detail_paired_score"] if not is_best else metrics["detail_paired_score"],
             "anomaly_epochs": anomaly_epochs,
             "no_improve_epochs": no_improve_epochs,
             "args": vars(args),
@@ -585,7 +704,8 @@ def main():
                     f"val_l1={metrics['l1']:.6f} val_grad={metrics['grad']:.6f} val_hf={metrics['hf']:.6f} "
                     f"val_lpips={metrics['lpips']:.6f} val_fid={metrics['fid']:.4f} val_kid={metrics['kid']:.6f} "
                     f"sharp={metrics['sharpness']:.6f} sharp_ratio={metrics['sharp_ratio']:.4f} "
-                    f"balanced={metrics['balanced_score']:.4f} paired={metrics['paired_score']:.4f} anomaly_epochs={anomaly_epochs} "
+                    f"balanced={metrics['balanced_score']:.4f} paired={metrics['paired_score']:.4f} "
+                    f"detail_paired={metrics['detail_paired_score']:.4f} anomaly_epochs={anomaly_epochs} "
                     f"skipped_nonfinite={skipped_nonfinite}\n"
                 )
                 if anomaly_reasons:
@@ -614,6 +734,7 @@ def main():
                 best_metrics["sharp_ratio"] = metrics["sharp_ratio"]
                 best_metrics["balanced_score"] = metrics["balanced_score"]
                 best_metrics["paired_score"] = metrics["paired_score"]
+                best_metrics["detail_paired_score"] = metrics["detail_paired_score"]
                 checkpoint["best_psnr"] = best_metrics["psnr"]
                 checkpoint["best_ssim"] = best_metrics["ssim"]
                 checkpoint["best_mse"] = best_metrics["mse"]
@@ -625,11 +746,12 @@ def main():
                 checkpoint["best_sharp_ratio"] = best_metrics["sharp_ratio"]
                 checkpoint["best_balanced_score"] = best_metrics["balanced_score"]
                 checkpoint["best_paired_score"] = best_metrics["paired_score"]
+                checkpoint["best_detail_paired_score"] = best_metrics["detail_paired_score"]
                 torch.save(checkpoint, best_path)
                 accelerator.print(
                     f"New best Stage 1 checkpoint: PSNR={best_metrics['psnr']:.4f}, "
                     f"SSIM={best_metrics['ssim']:.4f}, MSE={best_metrics['mse']:.6f}, "
-                    f"L1={best_metrics['l1']:.6f}, Paired={best_metrics['paired_score']:.4f} -> {best_path}"
+                    f"L1={best_metrics['l1']:.6f}, Detail_Paired={best_metrics['detail_paired_score']:.4f} -> {best_path}"
                 )
 
         accelerator.print(
@@ -638,6 +760,7 @@ def main():
             f"L1={metrics['l1']:.6f} Grad={metrics['grad']:.6f} HF={metrics['hf']:.6f} "
             f"LPIPS={metrics['lpips']:.6f} FID={metrics['fid']:.4f} SharpRatio={metrics['sharp_ratio']:.4f} "
             f"Score={metrics['balanced_score']:.4f} Paired={metrics['paired_score']:.4f} "
+            f"Detail_Paired={metrics['detail_paired_score']:.4f} "
             f"AnomalyEpochs={anomaly_epochs} SkippedNonFinite={skipped_nonfinite}"
         )
 

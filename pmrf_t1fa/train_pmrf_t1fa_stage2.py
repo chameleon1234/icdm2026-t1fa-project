@@ -14,6 +14,7 @@ from tqdm import tqdm
 
 from pmrf_t1fa.models.pmrf_t1fa import (
     DetailRefinementFlowUNet,
+    DetailStage1Net,
     GradientLoss,
     RefinementFlowUNet,
     SSIMLoss,
@@ -24,7 +25,9 @@ from pmrf_t1fa.models.pmrf_t1fa import (
     compose_stage2_velocity,
     euler_refine,
     euler_refine_train,
+    infer_stage1_detail_scale,
     infer_stage1_in_channels,
+    infer_stage1_model_variant,
     infer_stage2_condition_mode,
     infer_stage1_prediction_mode,
     prepare_stage1_input,
@@ -152,6 +155,9 @@ def parse_args():
     parser.add_argument("--paired_sharp_weight", type=float, default=2.0)
     parser.add_argument("--detail_sharp_weight", type=float, default=8.0)
     parser.add_argument("--detail_coarse_penalty_weight", type=float, default=8.0)
+    parser.add_argument("--detail_target_sharp_ratio", type=float, default=0.90)
+    parser.add_argument("--detail_max_sharp_ratio", type=float, default=1.20)
+    parser.add_argument("--detail_oversharp_penalty_weight", type=float, default=12.0)
     parser.add_argument("--skip_nonfinite_batches", action="store_true")
     parser.add_argument("--rollback_on_degrade", action="store_true")
     parser.set_defaults(condition_on_coarse=True, skip_nonfinite_batches=True, rollback_on_degrade=True)
@@ -212,6 +218,17 @@ def compute_paired_score(metrics: Dict[str, float], args) -> float:
     )
 
 
+def compute_bounded_sharp_bonus(sharp_ratio: float, weight: float, args) -> float:
+    target_ratio = max(float(getattr(args, "detail_target_sharp_ratio", 0.90)), 1e-6)
+    max_ratio = float(getattr(args, "detail_max_sharp_ratio", 1.20))
+    bounded_bonus = min(float(sharp_ratio), target_ratio) / target_ratio
+    oversharp_penalty = max(float(sharp_ratio) - max_ratio, 0.0)
+    return (
+        weight * bounded_bonus
+        - getattr(args, "detail_oversharp_penalty_weight", 12.0) * oversharp_penalty
+    )
+
+
 def compute_wm_paired_score(metrics: Dict[str, float], args) -> float:
     return (
         compute_paired_score(metrics, args)
@@ -219,18 +236,21 @@ def compute_wm_paired_score(metrics: Dict[str, float], args) -> float:
         - args.paired_wm_mae_weight * metrics["wm_l1"]
         - args.paired_grad_weight * metrics["grad"]
         - args.paired_roi_weight * metrics["roi"]
-        + args.paired_sharp_weight * metrics["sharp_ratio"]
+        + compute_bounded_sharp_bonus(metrics["sharp_ratio"], args.paired_sharp_weight, args)
     )
 
 
 def compute_detail_paired_score(metrics: Dict[str, float], args) -> float:
     coarse_sharp_ratio = metrics.get("coarse_sharp_ratio", 0.0)
-    sharp_gain = metrics["sharp_ratio"] - coarse_sharp_ratio
+    target_ratio = max(float(getattr(args, "detail_target_sharp_ratio", 0.90)), 1e-6)
+    sharp_gain = min(metrics["sharp_ratio"], target_ratio) - min(coarse_sharp_ratio, target_ratio)
     smooth_penalty = max(coarse_sharp_ratio - metrics["sharp_ratio"], 0.0)
+    oversharp_penalty = max(metrics["sharp_ratio"] - getattr(args, "detail_max_sharp_ratio", 1.20), 0.0)
     return (
         compute_wm_paired_score(metrics, args)
         + args.detail_sharp_weight * sharp_gain
         - args.detail_coarse_penalty_weight * smooth_penalty
+        - getattr(args, "detail_oversharp_penalty_weight", 12.0) * oversharp_penalty
     )
 
 
@@ -408,19 +428,22 @@ def roi_consistency_loss(
     return torch.stack(losses).mean()
 
 
-def load_stage1_model(stage1_ckpt: str, device: torch.device) -> Tuple[Stage1Net, str, int]:
+def load_stage1_model(stage1_ckpt: str, device: torch.device) -> Tuple[torch.nn.Module, str, int, float]:
     checkpoint = torch.load(stage1_ckpt, map_location="cpu")
     state_dict = checkpoint["model"] if isinstance(checkpoint, dict) and "model" in checkpoint else checkpoint
     stage1_channels = infer_stage1_in_channels(checkpoint)
-    stage1 = Stage1Net(in_channels=stage1_channels, out_channels=1)
+    ckpt_args = checkpoint.get("args", {}) if isinstance(checkpoint, dict) else {}
+    if infer_stage1_model_variant(ckpt_args) == "detail":
+        stage1 = DetailStage1Net(in_channels=stage1_channels, out_channels=1)
+    else:
+        stage1 = Stage1Net(in_channels=stage1_channels, out_channels=1)
     stage1.load_state_dict(state_dict)
     stage1.to(device)
     stage1.eval()
     for param in stage1.parameters():
         param.requires_grad = False
-    ckpt_args = checkpoint.get("args", {}) if isinstance(checkpoint, dict) else {}
     prediction_mode = infer_stage1_prediction_mode(ckpt_args)
-    return stage1, prediction_mode, stage1_channels
+    return stage1, prediction_mode, stage1_channels, infer_stage1_detail_scale(ckpt_args)
 
 
 def predict_stage1_batch(
@@ -428,9 +451,16 @@ def predict_stage1_batch(
     t1_img: torch.Tensor,
     stage1_device: torch.device,
     prediction_mode: str,
+    detail_scale: float,
 ) -> torch.Tensor:
     stage1_input = t1_img.to(stage1_device, non_blocking=True)
-    coarse = predict_stage1_fa(stage1, stage1_input, clamp=True, prediction_mode=prediction_mode)
+    coarse = predict_stage1_fa(
+        stage1,
+        stage1_input,
+        clamp=True,
+        prediction_mode=prediction_mode,
+        detail_scale=detail_scale,
+    )
     return coarse.to(t1_img.device, non_blocking=True)
 
 
@@ -586,7 +616,7 @@ def main():
         stage1_device = torch.device("cuda")
     else:
         stage1_device = accelerator.device
-    stage1, stage1_prediction_mode, stage1_channels = load_stage1_model(args.stage1_ckpt, stage1_device)
+    stage1, stage1_prediction_mode, stage1_channels, stage1_detail_scale = load_stage1_model(args.stage1_ckpt, stage1_device)
     train_dataset = make_slice_dataset(args.train_t1_dir, args.train_fa_dir, stage1_channels)
     val_dataset = make_slice_dataset(args.val_t1_dir, args.val_fa_dir, stage1_channels)
     train_dataset = maybe_limit_dataset(train_dataset, args.train_limit)
@@ -638,7 +668,7 @@ def main():
     fixed_t1 = prepare_stage1_input(fixed_batch["t1_slice"][:preview_batch_size].to(accelerator.device), stage1_channels)
     fixed_fa = reduce_rgb_to_single_channel(fixed_batch["fa_slice"][:preview_batch_size].to(accelerator.device))
     with torch.no_grad(), accelerator.autocast():
-        fixed_coarse = predict_stage1_batch(stage1, fixed_t1, stage1_device, stage1_prediction_mode)
+        fixed_coarse = predict_stage1_batch(stage1, fixed_t1, stage1_device, stage1_prediction_mode, stage1_detail_scale)
 
     best_metrics = {
         "psnr": float("-inf"),
@@ -701,7 +731,8 @@ def main():
         f"mixed_precision={args.mixed_precision} | stage1_channels={stage1_channels} | "
         f"source_noise_std={args.source_noise_std} | rollout_train_steps={args.rollout_train_steps} | "
         f"eval_steps={args.eval_steps} | stage1_device={stage1_device} | "
-        f"stage2_model_variant={args.stage2_model_variant} | detail_boost={args.detail_boost}"
+        f"stage2_model_variant={args.stage2_model_variant} | detail_boost={args.detail_boost} | "
+        f"stage1_detail_scale={stage1_detail_scale}"
     )
 
     for epoch in range(start_epoch, args.epochs):
@@ -741,7 +772,7 @@ def main():
             fa_img = reduce_rgb_to_single_channel(batch["fa_slice"].to(accelerator.device))
 
             with torch.no_grad(), accelerator.autocast():
-                coarse = predict_stage1_batch(stage1, t1_img, stage1_device, stage1_prediction_mode)
+                coarse = predict_stage1_batch(stage1, t1_img, stage1_device, stage1_prediction_mode, stage1_detail_scale)
 
             with accelerator.autocast():
                 t = sample_stage2_time(
@@ -913,7 +944,7 @@ def main():
                 t1_img = prepare_stage1_input(batch["t1_slice"].to(accelerator.device), stage1_channels)
                 fa_img = reduce_rgb_to_single_channel(batch["fa_slice"].to(accelerator.device))
                 with accelerator.autocast():
-                    coarse = predict_stage1_batch(stage1, t1_img, stage1_device, stage1_prediction_mode)
+                    coarse = predict_stage1_batch(stage1, t1_img, stage1_device, stage1_prediction_mode, stage1_detail_scale)
 
                     t_eval = sample_stage2_time(
                         batch_size=t1_img.shape[0],

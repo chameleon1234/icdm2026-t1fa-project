@@ -59,6 +59,38 @@ def test_predict_stage1_residual_uses_center_slice_for_stacked_input():
     assert coarse.item() == 0.25
 
 
+def test_predict_stage1_detail_head_adds_highpass_detail_to_residual():
+    from pmrf_t1fa.models.pmrf_t1fa import predict_stage1_fa
+
+    class FixedDetail(torch.nn.Module):
+        def forward(self, x):
+            base = x.new_zeros((x.shape[0], 1, x.shape[2], x.shape[3]))
+            detail = x.new_zeros((x.shape[0], 1, x.shape[2], x.shape[3]))
+            detail[:, :, 2, 2] = 1.0
+            return base, detail
+
+    t1_stack = torch.zeros((1, 3, 5, 5))
+
+    no_detail = predict_stage1_fa(FixedDetail(), t1_stack, prediction_mode="residual", detail_scale=0.0)
+    with_detail = predict_stage1_fa(FixedDetail(), t1_stack, prediction_mode="residual", detail_scale=1.0)
+
+    assert torch.allclose(no_detail, torch.zeros_like(no_detail))
+    assert with_detail[:, :, 2, 2].item() > 0.0
+    assert abs(with_detail.sum().item()) < 1e-5
+
+
+def test_detail_stage1_net_returns_base_and_detail_heads():
+    from pmrf_t1fa.models.pmrf_t1fa import DetailStage1Net
+
+    model = DetailStage1Net(in_channels=3, out_channels=1, dim=8)
+    x = torch.zeros((1, 3, 16, 16))
+
+    base, detail = model(x)
+
+    assert base.shape == torch.Size([1, 1, 16, 16])
+    assert detail.shape == torch.Size([1, 1, 16, 16])
+
+
 def test_stage1_checkpoint_channel_inference_supports_export_and_stage2_eval(tmp_path):
     from pmrf_t1fa.models.pmrf_t1fa import Stage1Net, infer_stage1_in_channels
     from scripts.export_pm_dirf_predictions import load_stage1 as load_export_stage1
@@ -76,13 +108,41 @@ def test_stage1_checkpoint_channel_inference_supports_export_and_stage2_eval(tmp
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     assert infer_stage1_in_channels(checkpoint) == 3
 
-    export_model, export_mode, export_channels = load_export_stage1(checkpoint_path, torch.device("cpu"))
-    eval_model, eval_mode, eval_channels = load_eval_stage1(checkpoint_path, torch.device("cpu"))
+    export_model, export_mode, export_channels, export_detail_scale = load_export_stage1(checkpoint_path, torch.device("cpu"))
+    eval_model, eval_mode, eval_channels, eval_detail_scale = load_eval_stage1(checkpoint_path, torch.device("cpu"))
 
     assert export_model.patch_embed.weight.shape[1] == 3
     assert eval_model.patch_embed.weight.shape[1] == 3
     assert export_mode == eval_mode == "residual"
     assert export_channels == eval_channels == 3
+    assert export_detail_scale == 0.0
+    assert eval_detail_scale == 0.0
+
+
+def test_stage1_detail_checkpoint_loader_preserves_variant_and_detail_scale(tmp_path):
+    from pmrf_t1fa.models.pmrf_t1fa import DetailStage1Net
+    from scripts.export_pm_dirf_predictions import load_stage1 as load_export_stage1
+
+    checkpoint_path = tmp_path / "stage1_detail_3slice.pt"
+    torch.save(
+        {
+            "model": DetailStage1Net(in_channels=3, out_channels=1).state_dict(),
+            "args": {
+                "context_slices": 3,
+                "stage1_prediction_mode": "residual",
+                "stage1_model_variant": "detail",
+                "stage1_detail_scale": 0.75,
+            },
+        },
+        checkpoint_path,
+    )
+
+    model, mode, channels, detail_scale = load_export_stage1(checkpoint_path, torch.device("cpu"))
+
+    assert hasattr(model, "output_detail")
+    assert mode == "residual"
+    assert channels == 3
+    assert detail_scale == 0.75
 
 
 def test_wm_paired_score_prefers_white_matter_and_roi_fidelity():
@@ -278,6 +338,9 @@ def test_detail_paired_score_rewards_sharpness_over_smoothing():
         paired_sharp_weight=2.0,
         detail_sharp_weight=8.0,
         detail_coarse_penalty_weight=8.0,
+        detail_target_sharp_ratio=0.90,
+        detail_max_sharp_ratio=1.20,
+        detail_oversharp_penalty_weight=12.0,
     )
     base = {
         "psnr": 28.0,
@@ -294,3 +357,36 @@ def test_detail_paired_score_rewards_sharpness_over_smoothing():
     smoother = dict(base, psnr=28.2, sharp_ratio=0.45)
 
     assert compute_detail_paired_score(base, args) > compute_detail_paired_score(smoother, args)
+
+    noisy = dict(base, psnr=28.3, sharp_ratio=2.20)
+    assert compute_detail_paired_score(base, args) > compute_detail_paired_score(noisy, args)
+
+
+def test_stage1_detail_paired_score_rewards_sharper_valid_predictions():
+    from types import SimpleNamespace
+
+    from pmrf_t1fa.train_pmrf_t1fa_stage1 import compute_detail_paired_score
+
+    args = SimpleNamespace(
+        paired_psnr_weight=1.0,
+        paired_ssim_weight=10.0,
+        paired_mse_weight=200.0,
+        paired_mae_weight=10.0,
+        paired_sharp_weight=6.0,
+        detail_target_sharp_ratio=0.90,
+        detail_max_sharp_ratio=1.20,
+        detail_oversharp_penalty_weight=12.0,
+    )
+    sharp = {
+        "psnr": 27.8,
+        "ssim": 0.90,
+        "mse": 0.0018,
+        "l1": 0.018,
+        "sharp_ratio": 0.80,
+    }
+    smooth = dict(sharp, psnr=28.0, sharp_ratio=0.45)
+
+    assert compute_detail_paired_score(sharp, args) > compute_detail_paired_score(smooth, args)
+
+    noisy = dict(sharp, psnr=28.1, sharp_ratio=2.50)
+    assert compute_detail_paired_score(sharp, args) > compute_detail_paired_score(noisy, args)

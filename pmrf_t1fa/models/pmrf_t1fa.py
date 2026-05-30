@@ -28,6 +28,14 @@ def single_channel_laplacian(x: torch.Tensor) -> torch.Tensor:
     return F.conv2d(x, kernel, padding=1)
 
 
+def highpass_residual(x: torch.Tensor, kernel_size: int = 5) -> torch.Tensor:
+    if kernel_size <= 1:
+        return x
+    pad = kernel_size // 2
+    low = F.avg_pool2d(x, kernel_size=kernel_size, stride=1, padding=pad)
+    return x - low
+
+
 def prepare_stage1_input(x: torch.Tensor, expected_channels: int) -> torch.Tensor:
     if x.dim() != 4:
         raise ValueError(f"Expected BCHW tensor, got shape {tuple(x.shape)}")
@@ -324,6 +332,94 @@ class Stage1Net(nn.Module):
         return self.output(x)
 
 
+class DetailStage1Net(Stage1Net):
+    def __init__(
+        self,
+        in_channels: int = 1,
+        out_channels: int = 1,
+        dim: int = 48,
+        num_blocks: Tuple[int, int, int, int] = (2, 2, 2, 2),
+        num_heads: Tuple[int, int, int, int] = (1, 2, 4, 8),
+        expansion_factor: float = 2.66,
+    ):
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            dim=dim,
+            num_blocks=num_blocks,
+            num_heads=num_heads,
+            expansion_factor=expansion_factor,
+        )
+        self.output_detail = nn.Conv2d(dim, out_channels, 3, padding=1)
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        enc1 = self.patch_embed(x)
+        for blk in self.encoder_level1:
+            enc1 = blk(enc1)
+
+        enc2 = self.down1_2(enc1)
+        for blk in self.encoder_level2:
+            enc2 = blk(enc2)
+
+        enc3 = self.down2_3(enc2)
+        for blk in self.encoder_level3:
+            enc3 = blk(enc3)
+
+        x = self.down3_4(enc3)
+        for blk in self.bottleneck:
+            x = blk(x)
+
+        x = self.up4_3(x)
+        x = self.reduce_chan_level3(torch.cat([x, enc3], dim=1))
+        for blk in self.decoder_level3:
+            x = blk(x)
+
+        x = self.up3_2(x)
+        x = self.reduce_chan_level2(torch.cat([x, enc2], dim=1))
+        for blk in self.decoder_level2:
+            x = blk(x)
+
+        x = self.up2_1(x)
+        x = self.reduce_chan_level1(torch.cat([x, enc1], dim=1))
+        for blk in self.decoder_level1:
+            x = blk(x)
+
+        return self.output(x), self.output_detail(x)
+
+
+def split_stage1_output(
+    model_output: torch.Tensor | Tuple[torch.Tensor, torch.Tensor],
+) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+    if isinstance(model_output, tuple):
+        return model_output
+    return model_output, None
+
+
+def compose_stage1_output(
+    model_output: torch.Tensor | Tuple[torch.Tensor, torch.Tensor],
+    detail_scale: float = 0.0,
+) -> torch.Tensor:
+    base, detail = split_stage1_output(model_output)
+    if detail is None or float(detail_scale) == 0.0:
+        return base
+    return base + float(detail_scale) * highpass_residual(detail)
+
+
+def infer_stage1_model_variant(checkpoint_args: Optional[dict]) -> str:
+    if not checkpoint_args:
+        return "single"
+    mode = checkpoint_args.get("stage1_model_variant", "single")
+    if mode in {"single", "detail"}:
+        return str(mode)
+    return "single"
+
+
+def infer_stage1_detail_scale(checkpoint_args: Optional[dict]) -> float:
+    if not checkpoint_args:
+        return 0.0
+    return float(checkpoint_args.get("stage1_detail_scale", 0.0))
+
+
 def infer_stage1_prediction_mode(checkpoint_args: Optional[dict]) -> str:
     if not checkpoint_args:
         return "absolute"
@@ -405,8 +501,9 @@ def predict_stage1_fa(
     t1_img: torch.Tensor,
     clamp: bool = False,
     prediction_mode: str = "residual",
+    detail_scale: float = 0.0,
 ) -> torch.Tensor:
-    pred = model(t1_img)
+    pred = compose_stage1_output(model(t1_img), detail_scale=detail_scale)
     if prediction_mode == "residual":
         coarse = center_channel(t1_img) + pred
     elif prediction_mode == "absolute":

@@ -1,20 +1,18 @@
-# Detail-Head Stage1-Guided Multi-Step PM-DIRF Quick Test
+# Detail-Stage1 PM-DIRF Quick Test
 
-This test targets the blur issue directly. The earlier `PM_DIRF_STAGE1GUIDED_MULTISTEP_K10` run still used a single-head velocity model, so Stage 2 was pulled back toward a smooth posterior mean. This version uses `--stage2_model_variant detail`, which splits Stage 2 into average-velocity and detail-velocity heads, then boosts the detail head during multi-step rollout.
+The K10/K25 Stage2-only detail-head runs stayed blurry because they were still refining a smooth Stage1 posterior-mean checkpoint. This quick test moves the anti-blur intervention to Stage1 first: train a 3-slice base+detail Stage1, select the checkpoint with `detail_paired`, then let Stage2 refine from that sharper coarse FA. The `detail_paired` score uses a bounded sharpness bonus, so it rewards recovering missing high-frequency structure without selecting obviously over-sharp noisy checkpoints.
 
-## Smoke Test
+## 1. Smoke Test Stage1 Detail
 
 ```powershell
 conda activate dinov3test
-python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
-  --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --run_name pm_dirf_detailhead_stage1guided_smoke `
-  --stage2_model_variant detail `
-  --condition_mode coarse_t1_edge `
-  --detail_boost 0.90 `
-  --t_sampling endpoint `
-  --rollout_train_steps 2,4 `
-  --eval_steps 4 `
+python -m pmrf_t1fa.train_pmrf_t1fa_stage1 `
+  --run_name pmrf_t1fa_stage1_detail_smoke `
+  --context_slices 3 `
+  --stage1_model_variant detail `
+  --stage1_prediction_mode residual `
+  --stage1_detail_scale 0.60 `
+  --best_metric detail_paired `
   --epochs 1 `
   --batch_size 1 `
   --train_limit 8 `
@@ -23,18 +21,77 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --preview_every 999 `
   --save_every 999 `
   --disable_lpips `
+  --detail_hf_weight 0.35 `
+  --detail_lap_weight 0.20 `
+  --paired_sharp_weight 8.0 `
+  --detail_target_sharp_ratio 0.90 `
+  --detail_max_sharp_ratio 1.20 `
+  --detail_oversharp_penalty_weight 12.0 `
   --no_auto_resume
 ```
 
-## Quick Visual Test
+## 2. Train Stage1 Detail Candidate
 
-If your GPU is already heavily occupied and Stage1 inference causes OOM, add `--stage1_device cpu`. Stage2 still trains on the accelerator device, but Stage1 coarse prediction is offloaded.
+```powershell
+conda activate dinov3test
+python -m pmrf_t1fa.train_pmrf_t1fa_stage1 `
+  --run_name pmrf_t1fa_stage1_detail_3slice `
+  --context_slices 3 `
+  --stage1_model_variant detail `
+  --stage1_prediction_mode residual `
+  --stage1_detail_scale 0.60 `
+  --best_metric detail_paired `
+  --epochs 80 `
+  --batch_size 2 `
+  --lr 8e-5 `
+  --mse_weight 0.35 `
+  --l1_start_weight 0.80 `
+  --l1_end_weight 0.45 `
+  --ssim_start_weight 0.65 `
+  --ssim_end_weight 0.35 `
+  --grad_weight 0.12 `
+  --hf_weight 0.12 `
+  --detail_hf_weight 0.35 `
+  --detail_lap_weight 0.20 `
+  --paired_sharp_weight 8.0 `
+  --detail_target_sharp_ratio 0.90 `
+  --detail_max_sharp_ratio 1.20 `
+  --detail_oversharp_penalty_weight 12.0 `
+  --disable_lpips `
+  --fid_eval_every 999 `
+  --no_auto_resume
+```
+
+## 3. Export and Inspect Stage1
+
+```powershell
+python scripts/export_pm_dirf_predictions.py `
+  --stage stage1 `
+  --stage1_ckpt outputs/pmrf_t1fa_stage1_detail_3slice/checkpoints/best_stage1.pt `
+  --output_dir outputs/icdm2026/predictions/PM_STAGE1_DETAIL_3SLICE `
+  --device cuda
+
+python scripts/evaluate_method_folder.py `
+  --pred_dir outputs/icdm2026/predictions/PM_STAGE1_DETAIL_3SLICE `
+  --method PM_STAGE1_DETAIL_3SLICE `
+  --visualize_count 8
+```
+
+Check:
+
+```text
+outputs/icdm2026/figures/method_slices/PM_STAGE1_DETAIL_3SLICE
+```
+
+Only continue to Stage2 if Stage1 itself is visibly sharper than `PM_STAGE1_3SLICE`.
+
+## 4. Train Stage2 From Detail Stage1
 
 ```powershell
 conda activate dinov3test
 python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
-  --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --run_name pm_dirf_detailhead_stage1guided_3slice `
+  --stage1_ckpt outputs/pmrf_t1fa_stage1_detail_3slice/checkpoints/best_stage1.pt `
+  --run_name pm_dirf_detailstage1_stage2_3slice `
   --stage2_model_variant detail `
   --condition_mode coarse_t1_edge `
   --detail_boost 0.90 `
@@ -61,55 +118,48 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --paired_sharp_weight 5.0 `
   --detail_sharp_weight 12.0 `
   --detail_coarse_penalty_weight 8.0 `
+  --detail_target_sharp_ratio 0.90 `
+  --detail_max_sharp_ratio 1.20 `
+  --detail_oversharp_penalty_weight 12.0 `
   --disable_lpips `
   --no_auto_resume
 ```
 
-## Export K10
+## 5. Export and Visualize K10/K25
 
 ```powershell
 python scripts/export_pm_dirf_predictions.py `
   --stage stage2 `
-  --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --stage2_ckpt outputs/pm_dirf_detailhead_stage1guided_3slice/checkpoints/best_stage2.pt `
-  --output_dir outputs/icdm2026/predictions/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K10 `
+  --stage1_ckpt outputs/pmrf_t1fa_stage1_detail_3slice/checkpoints/best_stage1.pt `
+  --stage2_ckpt outputs/pm_dirf_detailstage1_stage2_3slice/checkpoints/best_stage2.pt `
+  --output_dir outputs/icdm2026/predictions/PM_DIRF_DETAILSTAGE1_K10 `
   --device cuda `
   --condition_mode auto `
   --eval_steps 10
-```
 
-## Optional Export K25
-
-```powershell
 python scripts/export_pm_dirf_predictions.py `
   --stage stage2 `
-  --stage1_ckpt outputs/pmrf_t1fa_stage1_3slice_pm/checkpoints/best_stage1.pt `
-  --stage2_ckpt outputs/pm_dirf_detailhead_stage1guided_3slice/checkpoints/best_stage2.pt `
-  --output_dir outputs/icdm2026/predictions/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K25 `
+  --stage1_ckpt outputs/pmrf_t1fa_stage1_detail_3slice/checkpoints/best_stage1.pt `
+  --stage2_ckpt outputs/pm_dirf_detailstage1_stage2_3slice/checkpoints/best_stage2.pt `
+  --output_dir outputs/icdm2026/predictions/PM_DIRF_DETAILSTAGE1_K25 `
   --device cuda `
   --condition_mode auto `
   --eval_steps 25
-```
 
-## Evaluate and Visualize
-
-```powershell
 python scripts/evaluate_method_folder.py `
-  --pred_dir outputs/icdm2026/predictions/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K10 `
-  --method PM_DIRF_DETAILHEAD_STAGE1GUIDED_K10 `
+  --pred_dir outputs/icdm2026/predictions/PM_DIRF_DETAILSTAGE1_K10 `
+  --method PM_DIRF_DETAILSTAGE1_K10 `
   --visualize_count 8
 
 python scripts/evaluate_method_folder.py `
-  --pred_dir outputs/icdm2026/predictions/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K25 `
-  --method PM_DIRF_DETAILHEAD_STAGE1GUIDED_K25 `
+  --pred_dir outputs/icdm2026/predictions/PM_DIRF_DETAILSTAGE1_K25 `
+  --method PM_DIRF_DETAILSTAGE1_K25 `
   --visualize_count 8
 ```
 
-The new visual panels are written to:
+New visual folders:
 
 ```text
-outputs/icdm2026/figures/method_slices/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K10
-outputs/icdm2026/figures/method_slices/PM_DIRF_DETAILHEAD_STAGE1GUIDED_K25
+outputs/icdm2026/figures/method_slices/PM_DIRF_DETAILSTAGE1_K10
+outputs/icdm2026/figures/method_slices/PM_DIRF_DETAILSTAGE1_K25
 ```
-
-Keep this line only if K10 or K25 visibly improves white-matter detail without obvious false texture or major PSNR/SSIM collapse.

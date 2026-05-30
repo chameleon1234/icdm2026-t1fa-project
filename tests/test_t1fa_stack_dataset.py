@@ -95,6 +95,107 @@ def test_validate_resume_args_accepts_equivalent_checkpoint_paths():
     validate_resume_args(checkpoint, args, ["stage1_ckpt"], "resume.pt")
 
 
+def test_stage2_detail_teacher_preset_makes_refinement_less_conservative():
+    from types import SimpleNamespace
+
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import apply_stage2_training_preset
+
+    args = SimpleNamespace(
+        stage2_training_preset="detail_teacher",
+        stage2_model_variant="single",
+        condition_mode="coarse",
+        source_noise_std=0.01,
+        t_sampling="endpoint",
+        rollout_train_steps=[4, 8, 10],
+        eval_steps=4,
+        velocity_weight=0.20,
+        image_mse_weight=0.65,
+        l1_weight=1.10,
+        ssim_weight=0.80,
+        grad_weight=0.06,
+        hf_weight=0.04,
+        residual_hf_weight=0.12,
+        detail_velocity_weight=0.10,
+        rollout_hf_weight=0.18,
+        rollout_residual_hf_weight=0.18,
+        rollout_wm_l1_weight=0.08,
+        rollout_wm_grad_weight=0.04,
+        wm_l1_weight=0.12,
+        wm_grad_weight=0.04,
+        roi_consistency_weight=0.02,
+        best_metric="paired",
+        degrade_check_mode="strict",
+        rollback_on_degrade=True,
+    )
+
+    out = apply_stage2_training_preset(args)
+
+    assert out.stage2_model_variant == "detail"
+    assert out.condition_mode == "coarse_t1_edge"
+    assert out.source_noise_std >= 0.05
+    assert out.t_sampling == "uniform"
+    assert 25 in out.rollout_train_steps
+    assert out.degrade_check_mode == "teacher"
+    assert out.rollback_on_degrade is False
+
+
+def test_stage1_loss_includes_white_matter_and_roi_terms():
+    from pmrf_t1fa.models.pmrf_t1fa import GradientLoss, SSIMLoss
+    from pmrf_t1fa.train_pmrf_t1fa_stage1 import ZeroLPIPSLoss, build_stage1_loss, build_training_masks
+
+    t1 = torch.zeros(1, 3, 8, 8)
+    target = torch.zeros(1, 1, 8, 8)
+    target[:, :, 2:6, 2:6] = 0.8
+    pred = torch.zeros_like(target)
+    brain_mask, wm_mask = build_training_masks(
+        t1,
+        target,
+        brain_t1_threshold=0.05,
+        brain_fa_threshold=0.02,
+        wm_quantile=0.50,
+        wm_min_threshold=0.20,
+    )
+
+    losses = build_stage1_loss(
+        pred,
+        target,
+        t1,
+        detail_pred=None,
+        brain_mask=brain_mask,
+        wm_mask=wm_mask,
+        ssim_loss_fn=SSIMLoss(),
+        grad_loss_fn=GradientLoss(),
+        lpips_loss_fn=ZeroLPIPSLoss(),
+        epoch=0,
+        total_epochs=1,
+        mse_weight=0.0,
+        l1_start_weight=0.0,
+        l1_end_weight=0.0,
+        ssim_start_weight=0.0,
+        ssim_end_weight=0.0,
+        grad_weight=0.0,
+        hf_weight=0.0,
+        detail_hf_weight=0.0,
+        detail_lap_weight=0.0,
+        brain_l1_weight=1.0,
+        wm_l1_weight=1.0,
+        wm_grad_weight=1.0,
+        roi_consistency_weight=1.0,
+        roi_rows=2,
+        roi_cols=2,
+        roi_min_pixels=1,
+        stage1_prediction_mode="residual",
+        stage1_detail_scale=0.0,
+        lpips_max_weight=0.0,
+    )
+
+    assert losses["brain_l1"] > 0
+    assert losses["wm_l1"] > 0
+    assert losses["wm_grad"] > 0
+    assert losses["roi"] > 0
+    assert losses["total"] > losses["brain_l1"]
+
+
 def test_predict_stage1_residual_uses_center_slice_for_stacked_input():
     from pmrf_t1fa.models.pmrf_t1fa import predict_stage1_fa
 

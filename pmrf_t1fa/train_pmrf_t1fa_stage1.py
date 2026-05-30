@@ -76,6 +76,17 @@ def parse_args():
     parser.add_argument("--hf_weight", type=float, default=0.02)
     parser.add_argument("--detail_hf_weight", type=float, default=0.0)
     parser.add_argument("--detail_lap_weight", type=float, default=0.0)
+    parser.add_argument("--brain_l1_weight", type=float, default=0.0)
+    parser.add_argument("--wm_l1_weight", type=float, default=0.0)
+    parser.add_argument("--wm_grad_weight", type=float, default=0.0)
+    parser.add_argument("--roi_consistency_weight", type=float, default=0.0)
+    parser.add_argument("--brain_t1_threshold", type=float, default=0.05)
+    parser.add_argument("--brain_fa_threshold", type=float, default=0.02)
+    parser.add_argument("--wm_quantile", type=float, default=0.65)
+    parser.add_argument("--wm_min_threshold", type=float, default=0.20)
+    parser.add_argument("--roi_rows", type=int, default=4)
+    parser.add_argument("--roi_cols", type=int, default=4)
+    parser.add_argument("--roi_min_pixels", type=int, default=16)
     parser.add_argument("--grad_clip", type=float, default=1.0)
     parser.add_argument("--image_check_start_epoch", type=int, default=5)
     parser.add_argument("--image_check_patience", type=int, default=2)
@@ -195,6 +206,84 @@ def make_slice_dataset(t1_dir: str, fa_dir: str, context_slices: int):
     return T1FADataset(t1_dir, fa_dir, preload_ram=False)
 
 
+def masked_l1_loss(pred: torch.Tensor, target: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    mask = mask.to(device=pred.device, dtype=pred.dtype)
+    denom = mask.sum().clamp_min(1.0)
+    return (torch.abs(pred - target) * mask).sum() / denom
+
+
+def masked_gradient_l1_loss(
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    mask: torch.Tensor,
+    grad_loss_fn: GradientLoss,
+) -> torch.Tensor:
+    mask = mask.to(device=pred.device, dtype=pred.dtype)
+    pred_x, pred_y = grad_loss_fn._gradients(pred)
+    target_x, target_y = grad_loss_fn._gradients(target)
+    denom = mask.sum().clamp_min(1.0)
+    return ((pred_x - target_x).abs() * mask).sum() / denom + ((pred_y - target_y).abs() * mask).sum() / denom
+
+
+def close_mask(mask: torch.Tensor, kernel_size: int = 5) -> torch.Tensor:
+    pad = kernel_size // 2
+    dilated = F.max_pool2d(mask.float(), kernel_size=kernel_size, stride=1, padding=pad)
+    eroded = -F.max_pool2d(-dilated, kernel_size=kernel_size, stride=1, padding=pad)
+    return (eroded > 0.5).float()
+
+
+def build_training_masks(
+    t1_img: torch.Tensor,
+    target: torch.Tensor,
+    brain_t1_threshold: float,
+    brain_fa_threshold: float,
+    wm_quantile: float,
+    wm_min_threshold: float,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    t1_01 = torch.clamp((center_channel(t1_img).float() + 1.0) / 2.0, 0.0, 1.0)
+    target_01 = torch.clamp((target.float() + 1.0) / 2.0, 0.0, 1.0)
+    brain = close_mask(((t1_01 > brain_t1_threshold) | (target_01 > brain_fa_threshold)).float())
+    wm_masks: List[torch.Tensor] = []
+    for i in range(target_01.shape[0]):
+        brain_i = brain[i : i + 1]
+        values = target_01[i : i + 1][brain_i.bool()]
+        if values.numel() == 0:
+            wm_masks.append(torch.zeros_like(brain_i))
+            continue
+        threshold = max(float(torch.quantile(values.detach().float().cpu(), wm_quantile).item()), wm_min_threshold)
+        wm_masks.append(close_mask((brain_i.bool() & (target_01[i : i + 1] >= threshold)).float()))
+    return brain, torch.cat(wm_masks, dim=0)
+
+
+def roi_consistency_loss(
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    wm_mask: torch.Tensor,
+    rows: int,
+    cols: int,
+    min_pixels: int,
+) -> torch.Tensor:
+    losses: List[torch.Tensor] = []
+    _, _, height, width = pred.shape
+    for y in range(rows):
+        y0 = y * height // rows
+        y1 = (y + 1) * height // rows
+        for x in range(cols):
+            x0 = x * width // cols
+            x1 = (x + 1) * width // cols
+            region_mask = wm_mask[:, :, y0:y1, x0:x1].to(dtype=pred.dtype, device=pred.device)
+            denom = region_mask.flatten(1).sum(dim=1)
+            valid = denom >= float(min_pixels)
+            if not bool(valid.any().item()):
+                continue
+            pred_mean = (pred[:, :, y0:y1, x0:x1] * region_mask).flatten(1).sum(dim=1) / denom.clamp_min(1.0)
+            target_mean = (target[:, :, y0:y1, x0:x1] * region_mask).flatten(1).sum(dim=1) / denom.clamp_min(1.0)
+            losses.append(torch.abs(pred_mean[valid] - target_mean[valid]).mean())
+    if not losses:
+        return pred.new_tensor(0.0)
+    return torch.stack(losses).mean()
+
+
 def maybe_limit_dataset(dataset, limit: int):
     if limit <= 0:
         return dataset
@@ -282,6 +371,8 @@ def build_stage1_loss(
     target: torch.Tensor,
     t1_img: torch.Tensor,
     detail_pred: torch.Tensor | None,
+    brain_mask: torch.Tensor,
+    wm_mask: torch.Tensor,
     ssim_loss_fn: SSIMLoss,
     grad_loss_fn: GradientLoss,
     lpips_loss_fn,
@@ -296,6 +387,13 @@ def build_stage1_loss(
     hf_weight: float,
     detail_hf_weight: float,
     detail_lap_weight: float,
+    brain_l1_weight: float,
+    wm_l1_weight: float,
+    wm_grad_weight: float,
+    roi_consistency_weight: float,
+    roi_rows: int,
+    roi_cols: int,
+    roi_min_pixels: int,
     stage1_prediction_mode: str,
     stage1_detail_scale: float,
     lpips_max_weight: float,
@@ -309,6 +407,17 @@ def build_stage1_loss(
     loss_ssim = ssim_loss_fn(pred_clamp, target_fp32)
     loss_grad = grad_loss_fn(pred_clamp, target_fp32)
     loss_hf = F.l1_loss(laplacian_filter(pred_clamp), laplacian_filter(target_fp32))
+    loss_brain_l1 = masked_l1_loss(pred_clamp, target_fp32, brain_mask)
+    loss_wm_l1 = masked_l1_loss(pred_clamp, target_fp32, wm_mask)
+    loss_wm_grad = masked_gradient_l1_loss(pred_clamp, target_fp32, wm_mask, grad_loss_fn)
+    loss_roi = roi_consistency_loss(
+        pred_clamp,
+        target_fp32,
+        wm_mask,
+        rows=roi_rows,
+        cols=roi_cols,
+        min_pixels=roi_min_pixels,
+    )
     if detail_pred is None:
         loss_detail_hf = pred_fp32.new_tensor(0.0)
         loss_detail_lap = pred_fp32.new_tensor(0.0)
@@ -341,6 +450,10 @@ def build_stage1_loss(
         + w_hf * loss_hf
         + detail_hf_weight * loss_detail_hf
         + detail_lap_weight * loss_detail_lap
+        + brain_l1_weight * loss_brain_l1
+        + wm_l1_weight * loss_wm_l1
+        + wm_grad_weight * loss_wm_grad
+        + roi_consistency_weight * loss_roi
         + w_lpips * loss_lpips
     )
     return {
@@ -352,6 +465,10 @@ def build_stage1_loss(
         "hf": loss_hf,
         "detail_hf": loss_detail_hf,
         "detail_lap": loss_detail_lap,
+        "brain_l1": loss_brain_l1,
+        "wm_l1": loss_wm_l1,
+        "wm_grad": loss_wm_grad,
+        "roi": loss_roi,
         "lpips": loss_lpips,
         "pred_clamp": pred_clamp,
         "w_l1": torch.tensor(w_l1, device=pred.device, dtype=pred.dtype),
@@ -502,6 +619,10 @@ def main():
             "hf": 0.0,
             "detail_hf": 0.0,
             "detail_lap": 0.0,
+            "brain_l1": 0.0,
+            "wm_l1": 0.0,
+            "wm_grad": 0.0,
+            "roi": 0.0,
             "lpips": 0.0,
         }
         skipped_nonfinite = 0
@@ -522,11 +643,21 @@ def main():
             else:
                 coarse_pred = pred_delta
             _, detail_pred = split_stage1_output(raw_output)
+            brain_mask, wm_mask = build_training_masks(
+                t1_img,
+                fa_img,
+                brain_t1_threshold=args.brain_t1_threshold,
+                brain_fa_threshold=args.brain_fa_threshold,
+                wm_quantile=args.wm_quantile,
+                wm_min_threshold=args.wm_min_threshold,
+            )
             losses = build_stage1_loss(
                 coarse_pred,
                 fa_img,
                 t1_img,
                 detail_pred,
+                brain_mask,
+                wm_mask,
                 ssim_loss_fn,
                 grad_loss_fn,
                 lpips_loss_fn,
@@ -541,6 +672,13 @@ def main():
                 args.hf_weight,
                 args.detail_hf_weight,
                 args.detail_lap_weight,
+                args.brain_l1_weight,
+                args.wm_l1_weight,
+                args.wm_grad_weight,
+                args.roi_consistency_weight,
+                args.roi_rows,
+                args.roi_cols,
+                args.roi_min_pixels,
                 args.stage1_prediction_mode,
                 args.stage1_detail_scale,
                 args.lpips_max_weight,
@@ -578,6 +716,7 @@ def main():
                     ssim_w=losses["w_ssim"].item(),
                     lpips_w=losses["w_lpips"].item(),
                     dhf=losses["detail_hf"].item(),
+                    wm=losses["wm_l1"].item(),
                 )
                 if global_step % args.preview_every == 0:
                     model.eval()
@@ -615,6 +754,10 @@ def main():
             "ssim": 0.0,
             "sharpness": 0.0,
             "target_sharpness": 0.0,
+            "brain_l1": 0.0,
+            "wm_l1": 0.0,
+            "wm_grad": 0.0,
+            "roi": 0.0,
         }
         val_batches = 0
         with torch.no_grad():
@@ -632,6 +775,14 @@ def main():
                     prediction_mode=args.stage1_prediction_mode,
                     detail_scale=args.stage1_detail_scale,
                 )
+                brain_mask, wm_mask = build_training_masks(
+                    t1_img,
+                    fa_img,
+                    brain_t1_threshold=args.brain_t1_threshold,
+                    brain_fa_threshold=args.brain_fa_threshold,
+                    wm_quantile=args.wm_quantile,
+                    wm_min_threshold=args.wm_min_threshold,
+                )
 
                 val_total["mse"] += F.mse_loss(coarse_pred, fa_img).item()
                 val_total["l1"] += F.l1_loss(coarse_pred, fa_img).item()
@@ -646,6 +797,17 @@ def main():
                 val_total["psnr"] += compute_psnr(coarse_pred, fa_img).item()
                 val_total["sharpness"] += laplacian_variance(coarse_pred).item()
                 val_total["target_sharpness"] += laplacian_variance(fa_img).item()
+                val_total["brain_l1"] += masked_l1_loss(coarse_pred, fa_img, brain_mask).item()
+                val_total["wm_l1"] += masked_l1_loss(coarse_pred, fa_img, wm_mask).item()
+                val_total["wm_grad"] += masked_gradient_l1_loss(coarse_pred, fa_img, wm_mask, grad_loss_fn).item()
+                val_total["roi"] += roi_consistency_loss(
+                    coarse_pred,
+                    fa_img,
+                    wm_mask,
+                    rows=args.roi_rows,
+                    cols=args.roi_cols,
+                    min_pixels=args.roi_min_pixels,
+                ).item()
                 if (epoch + 1) % args.fid_eval_every == 0:
                     coarse_01_3c = torch.clamp((coarse_pred + 1.0) / 2.0, 0.0, 1.0).repeat(1, 3, 1, 1)
                     fa_01_3c = torch.clamp((fa_img + 1.0) / 2.0, 0.0, 1.0).repeat(1, 3, 1, 1)
@@ -716,6 +878,8 @@ def main():
                     f"[Epoch {epoch + 1}] train_total={running['total'] / max(len(train_loader), 1):.6f} "
                     f"val_psnr={metrics['psnr']:.4f} val_ssim={metrics['ssim']:.4f} val_mse={metrics['mse']:.6f} "
                     f"val_l1={metrics['l1']:.6f} val_grad={metrics['grad']:.6f} val_hf={metrics['hf']:.6f} "
+                    f"val_brain_l1={metrics['brain_l1']:.6f} val_wm_l1={metrics['wm_l1']:.6f} "
+                    f"val_wm_grad={metrics['wm_grad']:.6f} val_roi={metrics['roi']:.6f} "
                     f"val_lpips={metrics['lpips']:.6f} val_fid={metrics['fid']:.4f} val_kid={metrics['kid']:.6f} "
                     f"sharp={metrics['sharpness']:.6f} sharp_ratio={metrics['sharp_ratio']:.4f} "
                     f"balanced={metrics['balanced_score']:.4f} paired={metrics['paired_score']:.4f} "

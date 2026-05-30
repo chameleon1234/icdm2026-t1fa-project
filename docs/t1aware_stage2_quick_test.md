@@ -25,6 +25,10 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage1 `
   --disable_lpips `
   --detail_hf_weight 0.35 `
   --detail_lap_weight 0.20 `
+  --brain_l1_weight 0.08 `
+  --wm_l1_weight 0.16 `
+  --wm_grad_weight 0.08 `
+  --roi_consistency_weight 0.04 `
   --paired_sharp_weight 8.0 `
   --detail_target_sharp_ratio 0.90 `
   --detail_max_sharp_ratio 1.20 `
@@ -54,6 +58,10 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage1 `
   --hf_weight 0.12 `
   --detail_hf_weight 0.35 `
   --detail_lap_weight 0.20 `
+  --brain_l1_weight 0.08 `
+  --wm_l1_weight 0.16 `
+  --wm_grad_weight 0.08 `
+  --roi_consistency_weight 0.04 `
   --paired_sharp_weight 8.0 `
   --detail_target_sharp_ratio 0.90 `
   --detail_max_sharp_ratio 1.20 `
@@ -92,6 +100,7 @@ conda activate dinov3test
 python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --stage1_ckpt outputs/pmrf_t1fa_stage1_detail_3slice/checkpoints/best_stage1.pt `
   --run_name pm_dirf_detailstage1_stage2_3slice `
+  --stage2_training_preset detail_teacher `
   --stage2_model_variant detail `
   --condition_mode coarse_t1_edge `
   --detail_boost 0.90 `
@@ -100,7 +109,7 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --epochs 40 `
   --batch_size 1 `
   --lr 8e-5 `
-  --source_noise_std 0.01 `
+  --source_noise_std 0.05 `
   --eval_steps 10 `
   --best_metric detail_paired `
   --hf_weight 0.10 `
@@ -121,7 +130,9 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --detail_target_sharp_ratio 0.90 `
   --detail_max_sharp_ratio 1.20 `
   --detail_oversharp_penalty_weight 12.0 `
-  --disable_lpips
+  --disable_lpips `
+  --degrade_check_mode teacher `
+  --disable_rollback_on_degrade
 ```
 
 ## 5. Export and Visualize K10/K25

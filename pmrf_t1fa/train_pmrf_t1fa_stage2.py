@@ -56,6 +56,39 @@ def parse_step_list(value: str) -> List[int]:
     return steps
 
 
+def apply_stage2_training_preset(args):
+    if args.stage2_training_preset != "detail_teacher":
+        return args
+
+    args.stage2_model_variant = "detail"
+    args.condition_mode = "coarse_t1_edge"
+    args.source_noise_std = max(float(args.source_noise_std), 0.05)
+    if args.t_sampling == "endpoint":
+        args.t_sampling = "uniform"
+    if args.rollout_train_steps == [4, 8, 10]:
+        args.rollout_train_steps = [4, 8, 10, 25]
+    args.eval_steps = max(int(args.eval_steps), 10)
+    args.velocity_weight = min(float(args.velocity_weight), 0.12)
+    args.image_mse_weight = min(float(args.image_mse_weight), 0.35)
+    args.l1_weight = min(float(args.l1_weight), 0.70)
+    args.ssim_weight = min(float(args.ssim_weight), 0.45)
+    args.grad_weight = max(float(args.grad_weight), 0.12)
+    args.hf_weight = max(float(args.hf_weight), 0.12)
+    args.residual_hf_weight = max(float(args.residual_hf_weight), 0.30)
+    args.detail_velocity_weight = max(float(args.detail_velocity_weight), 0.18)
+    args.rollout_hf_weight = max(float(args.rollout_hf_weight), 0.35)
+    args.rollout_residual_hf_weight = max(float(args.rollout_residual_hf_weight), 0.45)
+    args.rollout_wm_l1_weight = max(float(args.rollout_wm_l1_weight), 0.12)
+    args.rollout_wm_grad_weight = max(float(args.rollout_wm_grad_weight), 0.08)
+    args.wm_l1_weight = max(float(args.wm_l1_weight), 0.16)
+    args.wm_grad_weight = max(float(args.wm_grad_weight), 0.08)
+    args.roi_consistency_weight = max(float(args.roi_consistency_weight), 0.04)
+    args.best_metric = "detail_paired"
+    args.degrade_check_mode = "teacher"
+    args.rollback_on_degrade = False
+    return args
+
+
 class ZeroLPIPSLoss(torch.nn.Module):
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         return pred.new_zeros((pred.shape[0],))
@@ -71,6 +104,7 @@ def parse_args():
     parser.add_argument("--stage1_device", default="auto", choices=["auto", "cuda", "cpu"])
     parser.add_argument("--run_name", default="pmrf_t1fa_stage2_b")
     parser.add_argument("--stage2_model_variant", default="single", choices=["single", "detail"])
+    parser.add_argument("--stage2_training_preset", default="none", choices=["none", "detail_teacher"])
     parser.add_argument("--epochs", type=int, default=150)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--lr", type=float, default=1e-4)
@@ -139,6 +173,7 @@ def parse_args():
     parser.add_argument("--degrade_patience", type=int, default=4)
     parser.add_argument("--degrade_margin_psnr", type=float, default=0.05)
     parser.add_argument("--degrade_margin_ssim", type=float, default=0.001)
+    parser.add_argument("--degrade_check_mode", default="strict", choices=["strict", "teacher", "off"])
     parser.add_argument("--fid_eval_every", type=int, default=1)
     parser.add_argument("--kid_subset_size", type=int, default=100)
     parser.add_argument("--score_psnr_weight", type=float, default=1.0)
@@ -162,9 +197,11 @@ def parse_args():
     parser.add_argument("--detail_oversharp_penalty_weight", type=float, default=12.0)
     parser.add_argument("--skip_nonfinite_batches", action="store_true")
     parser.add_argument("--rollback_on_degrade", action="store_true")
+    parser.add_argument("--disable_rollback_on_degrade", action="store_false", dest="rollback_on_degrade")
     parser.set_defaults(condition_on_coarse=True, skip_nonfinite_batches=True, rollback_on_degrade=True)
     args = parser.parse_args()
     args.rollout_train_steps = parse_step_list(args.rollout_train_steps)
+    args = apply_stage2_training_preset(args)
     if not args.condition_on_coarse and args.condition_mode in {"coarse", "coarse_t1", "coarse_t1_edge"}:
         args.condition_mode = "none"
     return args
@@ -301,17 +338,28 @@ def detect_stage2_anomaly(
     coarse_ssim: float,
     margin_psnr: float,
     margin_ssim: float,
+    mode: str,
 ) -> Tuple[bool, List[str], Dict[str, float]]:
     stats = summarize_prediction_health(refined, target)
+    if mode == "off":
+        return False, [], stats
     reasons: List[str] = []
-    if psnr + margin_psnr < coarse_psnr:
-        reasons.append(f"psnr_below_coarse={psnr:.4f}<{coarse_psnr:.4f}")
-    if ssim + margin_ssim < coarse_ssim:
-        reasons.append(f"ssim_below_coarse={ssim:.4f}<{coarse_ssim:.4f}")
-    if stats["pred_std"] < 0.75 * max(stats["target_std"], 1e-6):
-        reasons.append(f"low_std={stats['pred_std']:.4f}")
+    if mode == "strict":
+        if psnr + margin_psnr < coarse_psnr:
+            reasons.append(f"psnr_below_coarse={psnr:.4f}<{coarse_psnr:.4f}")
+        if ssim + margin_ssim < coarse_ssim:
+            reasons.append(f"ssim_below_coarse={ssim:.4f}<{coarse_ssim:.4f}")
+        if stats["pred_std"] < 0.75 * max(stats["target_std"], 1e-6):
+            reasons.append(f"low_std={stats['pred_std']:.4f}")
+    elif mode == "teacher":
+        if stats["pred_std"] < 0.35 * max(stats["target_std"], 1e-6):
+            reasons.append(f"collapsed_std={stats['pred_std']:.4f}")
+        if stats["pred_dynamic_range"] < 0.05:
+            reasons.append(f"collapsed_dynamic_range={stats['pred_dynamic_range']:.4f}")
+    else:
+        raise ValueError(f"Unsupported degrade_check_mode: {mode}")
     residual_energy = F.l1_loss(refined, coarse).item()
-    if residual_energy < 0.002:
+    if mode == "strict" and residual_energy < 0.002:
         reasons.append(f"too_static={residual_energy:.5f}")
     return len(reasons) > 0, reasons, stats
 
@@ -1070,6 +1118,7 @@ def main():
             coarse_ssim=metrics["coarse_ssim"],
             margin_psnr=args.degrade_margin_psnr,
             margin_ssim=args.degrade_margin_ssim,
+            mode=args.degrade_check_mode,
         )
         degrade_epochs = degrade_epochs + 1 if is_degraded else 0
         is_best = is_better(metrics, best_metrics, args.best_metric)

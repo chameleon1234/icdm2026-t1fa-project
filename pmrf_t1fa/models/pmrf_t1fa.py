@@ -726,6 +726,9 @@ def euler_refine(
     condition: Optional[torch.Tensor] = None,
     clamp: bool = True,
     detail_boost: float = 0.0,
+    dynamic_condition: bool = False,
+    condition_mode: str = "none",
+    t1_img: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     if num_steps <= 0:
         raise ValueError(f"num_steps must be positive, got {num_steps}")
@@ -738,8 +741,13 @@ def euler_refine(
     for i in range(num_steps):
         t_val = i * dt
         t_tensor = torch.full((batch_size,), t_val, device=device, dtype=coarse.dtype)
+        step_condition = condition
+        if dynamic_condition:
+            if t1_img is None:
+                raise ValueError("t1_img is required when dynamic_condition=True")
+            step_condition = build_stage2_condition(x_pred, t1_img, condition_mode)
         v_pred = compose_stage2_velocity(
-            model(x_pred, t_tensor, condition=condition),
+            model(x_pred, t_tensor, condition=step_condition),
             t_tensor,
             detail_boost=detail_boost,
         )
@@ -757,6 +765,9 @@ def euler_refine_train(
     condition: Optional[torch.Tensor] = None,
     clamp: bool = True,
     detail_boost: float = 0.0,
+    dynamic_condition: bool = False,
+    condition_mode: str = "none",
+    t1_img: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     if num_steps <= 0:
         raise ValueError(f"num_steps must be positive, got {num_steps}")
@@ -769,8 +780,13 @@ def euler_refine_train(
     for i in range(num_steps):
         t_val = i * dt
         t_tensor = torch.full((batch_size,), t_val, device=device, dtype=coarse.dtype)
+        step_condition = condition
+        if dynamic_condition:
+            if t1_img is None:
+                raise ValueError("t1_img is required when dynamic_condition=True")
+            step_condition = build_stage2_condition(x_pred, t1_img, condition_mode)
         v_pred = compose_stage2_velocity(
-            model(x_pred, t_tensor, condition=condition),
+            model(x_pred, t_tensor, condition=step_condition),
             t_tensor,
             detail_boost=detail_boost,
         )

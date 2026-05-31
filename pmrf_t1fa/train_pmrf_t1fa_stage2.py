@@ -75,7 +75,9 @@ def apply_stage2_training_preset(args):
     args.grad_weight = max(float(args.grad_weight), 0.12)
     args.hf_weight = max(float(args.hf_weight), 0.12)
     args.residual_hf_weight = max(float(args.residual_hf_weight), 0.30)
+    args.detail_weight = max(float(args.detail_weight), 0.25)
     args.detail_velocity_weight = max(float(args.detail_velocity_weight), 0.18)
+    args.rollout_detail_weight = max(float(args.rollout_detail_weight), 0.35)
     args.rollout_hf_weight = max(float(args.rollout_hf_weight), 0.35)
     args.rollout_residual_hf_weight = max(float(args.rollout_residual_hf_weight), 0.45)
     args.rollout_wm_l1_weight = max(float(args.rollout_wm_l1_weight), 0.12)
@@ -86,6 +88,9 @@ def apply_stage2_training_preset(args):
     args.best_metric = "detail_paired"
     args.degrade_check_mode = "teacher"
     args.rollback_on_degrade = False
+    args.dynamic_condition_rollout = True
+    args.detail_refine_ratio_weight = max(float(args.detail_refine_ratio_weight), 4.0)
+    args.detail_under_refine_penalty_weight = max(float(args.detail_under_refine_penalty_weight), 4.0)
     return args
 
 
@@ -150,6 +155,7 @@ def parse_args():
     parser.add_argument("--hf_weight", type=float, default=0.04)
     parser.add_argument("--residual_hf_weight", type=float, default=0.12)
     parser.add_argument("--detail_velocity_weight", type=float, default=0.10)
+    parser.add_argument("--rollout_detail_weight", type=float, default=0.0)
     parser.add_argument("--rollout_l1_weight", type=float, default=0.35)
     parser.add_argument("--rollout_ssim_weight", type=float, default=0.35)
     parser.add_argument("--rollout_hf_weight", type=float, default=0.18)
@@ -174,6 +180,8 @@ def parse_args():
     parser.add_argument("--degrade_margin_psnr", type=float, default=0.05)
     parser.add_argument("--degrade_margin_ssim", type=float, default=0.001)
     parser.add_argument("--degrade_check_mode", default="strict", choices=["strict", "teacher", "off"])
+    parser.add_argument("--dynamic_condition_rollout", action="store_true")
+    parser.add_argument("--disable_dynamic_condition_rollout", action="store_false", dest="dynamic_condition_rollout")
     parser.add_argument("--fid_eval_every", type=int, default=1)
     parser.add_argument("--kid_subset_size", type=int, default=100)
     parser.add_argument("--score_psnr_weight", type=float, default=1.0)
@@ -195,10 +203,18 @@ def parse_args():
     parser.add_argument("--detail_target_sharp_ratio", type=float, default=0.90)
     parser.add_argument("--detail_max_sharp_ratio", type=float, default=1.20)
     parser.add_argument("--detail_oversharp_penalty_weight", type=float, default=12.0)
+    parser.add_argument("--detail_refine_ratio_weight", type=float, default=0.0)
+    parser.add_argument("--detail_refine_target_ratio", type=float, default=0.50)
+    parser.add_argument("--detail_under_refine_penalty_weight", type=float, default=0.0)
     parser.add_argument("--skip_nonfinite_batches", action="store_true")
     parser.add_argument("--rollback_on_degrade", action="store_true")
     parser.add_argument("--disable_rollback_on_degrade", action="store_false", dest="rollback_on_degrade")
-    parser.set_defaults(condition_on_coarse=True, skip_nonfinite_batches=True, rollback_on_degrade=True)
+    parser.set_defaults(
+        condition_on_coarse=True,
+        skip_nonfinite_batches=True,
+        rollback_on_degrade=True,
+        dynamic_condition_rollout=False,
+    )
     args = parser.parse_args()
     args.rollout_train_steps = parse_step_list(args.rollout_train_steps)
     args = apply_stage2_training_preset(args)
@@ -285,10 +301,19 @@ def compute_detail_paired_score(metrics: Dict[str, float], args) -> float:
     sharp_gain = min(metrics["sharp_ratio"], target_ratio) - min(coarse_sharp_ratio, target_ratio)
     smooth_penalty = max(coarse_sharp_ratio - metrics["sharp_ratio"], 0.0)
     oversharp_penalty = max(metrics["sharp_ratio"] - getattr(args, "detail_max_sharp_ratio", 1.20), 0.0)
+    refine_ratio = float(metrics.get("refine_ratio", 0.0))
+    refine_target = max(float(getattr(args, "detail_refine_target_ratio", 0.50)), 1e-6)
+    refine_bonus = float(getattr(args, "detail_refine_ratio_weight", 0.0)) * min(refine_ratio, refine_target) / refine_target
+    under_refine_penalty = float(getattr(args, "detail_under_refine_penalty_weight", 0.0)) * max(
+        refine_target - refine_ratio,
+        0.0,
+    )
     return (
         compute_wm_paired_score(metrics, args)
         + args.detail_sharp_weight * sharp_gain
+        + refine_bonus
         - args.detail_coarse_penalty_weight * smooth_penalty
+        - under_refine_penalty
         - getattr(args, "detail_oversharp_penalty_weight", 12.0) * oversharp_penalty
     )
 
@@ -543,6 +568,7 @@ def build_stage2_loss(
     wm_grad_weight: float,
     residual_hf_weight: float,
     detail_velocity_weight: float,
+    rollout_detail_weight: float,
     rollout_l1_weight: float,
     rollout_ssim_weight: float,
     rollout_hf_weight: float,
@@ -579,6 +605,7 @@ def build_stage2_loss(
     rollout_fp32 = clamp_to_image_range(rollout_pred.float())
     rollout_detail_pred = rollout_fp32 - coarse_fp32
     loss_rollout_l1 = F.l1_loss(rollout_fp32, target_fp32)
+    loss_rollout_detail = F.l1_loss(rollout_detail_pred, detail_target)
     loss_rollout_ssim = ssim_loss_fn(rollout_fp32, target_fp32)
     loss_rollout_hf = F.l1_loss(laplacian_filter(rollout_fp32), laplacian_filter(target_fp32))
     loss_rollout_residual_hf = F.l1_loss(laplacian_filter(rollout_detail_pred), laplacian_filter(detail_target))
@@ -610,6 +637,7 @@ def build_stage2_loss(
         + wm_grad_weight * loss_wm_grad
         + residual_hf_weight * loss_residual_hf
         + detail_velocity_weight * loss_detail_velocity
+        + rollout_detail_weight * loss_rollout_detail
         + rollout_l1_weight * loss_rollout_l1
         + rollout_ssim_weight * loss_rollout_ssim
         + rollout_hf_weight * loss_rollout_hf
@@ -632,6 +660,7 @@ def build_stage2_loss(
         "hf": loss_hf,
         "residual_hf": loss_residual_hf,
         "detail_velocity": loss_detail_velocity,
+        "rollout_detail": loss_rollout_detail,
         "rollout_l1": loss_rollout_l1,
         "rollout_ssim": loss_rollout_ssim,
         "rollout_hf": loss_rollout_hf,
@@ -734,6 +763,9 @@ def main():
         "paired_score": float("-inf"),
         "wm_paired_score": float("-inf"),
         "detail_paired_score": float("-inf"),
+        "refine_l1": float("-inf"),
+        "coarse_target_l1": float("inf"),
+        "refine_ratio": float("-inf"),
     }
     start_epoch = 0
     global_step = 0
@@ -761,6 +793,12 @@ def main():
                 "stage1_ckpt",
                 "stage2_model_variant",
                 "condition_mode",
+                "dynamic_condition_rollout",
+                "detail_weight",
+                "rollout_detail_weight",
+                "rollout_residual_hf_weight",
+                "detail_refine_ratio_weight",
+                "detail_under_refine_penalty_weight",
             ],
             checkpoint_path=resume_path,
         )
@@ -779,6 +817,9 @@ def main():
         best_metrics["paired_score"] = checkpoint.get("best_paired_score", best_metrics["paired_score"])
         best_metrics["wm_paired_score"] = checkpoint.get("best_wm_paired_score", best_metrics["wm_paired_score"])
         best_metrics["detail_paired_score"] = checkpoint.get("best_detail_paired_score", best_metrics["detail_paired_score"])
+        best_metrics["refine_l1"] = checkpoint.get("best_refine_l1", best_metrics["refine_l1"])
+        best_metrics["coarse_target_l1"] = checkpoint.get("best_coarse_target_l1", best_metrics["coarse_target_l1"])
+        best_metrics["refine_ratio"] = checkpoint.get("best_refine_ratio", best_metrics["refine_ratio"])
         start_epoch = checkpoint.get("epoch", 0) + 1
         global_step = checkpoint.get("global_step", 0)
         no_improve_epochs = checkpoint.get("no_improve_epochs", 0)
@@ -793,6 +834,7 @@ def main():
         f"source_noise_std={args.source_noise_std} | rollout_train_steps={args.rollout_train_steps} | "
         f"eval_steps={args.eval_steps} | stage1_device={stage1_device} | "
         f"stage2_model_variant={args.stage2_model_variant} | detail_boost={args.detail_boost} | "
+        f"dynamic_condition_rollout={args.dynamic_condition_rollout} | "
         f"stage1_detail_scale={stage1_detail_scale}"
     )
 
@@ -810,6 +852,7 @@ def main():
             "hf": 0.0,
             "residual_hf": 0.0,
             "detail_velocity": 0.0,
+            "rollout_detail": 0.0,
             "rollout_l1": 0.0,
             "rollout_ssim": 0.0,
             "rollout_hf": 0.0,
@@ -871,6 +914,9 @@ def main():
                     condition=condition,
                     clamp=True,
                     detail_boost=args.detail_boost,
+                    dynamic_condition=args.dynamic_condition_rollout,
+                    condition_mode=args.condition_mode,
+                    t1_img=t1_img,
                 )
                 brain_mask, wm_mask = build_training_masks(
                     t1_img,
@@ -910,6 +956,7 @@ def main():
                     wm_grad_weight=args.wm_grad_weight,
                     residual_hf_weight=args.residual_hf_weight,
                     detail_velocity_weight=args.detail_velocity_weight,
+                    rollout_detail_weight=args.rollout_detail_weight,
                     rollout_l1_weight=args.rollout_l1_weight,
                     rollout_ssim_weight=args.rollout_ssim_weight,
                     rollout_hf_weight=args.rollout_hf_weight,
@@ -968,6 +1015,9 @@ def main():
                             num_steps=args.eval_steps,
                             condition=condition,
                             detail_boost=args.detail_boost,
+                            dynamic_condition=args.dynamic_condition_rollout,
+                            condition_mode=args.condition_mode,
+                            t1_img=fixed_t1,
                         )
                         save_preview(preview_dir, global_step, fixed_t1, fixed_coarse, preview_refined, fixed_fa)
                     flow_model.train()
@@ -990,6 +1040,8 @@ def main():
             "coarse_target_sharpness": 0.0,
             "sharpness": 0.0,
             "target_sharpness": 0.0,
+            "refine_l1": 0.0,
+            "coarse_target_l1": 0.0,
             "brain_l1": 0.0,
             "wm_l1": 0.0,
             "wm_grad": 0.0,
@@ -1031,6 +1083,9 @@ def main():
                         num_steps=args.eval_steps,
                         condition=condition,
                         detail_boost=args.detail_boost,
+                        dynamic_condition=args.dynamic_condition_rollout,
+                        condition_mode=args.condition_mode,
+                        t1_img=t1_img,
                     )
                 val_total["vel"] += F.mse_loss(v_pred.float(), v_target.float()).item()
                 refined = clamp_to_image_range(refined.float())
@@ -1051,6 +1106,8 @@ def main():
                 val_total["ssim"] += (1.0 - ssim_loss).item()
                 val_total["mse_proxy"] += F.mse_loss(refined, fa_fp32).item()
                 val_total["l1"] += F.l1_loss(refined, fa_fp32).item()
+                val_total["refine_l1"] += F.l1_loss(refined, coarse_fp32).item()
+                val_total["coarse_target_l1"] += F.l1_loss(coarse_fp32, fa_fp32).item()
                 val_total["grad"] += grad_loss_fn(refined, fa_fp32).item()
                 val_total["hf"] += F.l1_loss(laplacian_filter(refined), laplacian_filter(fa_fp32)).item()
                 val_total["brain_l1"] += masked_l1_loss(refined, fa_fp32, brain_mask).item()
@@ -1093,6 +1150,7 @@ def main():
             metrics["kid"] = best_metrics["kid"] if torch.isfinite(torch.tensor(best_metrics["kid"])) else float("inf")
         metrics["sharp_ratio"] = metrics["sharpness"] / max(metrics["target_sharpness"], 1e-8)
         metrics["coarse_sharp_ratio"] = metrics["coarse_sharpness"] / max(metrics["coarse_target_sharpness"], 1e-8)
+        metrics["refine_ratio"] = metrics["refine_l1"] / max(metrics["coarse_target_l1"], 1e-8)
         metrics["balanced_score"] = compute_balanced_score(metrics, args)
         metrics["paired_score"] = compute_paired_score(metrics, args)
         metrics["wm_paired_score"] = compute_wm_paired_score(metrics, args)
@@ -1106,6 +1164,9 @@ def main():
                     num_steps=args.eval_steps,
                     condition=fixed_condition,
                     detail_boost=args.detail_boost,
+                    dynamic_condition=args.dynamic_condition_rollout,
+                    condition_mode=args.condition_mode,
+                    t1_img=fixed_t1,
                 ).float()
             )
         is_degraded, degrade_reasons, degrade_stats = detect_stage2_anomaly(
@@ -1142,6 +1203,9 @@ def main():
             "best_paired_score": best_metrics["paired_score"] if not is_best else metrics["paired_score"],
             "best_wm_paired_score": best_metrics["wm_paired_score"] if not is_best else metrics["wm_paired_score"],
             "best_detail_paired_score": best_metrics["detail_paired_score"] if not is_best else metrics["detail_paired_score"],
+            "best_refine_l1": best_metrics["refine_l1"] if not is_best else metrics["refine_l1"],
+            "best_coarse_target_l1": best_metrics["coarse_target_l1"] if not is_best else metrics["coarse_target_l1"],
+            "best_refine_ratio": best_metrics["refine_ratio"] if not is_best else metrics["refine_ratio"],
             "no_improve_epochs": no_improve_epochs,
             "degrade_epochs": degrade_epochs,
             "args": vars(args),
@@ -1152,6 +1216,7 @@ def main():
                 handle.write(
                     f"[Epoch {epoch + 1}] train_total={running['total'] / max(len(train_loader), 1):.6f} "
                     f"train_wm_l1={running['wm_l1'] / max(len(train_loader), 1):.6f} "
+                    f"train_rollout_detail={running['rollout_detail'] / max(len(train_loader), 1):.6f} "
                     f"train_rollout_l1={running['rollout_l1'] / max(len(train_loader), 1):.6f} "
                     f"train_rollout_hf={running['rollout_hf'] / max(len(train_loader), 1):.6f} "
                     f"train_rollout_residual_hf={running['rollout_residual_hf'] / max(len(train_loader), 1):.6f} "
@@ -1163,6 +1228,7 @@ def main():
                     f"val_lpips={metrics['lpips']:.6f} val_fid={metrics['fid']:.4f} val_kid={metrics['kid']:.6f} "
                     f"sharp={metrics['sharpness']:.6f} sharp_ratio={metrics['sharp_ratio']:.4f} "
                     f"coarse_sharp_ratio={metrics['coarse_sharp_ratio']:.4f} "
+                    f"refine_l1={metrics['refine_l1']:.6f} refine_ratio={metrics['refine_ratio']:.4f} "
                     f"balanced={metrics['balanced_score']:.4f} paired={metrics['paired_score']:.4f} "
                     f"wm_paired={metrics['wm_paired_score']:.4f} detail_paired={metrics['detail_paired_score']:.4f} "
                     f"coarse_psnr={metrics['coarse_psnr']:.4f} "
@@ -1196,6 +1262,9 @@ def main():
                 best_metrics["paired_score"] = metrics["paired_score"]
                 best_metrics["wm_paired_score"] = metrics["wm_paired_score"]
                 best_metrics["detail_paired_score"] = metrics["detail_paired_score"]
+                best_metrics["refine_l1"] = metrics["refine_l1"]
+                best_metrics["coarse_target_l1"] = metrics["coarse_target_l1"]
+                best_metrics["refine_ratio"] = metrics["refine_ratio"]
                 checkpoint["best_psnr"] = best_metrics["psnr"]
                 checkpoint["best_ssim"] = best_metrics["ssim"]
                 checkpoint["best_mse_proxy"] = best_metrics["mse_proxy"]
@@ -1209,6 +1278,9 @@ def main():
                 checkpoint["best_paired_score"] = best_metrics["paired_score"]
                 checkpoint["best_wm_paired_score"] = best_metrics["wm_paired_score"]
                 checkpoint["best_detail_paired_score"] = best_metrics["detail_paired_score"]
+                checkpoint["best_refine_l1"] = best_metrics["refine_l1"]
+                checkpoint["best_coarse_target_l1"] = best_metrics["coarse_target_l1"]
+                checkpoint["best_refine_ratio"] = best_metrics["refine_ratio"]
                 torch.save(checkpoint, best_path)
                 accelerator.print(
                     f"New best Stage 2 checkpoint: PSNR={best_metrics['psnr']:.4f}, "
@@ -1224,6 +1296,7 @@ def main():
             f"HF={metrics['hf']:.6f} LPIPS={metrics['lpips']:.6f} "
             f"FID={metrics['fid']:.4f} SharpRatio={metrics['sharp_ratio']:.4f} "
             f"CoarseSharpRatio={metrics['coarse_sharp_ratio']:.4f} "
+            f"RefineL1={metrics['refine_l1']:.6f} RefineRatio={metrics['refine_ratio']:.4f} "
             f"Score={metrics['balanced_score']:.4f} Paired={metrics['paired_score']:.4f} "
             f"WM_Paired={metrics['wm_paired_score']:.4f} Detail_Paired={metrics['detail_paired_score']:.4f} "
             f"NoImprove={no_improve_epochs} Degrade={degrade_epochs} SkippedNonFinite={skipped_nonfinite}"

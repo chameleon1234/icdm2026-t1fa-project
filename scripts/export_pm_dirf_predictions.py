@@ -51,6 +51,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--eval_steps", type=int, default=-1, help="Use checkpoint eval_steps when -1.")
+    parser.add_argument("--detail_boost_override", type=float, default=-1.0, help="Override checkpoint detail_boost when >= 0.")
     parser.add_argument("--condition_on_coarse", action="store_true", help="Force Stage 2 coarse conditioning on.")
     parser.add_argument("--disable_condition_on_coarse", action="store_false", dest="condition_on_coarse")
     parser.add_argument(
@@ -60,6 +61,8 @@ def parse_args() -> argparse.Namespace:
         help="Stage 2 conditioning. auto reads the checkpoint and keeps old coarse-only checkpoints compatible.",
     )
     parser.add_argument("--auto_condition_from_ckpt", action="store_true")
+    parser.add_argument("--dynamic_condition_rollout", action="store_true", help="Rebuild the Stage 2 condition from the current rollout image at every step.")
+    parser.add_argument("--force_static_condition_rollout", action="store_true", help="Ignore a checkpoint dynamic rollout setting.")
     parser.set_defaults(condition_on_coarse=True)
     return parser.parse_args()
 
@@ -120,9 +123,9 @@ def make_slice_dataset(t1_dir: Path, fa_dir: Path, stage1_channels: int):
     return T1FADataset(str(t1_dir), str(fa_dir), preload_ram=False)
 
 
-def resolve_stage2_settings(args: argparse.Namespace) -> tuple[str, bool, int, float]:
+def resolve_stage2_settings(args: argparse.Namespace) -> tuple[str, bool, int, float, bool]:
     if args.stage != "stage2":
-        return "none", False, 0, 0.0
+        return "none", False, 0, 0.0, False
     checkpoint = torch.load(args.stage2_ckpt, map_location="cpu")
     ckpt_args = checkpoint_args(checkpoint)
     condition_on_coarse = bool(args.condition_on_coarse)
@@ -136,8 +139,17 @@ def resolve_stage2_settings(args: argparse.Namespace) -> tuple[str, bool, int, f
         )
     condition_on_coarse = condition_mode in {"coarse", "coarse_t1", "coarse_t1_edge"}
     eval_steps = args.eval_steps if args.eval_steps > 0 else int(ckpt_args.get("eval_steps", 1))
-    detail_boost = float(ckpt_args.get("detail_boost", 0.0))
-    return condition_mode, condition_on_coarse, eval_steps, detail_boost
+    detail_boost = (
+        float(args.detail_boost_override)
+        if float(args.detail_boost_override) >= 0.0
+        else float(ckpt_args.get("detail_boost", 0.0))
+    )
+    dynamic_condition = bool(ckpt_args.get("dynamic_condition_rollout", False))
+    if args.dynamic_condition_rollout:
+        dynamic_condition = True
+    if args.force_static_condition_rollout:
+        dynamic_condition = False
+    return condition_mode, condition_on_coarse, eval_steps, detail_boost, dynamic_condition
 
 
 def load_stage2(
@@ -203,7 +215,7 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
     stage1, stage1_prediction_mode, stage1_channels, stage1_detail_scale = load_stage1(args.stage1_ckpt, device)
     dataset = make_slice_dataset(test_t1_dir, test_fa_dir, stage1_channels)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
-    condition_mode, condition_on_coarse, eval_steps, detail_boost = resolve_stage2_settings(args)
+    condition_mode, condition_on_coarse, eval_steps, detail_boost, dynamic_condition = resolve_stage2_settings(args)
     stage2 = None
     if args.stage == "stage2":
         stage2 = load_stage2(
@@ -237,6 +249,9 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
                 condition=condition,
                 clamp=True,
                 detail_boost=detail_boost,
+                dynamic_condition=dynamic_condition,
+                condition_mode=condition_mode,
+                t1_img=t1_img,
             )
 
         batch_filenames = batch["fname"]
@@ -273,6 +288,7 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
         "condition_on_coarse": condition_on_coarse if args.stage == "stage2" else False,
         "eval_steps": eval_steps if args.stage == "stage2" else 0,
         "detail_boost": detail_boost if args.stage == "stage2" else 0.0,
+        "dynamic_condition_rollout": dynamic_condition if args.stage == "stage2" else False,
         "manifest": str(manifest_path),
     }
     with open(output_dir / "export_summary.json", "w", encoding="utf-8") as handle:

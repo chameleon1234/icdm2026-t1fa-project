@@ -59,16 +59,20 @@ def test_load_stage2_uses_checkpoint_condition_mode_for_t1_aware_model(tmp_path)
             "auto_condition_from_ckpt": True,
             "condition_mode": "auto",
             "eval_steps": -1,
+            "detail_boost_override": -1.0,
+            "dynamic_condition_rollout": False,
+            "force_static_condition_rollout": False,
         },
     )()
 
-    condition_mode, condition_on_coarse, eval_steps, detail_boost = resolve_stage2_settings(args)
+    condition_mode, condition_on_coarse, eval_steps, detail_boost, dynamic_condition = resolve_stage2_settings(args)
     loaded = load_stage2(ckpt_path, torch.device("cpu"), condition_mode=condition_mode, stage1_channels=3)
 
     assert condition_mode == "coarse_t1"
     assert condition_on_coarse is True
     assert eval_steps == 1
     assert detail_boost == 0.0
+    assert dynamic_condition is False
     assert loaded.inc.weight.shape[1] == 5
 
 
@@ -87,6 +91,7 @@ def test_load_stage2_supports_stage1_guided_edge_condition_mode(tmp_path):
                 "eval_steps": 10,
                 "stage2_model_variant": "detail",
                 "detail_boost": 0.9,
+                "dynamic_condition_rollout": True,
             },
         },
         ckpt_path,
@@ -102,15 +107,19 @@ def test_load_stage2_supports_stage1_guided_edge_condition_mode(tmp_path):
             "auto_condition_from_ckpt": True,
             "condition_mode": "auto",
             "eval_steps": -1,
+            "detail_boost_override": -1.0,
+            "dynamic_condition_rollout": False,
+            "force_static_condition_rollout": False,
         },
     )()
 
-    condition_mode, condition_on_coarse, eval_steps, detail_boost = resolve_stage2_settings(args)
+    condition_mode, condition_on_coarse, eval_steps, detail_boost, dynamic_condition = resolve_stage2_settings(args)
     loaded = load_stage2(ckpt_path, torch.device("cpu"), condition_mode=condition_mode, stage1_channels=3)
 
     assert condition_mode == "coarse_t1_edge"
     assert condition_on_coarse is True
     assert eval_steps == 10
     assert detail_boost == 0.9
+    assert dynamic_condition is True
     assert loaded.inc.weight.shape[1] == 11
     assert hasattr(loaded, "out_detail")

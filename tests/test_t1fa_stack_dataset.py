@@ -113,9 +113,11 @@ def test_stage2_detail_teacher_preset_makes_refinement_less_conservative():
         l1_weight=1.10,
         ssim_weight=0.80,
         grad_weight=0.06,
+        detail_weight=0.07,
         hf_weight=0.04,
         residual_hf_weight=0.12,
         detail_velocity_weight=0.10,
+        rollout_detail_weight=0.0,
         rollout_hf_weight=0.18,
         rollout_residual_hf_weight=0.18,
         rollout_wm_l1_weight=0.08,
@@ -126,6 +128,9 @@ def test_stage2_detail_teacher_preset_makes_refinement_less_conservative():
         best_metric="paired",
         degrade_check_mode="strict",
         rollback_on_degrade=True,
+        dynamic_condition_rollout=False,
+        detail_refine_ratio_weight=0.0,
+        detail_under_refine_penalty_weight=0.0,
     )
 
     out = apply_stage2_training_preset(args)
@@ -137,6 +142,10 @@ def test_stage2_detail_teacher_preset_makes_refinement_less_conservative():
     assert 25 in out.rollout_train_steps
     assert out.degrade_check_mode == "teacher"
     assert out.rollback_on_degrade is False
+    assert out.detail_weight >= 0.25
+    assert out.rollout_detail_weight >= 0.35
+    assert out.dynamic_condition_rollout is True
+    assert out.detail_refine_ratio_weight >= 4.0
 
 
 def test_stage1_loss_includes_white_matter_and_roi_terms():
@@ -194,6 +203,64 @@ def test_stage1_loss_includes_white_matter_and_roi_terms():
     assert losses["wm_grad"] > 0
     assert losses["roi"] > 0
     assert losses["total"] > losses["brain_l1"]
+
+
+def test_stage2_loss_includes_rollout_detail_residual_term():
+    from pmrf_t1fa.models.pmrf_t1fa import GradientLoss, SSIMLoss
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import ZeroLPIPSLoss, build_stage2_loss
+
+    coarse = torch.zeros(1, 1, 8, 8)
+    target = torch.zeros_like(coarse)
+    target[:, :, 2:6, 2:6] = 0.5
+    rollout = torch.zeros_like(coarse)
+    mask = torch.ones_like(coarse)
+    t = torch.zeros(1)
+    zero = torch.zeros_like(coarse)
+
+    losses = build_stage2_loss(
+        x_t=coarse,
+        v_pred=zero,
+        v_detail=None,
+        v_target=target - coarse,
+        coarse=coarse,
+        target=target,
+        t=t,
+        rollout_pred=rollout,
+        ssim_loss_fn=SSIMLoss(),
+        grad_loss_fn=GradientLoss(),
+        lpips_loss_fn=ZeroLPIPSLoss(),
+        brain_mask=mask,
+        wm_mask=mask,
+        epoch=0,
+        lpips_warmup_epochs=1,
+        lpips_max_weight=0.0,
+        velocity_weight=0.0,
+        image_mse_weight=0.0,
+        l1_weight=0.0,
+        ssim_weight=0.0,
+        grad_weight=0.0,
+        detail_weight=0.0,
+        hf_weight=0.0,
+        brain_l1_weight=0.0,
+        wm_l1_weight=0.0,
+        wm_grad_weight=0.0,
+        residual_hf_weight=0.0,
+        detail_velocity_weight=0.0,
+        rollout_detail_weight=1.0,
+        rollout_l1_weight=0.0,
+        rollout_ssim_weight=0.0,
+        rollout_hf_weight=0.0,
+        rollout_residual_hf_weight=0.0,
+        rollout_wm_l1_weight=0.0,
+        rollout_wm_grad_weight=0.0,
+        roi_consistency_weight=0.0,
+        roi_rows=2,
+        roi_cols=2,
+        roi_min_pixels=1,
+    )
+
+    assert losses["rollout_detail"].item() > 0.0
+    assert torch.allclose(losses["total"], losses["rollout_detail"])
 
 
 def test_predict_stage1_residual_uses_center_slice_for_stacked_input():

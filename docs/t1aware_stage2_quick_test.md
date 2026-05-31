@@ -112,21 +112,26 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --source_noise_std 0.05 `
   --eval_steps 10 `
   --best_metric detail_paired `
+  --detail_weight 0.25 `
   --hf_weight 0.10 `
   --residual_hf_weight 0.25 `
   --detail_velocity_weight 0.18 `
+  --rollout_detail_weight 0.35 `
   --rollout_hf_weight 0.30 `
   --rollout_residual_hf_weight 0.35 `
   --rollout_l1_weight 0.30 `
   --rollout_ssim_weight 0.30 `
   --rollout_wm_l1_weight 0.12 `
   --rollout_wm_grad_weight 0.08 `
-  --detail_weight 0.12 `
+  --dynamic_condition_rollout `
   --grad_weight 0.10 `
   --wm_grad_weight 0.08 `
   --paired_sharp_weight 5.0 `
   --detail_sharp_weight 12.0 `
   --detail_coarse_penalty_weight 8.0 `
+  --detail_refine_ratio_weight 4.0 `
+  --detail_refine_target_ratio 0.50 `
+  --detail_under_refine_penalty_weight 4.0 `
   --detail_target_sharp_ratio 0.90 `
   --detail_max_sharp_ratio 1.20 `
   --detail_oversharp_penalty_weight 12.0 `
@@ -145,6 +150,7 @@ python scripts/export_pm_dirf_predictions.py `
   --output_dir outputs/icdm2026/predictions/PM_DIRF_DETAILSTAGE1_K10 `
   --device cuda `
   --condition_mode auto `
+  --dynamic_condition_rollout `
   --eval_steps 10
 
 python scripts/export_pm_dirf_predictions.py `
@@ -154,6 +160,7 @@ python scripts/export_pm_dirf_predictions.py `
   --output_dir outputs/icdm2026/predictions/PM_DIRF_DETAILSTAGE1_K25 `
   --device cuda `
   --condition_mode auto `
+  --dynamic_condition_rollout `
   --eval_steps 25
 
 python scripts/evaluate_method_folder.py `

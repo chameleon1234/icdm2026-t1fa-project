@@ -84,6 +84,24 @@ def test_validate_resume_args_rejects_incompatible_stage1_checkpoint():
         validate_resume_args(checkpoint, args, ["context_slices", "stage1_model_variant"], "bad.pt")
 
 
+def test_validate_resume_args_rejects_checkpoint_missing_required_current_key():
+    import pytest
+    from types import SimpleNamespace
+
+    from pmrf_t1fa.checkpointing import validate_resume_args
+
+    checkpoint = {"args": {"context_slices": 5}}
+    args = SimpleNamespace(context_slices=5, detail_delta_psnr_penalty_weight=0.5)
+
+    with pytest.raises(ValueError, match="detail_delta_psnr_penalty_weight"):
+        validate_resume_args(
+            checkpoint,
+            args,
+            ["context_slices", "detail_delta_psnr_penalty_weight"],
+            "old.pt",
+        )
+
+
 def test_validate_resume_args_accepts_equivalent_checkpoint_paths():
     from types import SimpleNamespace
 
@@ -182,6 +200,11 @@ def test_resume_required_keys_cover_detail_experiment_settings():
         "paired_mse_weight",
         "paired_mae_weight",
         "paired_sharp_weight",
+        "score_psnr_weight",
+        "score_ssim_weight",
+        "score_lpips_weight",
+        "score_fid_weight",
+        "score_sharp_weight",
         "detail_target_sharp_ratio",
         "detail_max_sharp_ratio",
         "detail_oversharp_penalty_weight",
@@ -413,6 +436,72 @@ def test_stage2_loss_includes_noisy_source_rollout_supervision():
     assert losses["rollout_noisy_l1"].item() > 0.0
     assert losses["rollout_noisy_detail"].item() > 0.0
     assert losses["rollout_noisy_hf"].item() > 0.0
+    expected = (
+        losses["rollout_noisy_l1"]
+        + 0.5 * losses["rollout_noisy_detail"]
+        + 0.25 * losses["rollout_noisy_hf"]
+    )
+    assert torch.allclose(losses["total"], expected)
+
+
+def test_stage2_legacy_noisy_rollout_weight_does_not_double_count_split_weights():
+    from pmrf_t1fa.models.pmrf_t1fa import GradientLoss, SSIMLoss
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import ZeroLPIPSLoss, build_stage2_loss
+
+    coarse = torch.zeros(1, 1, 8, 8)
+    target = torch.zeros_like(coarse)
+    target[:, :, 2:6, 2:6] = 0.5
+    mask = torch.ones_like(coarse)
+    t = torch.zeros(1)
+    zero = torch.zeros_like(coarse)
+
+    losses = build_stage2_loss(
+        x_t=coarse,
+        v_pred=zero,
+        v_detail=None,
+        v_target=target - coarse,
+        coarse=coarse,
+        target=target,
+        t=t,
+        rollout_pred=target,
+        noisy_rollout_pred=torch.zeros_like(coarse),
+        ssim_loss_fn=SSIMLoss(),
+        grad_loss_fn=GradientLoss(),
+        lpips_loss_fn=ZeroLPIPSLoss(),
+        brain_mask=mask,
+        wm_mask=mask,
+        epoch=0,
+        lpips_warmup_epochs=1,
+        lpips_max_weight=0.0,
+        velocity_weight=0.0,
+        image_mse_weight=0.0,
+        l1_weight=0.0,
+        ssim_weight=0.0,
+        grad_weight=0.0,
+        detail_weight=0.0,
+        hf_weight=0.0,
+        brain_l1_weight=0.0,
+        wm_l1_weight=0.0,
+        wm_grad_weight=0.0,
+        residual_hf_weight=0.0,
+        detail_velocity_weight=0.0,
+        rollout_noisy_weight=1.0,
+        rollout_noisy_l1_weight=1.0,
+        rollout_noisy_detail_weight=0.5,
+        rollout_noisy_hf_weight=0.25,
+        rollout_detail_weight=0.0,
+        rollout_l1_weight=0.0,
+        rollout_ssim_weight=0.0,
+        rollout_hf_weight=0.0,
+        rollout_residual_hf_weight=0.0,
+        rollout_wm_l1_weight=0.0,
+        rollout_wm_grad_weight=0.0,
+        roi_consistency_weight=0.0,
+        roi_rows=2,
+        roi_cols=2,
+        roi_min_pixels=1,
+    )
+
     expected = (
         losses["rollout_noisy_l1"]
         + 0.5 * losses["rollout_noisy_detail"]

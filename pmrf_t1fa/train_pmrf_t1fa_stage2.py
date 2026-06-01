@@ -723,12 +723,13 @@ def build_stage2_loss(
     loss_rollout_residual_hf = F.l1_loss(laplacian_filter(rollout_detail_pred), laplacian_filter(detail_target))
     loss_rollout_wm_l1 = masked_l1_loss(rollout_fp32, target_fp32, wm_mask)
     loss_rollout_wm_grad = masked_gradient_l1_loss(rollout_fp32, target_fp32, wm_mask, grad_loss_fn)
-    use_noisy_rollout = noisy_rollout_pred is not None and (
+    has_split_noisy_weight = (
         rollout_noisy_l1_weight > 0.0
         or rollout_noisy_detail_weight > 0.0
         or rollout_noisy_hf_weight > 0.0
-        or rollout_noisy_weight > 0.0
     )
+    legacy_noisy_weight = 0.0 if has_split_noisy_weight else rollout_noisy_weight
+    use_noisy_rollout = noisy_rollout_pred is not None and (has_split_noisy_weight or legacy_noisy_weight > 0.0)
     if not use_noisy_rollout:
         loss_rollout_noisy_l1 = x_t.new_tensor(0.0)
         loss_rollout_noisy_detail = x_t.new_tensor(0.0)
@@ -766,7 +767,7 @@ def build_stage2_loss(
         + wm_grad_weight * loss_wm_grad
         + residual_hf_weight * loss_residual_hf
         + detail_velocity_weight * loss_detail_velocity
-        + rollout_noisy_weight * loss_rollout_noisy
+        + legacy_noisy_weight * loss_rollout_noisy
         + rollout_noisy_l1_weight * loss_rollout_noisy_l1
         + rollout_noisy_detail_weight * loss_rollout_noisy_detail
         + rollout_noisy_hf_weight * loss_rollout_noisy_hf

@@ -49,7 +49,10 @@ def validate_resume_args(
     checkpoint_args = checkpoint.get("args", {}) if isinstance(checkpoint, dict) else {}
     mismatches = []
     for key in required_keys:
-        if key not in checkpoint_args or not hasattr(current_args, key):
+        if not hasattr(current_args, key):
+            continue
+        if key not in checkpoint_args:
+            mismatches.append(f"{key}: checkpoint=<missing>, current={getattr(current_args, key)!r}")
             continue
         old_value = checkpoint_args[key]
         new_value = getattr(current_args, key)

@@ -60,6 +60,14 @@ def stage1_resume_required_keys() -> list[str]:
         "wm_l1_weight",
         "wm_grad_weight",
         "roi_consistency_weight",
+        "paired_psnr_weight",
+        "paired_ssim_weight",
+        "paired_mse_weight",
+        "paired_mae_weight",
+        "paired_sharp_weight",
+        "detail_target_sharp_ratio",
+        "detail_max_sharp_ratio",
+        "detail_oversharp_penalty_weight",
     ]
 
 

@@ -119,6 +119,9 @@ def test_stage2_detail_teacher_preset_makes_refinement_less_conservative():
         detail_velocity_weight=0.10,
         rollout_source_mode="coarse",
         rollout_noisy_weight=0.0,
+        rollout_noisy_l1_weight=0.0,
+        rollout_noisy_detail_weight=0.0,
+        rollout_noisy_hf_weight=0.0,
         rollout_detail_weight=0.0,
         rollout_hf_weight=0.18,
         rollout_residual_hf_weight=0.18,
@@ -150,9 +153,12 @@ def test_stage2_detail_teacher_preset_makes_refinement_less_conservative():
     assert out.detail_weight >= 0.25
     assert out.rollout_detail_weight >= 0.35
     assert out.dynamic_condition_rollout is True
-    assert out.detail_refine_ratio_weight >= 4.0
+    assert out.detail_refine_ratio_weight >= 2.0
+    assert out.detail_under_refine_penalty_weight >= 2.0
     assert out.rollout_source_mode == "both"
-    assert out.rollout_noisy_weight >= 0.35
+    assert out.rollout_noisy_l1_weight >= 0.20
+    assert out.rollout_noisy_detail_weight >= 0.10
+    assert out.rollout_noisy_hf_weight >= 0.08
     assert out.detail_delta_psnr_penalty_weight >= 0.5
     assert out.detail_delta_ssim_penalty_weight >= 20.0
     assert out.detail_delta_wm_penalty_weight >= 20.0
@@ -165,7 +171,21 @@ def test_resume_required_keys_cover_detail_experiment_settings():
     stage1_keys = set(stage1_resume_required_keys())
     stage2_keys = set(stage2_resume_required_keys())
 
-    for key in ["best_metric", "mse_weight", "grad_weight", "hf_weight", "wm_l1_weight"]:
+    for key in [
+        "best_metric",
+        "mse_weight",
+        "grad_weight",
+        "hf_weight",
+        "wm_l1_weight",
+        "paired_psnr_weight",
+        "paired_ssim_weight",
+        "paired_mse_weight",
+        "paired_mae_weight",
+        "paired_sharp_weight",
+        "detail_target_sharp_ratio",
+        "detail_max_sharp_ratio",
+        "detail_oversharp_penalty_weight",
+    ]:
         assert key in stage1_keys
 
     for key in [
@@ -177,6 +197,34 @@ def test_resume_required_keys_cover_detail_experiment_settings():
         "detail_boost",
         "rollout_source_mode",
         "rollout_noisy_weight",
+        "rollout_noisy_l1_weight",
+        "rollout_noisy_detail_weight",
+        "rollout_noisy_hf_weight",
+        "score_psnr_weight",
+        "score_ssim_weight",
+        "score_lpips_weight",
+        "score_fid_weight",
+        "score_sharp_weight",
+        "paired_psnr_weight",
+        "paired_ssim_weight",
+        "paired_mse_weight",
+        "paired_mae_weight",
+        "paired_brain_mae_weight",
+        "paired_wm_mae_weight",
+        "paired_grad_weight",
+        "paired_roi_weight",
+        "paired_sharp_weight",
+        "detail_sharp_weight",
+        "detail_coarse_penalty_weight",
+        "detail_target_sharp_ratio",
+        "detail_max_sharp_ratio",
+        "detail_oversharp_penalty_weight",
+        "detail_refine_target_ratio",
+        "detail_refine_ratio_weight",
+        "detail_under_refine_penalty_weight",
+        "detail_delta_psnr_penalty_weight",
+        "detail_delta_ssim_penalty_weight",
+        "detail_delta_wm_penalty_weight",
     ]:
         assert key in stage2_keys
 
@@ -281,6 +329,9 @@ def test_stage2_loss_includes_rollout_detail_residual_term():
         residual_hf_weight=0.0,
         detail_velocity_weight=0.0,
         rollout_noisy_weight=0.0,
+        rollout_noisy_l1_weight=0.0,
+        rollout_noisy_detail_weight=0.0,
+        rollout_noisy_hf_weight=0.0,
         rollout_detail_weight=1.0,
         rollout_l1_weight=0.0,
         rollout_ssim_weight=0.0,
@@ -342,7 +393,10 @@ def test_stage2_loss_includes_noisy_source_rollout_supervision():
         residual_hf_weight=0.0,
         detail_velocity_weight=0.0,
         rollout_detail_weight=0.0,
-        rollout_noisy_weight=1.0,
+        rollout_noisy_weight=0.0,
+        rollout_noisy_l1_weight=1.0,
+        rollout_noisy_detail_weight=0.5,
+        rollout_noisy_hf_weight=0.25,
         rollout_l1_weight=0.0,
         rollout_ssim_weight=0.0,
         rollout_hf_weight=0.0,
@@ -356,7 +410,15 @@ def test_stage2_loss_includes_noisy_source_rollout_supervision():
     )
 
     assert losses["rollout_noisy"].item() > 0.0
-    assert torch.allclose(losses["total"], losses["rollout_noisy"])
+    assert losses["rollout_noisy_l1"].item() > 0.0
+    assert losses["rollout_noisy_detail"].item() > 0.0
+    assert losses["rollout_noisy_hf"].item() > 0.0
+    expected = (
+        losses["rollout_noisy_l1"]
+        + 0.5 * losses["rollout_noisy_detail"]
+        + 0.25 * losses["rollout_noisy_hf"]
+    )
+    assert torch.allclose(losses["total"], expected)
 
 
 def test_predict_stage1_residual_uses_center_slice_for_stacked_input():

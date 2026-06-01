@@ -112,6 +112,8 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --source_noise_std 0.05 `
   --eval_steps 10 `
   --best_metric detail_paired `
+  --rollout_source_mode both `
+  --rollout_noisy_weight 0.35 `
   --detail_weight 0.25 `
   --hf_weight 0.10 `
   --residual_hf_weight 0.25 `
@@ -132,6 +134,9 @@ python -m pmrf_t1fa.train_pmrf_t1fa_stage2 `
   --detail_refine_ratio_weight 4.0 `
   --detail_refine_target_ratio 0.50 `
   --detail_under_refine_penalty_weight 4.0 `
+  --detail_delta_psnr_penalty_weight 0.5 `
+  --detail_delta_ssim_penalty_weight 20.0 `
+  --detail_delta_wm_penalty_weight 20.0 `
   --detail_target_sharp_ratio 0.90 `
   --detail_max_sharp_ratio 1.20 `
   --detail_oversharp_penalty_weight 12.0 `

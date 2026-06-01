@@ -40,6 +40,29 @@ class ZeroLPIPSLoss(torch.nn.Module):
         return pred.new_zeros((pred.shape[0],))
 
 
+def stage1_resume_required_keys() -> list[str]:
+    return [
+        "context_slices",
+        "stage1_model_variant",
+        "stage1_prediction_mode",
+        "stage1_detail_scale",
+        "best_metric",
+        "mse_weight",
+        "l1_start_weight",
+        "l1_end_weight",
+        "ssim_start_weight",
+        "ssim_end_weight",
+        "grad_weight",
+        "hf_weight",
+        "detail_hf_weight",
+        "detail_lap_weight",
+        "brain_l1_weight",
+        "wm_l1_weight",
+        "wm_grad_weight",
+        "roi_consistency_weight",
+    ]
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Train PMRF-T1FA Stage 1 coarse predictor")
     parser.add_argument("--train_t1_dir", default="data/processed/train/t1_slices")
@@ -573,12 +596,7 @@ def main():
         validate_resume_args(
             checkpoint,
             args,
-            required_keys=[
-                "context_slices",
-                "stage1_model_variant",
-                "stage1_prediction_mode",
-                "stage1_detail_scale",
-            ],
+            required_keys=stage1_resume_required_keys(),
             checkpoint_path=resume_path,
         )
         accelerator.unwrap_model(model).load_state_dict(checkpoint["model"])

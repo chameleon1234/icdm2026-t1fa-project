@@ -56,6 +56,51 @@ def parse_step_list(value: str) -> List[int]:
     return steps
 
 
+def stage2_resume_required_keys() -> list[str]:
+    return [
+        "stage1_ckpt",
+        "stage2_model_variant",
+        "stage2_training_preset",
+        "condition_mode",
+        "source_noise_std",
+        "t_sampling",
+        "t_min",
+        "t_max",
+        "rollout_train_steps",
+        "rollout_source_mode",
+        "rollout_noisy_weight",
+        "eval_steps",
+        "best_metric",
+        "detail_boost",
+        "dynamic_condition_rollout",
+        "velocity_weight",
+        "image_mse_weight",
+        "l1_weight",
+        "ssim_weight",
+        "grad_weight",
+        "hf_weight",
+        "residual_hf_weight",
+        "detail_weight",
+        "detail_velocity_weight",
+        "rollout_detail_weight",
+        "rollout_l1_weight",
+        "rollout_ssim_weight",
+        "rollout_hf_weight",
+        "rollout_residual_hf_weight",
+        "rollout_wm_l1_weight",
+        "rollout_wm_grad_weight",
+        "brain_l1_weight",
+        "wm_l1_weight",
+        "wm_grad_weight",
+        "roi_consistency_weight",
+        "detail_refine_ratio_weight",
+        "detail_under_refine_penalty_weight",
+        "detail_delta_psnr_penalty_weight",
+        "detail_delta_ssim_penalty_weight",
+        "detail_delta_wm_penalty_weight",
+    ]
+
+
 def apply_stage2_training_preset(args):
     if args.stage2_training_preset != "detail_teacher":
         return args
@@ -77,6 +122,8 @@ def apply_stage2_training_preset(args):
     args.residual_hf_weight = max(float(args.residual_hf_weight), 0.30)
     args.detail_weight = max(float(args.detail_weight), 0.25)
     args.detail_velocity_weight = max(float(args.detail_velocity_weight), 0.18)
+    args.rollout_source_mode = "both"
+    args.rollout_noisy_weight = max(float(args.rollout_noisy_weight), 0.35)
     args.rollout_detail_weight = max(float(args.rollout_detail_weight), 0.35)
     args.rollout_hf_weight = max(float(args.rollout_hf_weight), 0.35)
     args.rollout_residual_hf_weight = max(float(args.rollout_residual_hf_weight), 0.45)
@@ -91,6 +138,9 @@ def apply_stage2_training_preset(args):
     args.dynamic_condition_rollout = True
     args.detail_refine_ratio_weight = max(float(args.detail_refine_ratio_weight), 4.0)
     args.detail_under_refine_penalty_weight = max(float(args.detail_under_refine_penalty_weight), 4.0)
+    args.detail_delta_psnr_penalty_weight = max(float(args.detail_delta_psnr_penalty_weight), 0.5)
+    args.detail_delta_ssim_penalty_weight = max(float(args.detail_delta_ssim_penalty_weight), 20.0)
+    args.detail_delta_wm_penalty_weight = max(float(args.detail_delta_wm_penalty_weight), 20.0)
     return args
 
 
@@ -138,6 +188,12 @@ def parse_args():
         default="4,8,10",
         help="Comma-separated Stage 2 rollout lengths sampled during training, e.g. 4,8,10 or 10,25.",
     )
+    parser.add_argument(
+        "--rollout_source_mode",
+        default="coarse",
+        choices=["coarse", "noisy", "both"],
+        help="Starting point for differentiable rollout supervision. both adds an extra noisy-source rollout loss.",
+    )
     parser.add_argument("--save_every", type=int, default=10)
     parser.add_argument("--preview_every", type=int, default=500)
     parser.add_argument("--resume", action="store_true")
@@ -155,6 +211,7 @@ def parse_args():
     parser.add_argument("--hf_weight", type=float, default=0.04)
     parser.add_argument("--residual_hf_weight", type=float, default=0.12)
     parser.add_argument("--detail_velocity_weight", type=float, default=0.10)
+    parser.add_argument("--rollout_noisy_weight", type=float, default=0.0)
     parser.add_argument("--rollout_detail_weight", type=float, default=0.0)
     parser.add_argument("--rollout_l1_weight", type=float, default=0.35)
     parser.add_argument("--rollout_ssim_weight", type=float, default=0.35)
@@ -206,6 +263,9 @@ def parse_args():
     parser.add_argument("--detail_refine_ratio_weight", type=float, default=0.0)
     parser.add_argument("--detail_refine_target_ratio", type=float, default=0.50)
     parser.add_argument("--detail_under_refine_penalty_weight", type=float, default=0.0)
+    parser.add_argument("--detail_delta_psnr_penalty_weight", type=float, default=0.0)
+    parser.add_argument("--detail_delta_ssim_penalty_weight", type=float, default=0.0)
+    parser.add_argument("--detail_delta_wm_penalty_weight", type=float, default=0.0)
     parser.add_argument("--skip_nonfinite_batches", action="store_true")
     parser.add_argument("--rollback_on_degrade", action="store_true")
     parser.add_argument("--disable_rollback_on_degrade", action="store_false", dest="rollback_on_degrade")
@@ -308,12 +368,21 @@ def compute_detail_paired_score(metrics: Dict[str, float], args) -> float:
         refine_target - refine_ratio,
         0.0,
     )
+    delta_penalty = (
+        float(getattr(args, "detail_delta_psnr_penalty_weight", 0.0))
+        * max(-float(metrics.get("delta_psnr", 0.0)), 0.0)
+        + float(getattr(args, "detail_delta_ssim_penalty_weight", 0.0))
+        * max(-float(metrics.get("delta_ssim", 0.0)), 0.0)
+        + float(getattr(args, "detail_delta_wm_penalty_weight", 0.0))
+        * max(-float(metrics.get("delta_wm_l1", 0.0)), 0.0)
+    )
     return (
         compute_wm_paired_score(metrics, args)
         + args.detail_sharp_weight * sharp_gain
         + refine_bonus
         - args.detail_coarse_penalty_weight * smooth_penalty
         - under_refine_penalty
+        - delta_penalty
         - getattr(args, "detail_oversharp_penalty_weight", 12.0) * oversharp_penalty
     )
 
@@ -548,6 +617,7 @@ def build_stage2_loss(
     target: torch.Tensor,
     t: torch.Tensor,
     rollout_pred: torch.Tensor,
+    noisy_rollout_pred: torch.Tensor | None,
     ssim_loss_fn: SSIMLoss,
     grad_loss_fn: GradientLoss,
     lpips_loss_fn,
@@ -568,6 +638,7 @@ def build_stage2_loss(
     wm_grad_weight: float,
     residual_hf_weight: float,
     detail_velocity_weight: float,
+    rollout_noisy_weight: float,
     rollout_detail_weight: float,
     rollout_l1_weight: float,
     rollout_ssim_weight: float,
@@ -611,6 +682,16 @@ def build_stage2_loss(
     loss_rollout_residual_hf = F.l1_loss(laplacian_filter(rollout_detail_pred), laplacian_filter(detail_target))
     loss_rollout_wm_l1 = masked_l1_loss(rollout_fp32, target_fp32, wm_mask)
     loss_rollout_wm_grad = masked_gradient_l1_loss(rollout_fp32, target_fp32, wm_mask, grad_loss_fn)
+    if noisy_rollout_pred is None or rollout_noisy_weight <= 0.0:
+        loss_rollout_noisy = x_t.new_tensor(0.0)
+    else:
+        noisy_rollout_fp32 = clamp_to_image_range(noisy_rollout_pred.float())
+        noisy_rollout_detail = noisy_rollout_fp32 - coarse_fp32
+        loss_rollout_noisy = (
+            F.l1_loss(noisy_rollout_fp32, target_fp32)
+            + F.l1_loss(noisy_rollout_detail, detail_target)
+            + F.l1_loss(laplacian_filter(noisy_rollout_detail), laplacian_filter(detail_target))
+        )
     loss_roi = roi_consistency_loss(
         x_hat,
         target_fp32,
@@ -637,6 +718,7 @@ def build_stage2_loss(
         + wm_grad_weight * loss_wm_grad
         + residual_hf_weight * loss_residual_hf
         + detail_velocity_weight * loss_detail_velocity
+        + rollout_noisy_weight * loss_rollout_noisy
         + rollout_detail_weight * loss_rollout_detail
         + rollout_l1_weight * loss_rollout_l1
         + rollout_ssim_weight * loss_rollout_ssim
@@ -660,6 +742,7 @@ def build_stage2_loss(
         "hf": loss_hf,
         "residual_hf": loss_residual_hf,
         "detail_velocity": loss_detail_velocity,
+        "rollout_noisy": loss_rollout_noisy,
         "rollout_detail": loss_rollout_detail,
         "rollout_l1": loss_rollout_l1,
         "rollout_ssim": loss_rollout_ssim,
@@ -789,17 +872,7 @@ def main():
         validate_resume_args(
             checkpoint,
             args,
-            required_keys=[
-                "stage1_ckpt",
-                "stage2_model_variant",
-                "condition_mode",
-                "dynamic_condition_rollout",
-                "detail_weight",
-                "rollout_detail_weight",
-                "rollout_residual_hf_weight",
-                "detail_refine_ratio_weight",
-                "detail_under_refine_penalty_weight",
-            ],
+            required_keys=stage2_resume_required_keys(),
             checkpoint_path=resume_path,
         )
         accelerator.unwrap_model(flow_model).load_state_dict(checkpoint["model"])
@@ -832,6 +905,7 @@ def main():
         f"condition_on_coarse={args.condition_on_coarse} | Device={accelerator.device} | "
         f"mixed_precision={args.mixed_precision} | stage1_channels={stage1_channels} | "
         f"source_noise_std={args.source_noise_std} | rollout_train_steps={args.rollout_train_steps} | "
+        f"rollout_source_mode={args.rollout_source_mode} | rollout_noisy_weight={args.rollout_noisy_weight} | "
         f"eval_steps={args.eval_steps} | stage1_device={stage1_device} | "
         f"stage2_model_variant={args.stage2_model_variant} | detail_boost={args.detail_boost} | "
         f"dynamic_condition_rollout={args.dynamic_condition_rollout} | "
@@ -852,6 +926,7 @@ def main():
             "hf": 0.0,
             "residual_hf": 0.0,
             "detail_velocity": 0.0,
+            "rollout_noisy": 0.0,
             "rollout_detail": 0.0,
             "rollout_l1": 0.0,
             "rollout_ssim": 0.0,
@@ -887,7 +962,7 @@ def main():
                     t_min=args.t_min,
                     t_max=args.t_max,
                 )
-                x_t, _, v_target = build_xt(
+                x_t, source, v_target = build_xt(
                     target=fa_img,
                     coarse=coarse,
                     t=t,
@@ -907,9 +982,10 @@ def main():
                     ).item()
                 )
                 rollout_steps = int(args.rollout_train_steps[rollout_index])
+                primary_rollout_source = source if args.rollout_source_mode == "noisy" else coarse
                 rollout_pred = euler_refine_train(
                     flow_model,
-                    coarse,
+                    primary_rollout_source,
                     num_steps=rollout_steps,
                     condition=condition,
                     clamp=True,
@@ -918,6 +994,19 @@ def main():
                     condition_mode=args.condition_mode,
                     t1_img=t1_img,
                 )
+                noisy_rollout_pred = None
+                if args.rollout_source_mode == "both":
+                    noisy_rollout_pred = euler_refine_train(
+                        flow_model,
+                        source,
+                        num_steps=rollout_steps,
+                        condition=condition,
+                        clamp=True,
+                        detail_boost=args.detail_boost,
+                        dynamic_condition=args.dynamic_condition_rollout,
+                        condition_mode=args.condition_mode,
+                        t1_img=t1_img,
+                    )
                 brain_mask, wm_mask = build_training_masks(
                     t1_img,
                     fa_img,
@@ -936,6 +1025,7 @@ def main():
                     target=fa_img,
                     t=t,
                     rollout_pred=rollout_pred,
+                    noisy_rollout_pred=noisy_rollout_pred,
                     ssim_loss_fn=ssim_loss_fn,
                     grad_loss_fn=grad_loss_fn,
                     lpips_loss_fn=lpips_loss_fn,
@@ -956,6 +1046,7 @@ def main():
                     wm_grad_weight=args.wm_grad_weight,
                     residual_hf_weight=args.residual_hf_weight,
                     detail_velocity_weight=args.detail_velocity_weight,
+                    rollout_noisy_weight=args.rollout_noisy_weight,
                     rollout_detail_weight=args.rollout_detail_weight,
                     rollout_l1_weight=args.rollout_l1_weight,
                     rollout_ssim_weight=args.rollout_ssim_weight,
@@ -1036,6 +1127,7 @@ def main():
             "vel": 0.0,
             "coarse_psnr": 0.0,
             "coarse_ssim": 0.0,
+            "coarse_wm_l1": 0.0,
             "coarse_sharpness": 0.0,
             "coarse_target_sharpness": 0.0,
             "sharpness": 0.0,
@@ -1113,6 +1205,7 @@ def main():
                 val_total["brain_l1"] += masked_l1_loss(refined, fa_fp32, brain_mask).item()
                 val_total["wm_l1"] += masked_l1_loss(refined, fa_fp32, wm_mask).item()
                 val_total["wm_grad"] += masked_gradient_l1_loss(refined, fa_fp32, wm_mask, grad_loss_fn).item()
+                val_total["coarse_wm_l1"] += masked_l1_loss(coarse_fp32, fa_fp32, wm_mask).item()
                 val_total["roi"] += roi_consistency_loss(
                     refined,
                     fa_fp32,
@@ -1151,6 +1244,10 @@ def main():
         metrics["sharp_ratio"] = metrics["sharpness"] / max(metrics["target_sharpness"], 1e-8)
         metrics["coarse_sharp_ratio"] = metrics["coarse_sharpness"] / max(metrics["coarse_target_sharpness"], 1e-8)
         metrics["refine_ratio"] = metrics["refine_l1"] / max(metrics["coarse_target_l1"], 1e-8)
+        metrics["delta_psnr"] = metrics["psnr"] - metrics["coarse_psnr"]
+        metrics["delta_ssim"] = metrics["ssim"] - metrics["coarse_ssim"]
+        metrics["delta_sharp_ratio"] = metrics["sharp_ratio"] - metrics["coarse_sharp_ratio"]
+        metrics["delta_wm_l1"] = metrics["coarse_wm_l1"] - metrics["wm_l1"]
         metrics["balanced_score"] = compute_balanced_score(metrics, args)
         metrics["paired_score"] = compute_paired_score(metrics, args)
         metrics["wm_paired_score"] = compute_wm_paired_score(metrics, args)
@@ -1216,6 +1313,7 @@ def main():
                 handle.write(
                     f"[Epoch {epoch + 1}] train_total={running['total'] / max(len(train_loader), 1):.6f} "
                     f"train_wm_l1={running['wm_l1'] / max(len(train_loader), 1):.6f} "
+                    f"train_rollout_noisy={running['rollout_noisy'] / max(len(train_loader), 1):.6f} "
                     f"train_rollout_detail={running['rollout_detail'] / max(len(train_loader), 1):.6f} "
                     f"train_rollout_l1={running['rollout_l1'] / max(len(train_loader), 1):.6f} "
                     f"train_rollout_hf={running['rollout_hf'] / max(len(train_loader), 1):.6f} "
@@ -1229,6 +1327,8 @@ def main():
                     f"sharp={metrics['sharpness']:.6f} sharp_ratio={metrics['sharp_ratio']:.4f} "
                     f"coarse_sharp_ratio={metrics['coarse_sharp_ratio']:.4f} "
                     f"refine_l1={metrics['refine_l1']:.6f} refine_ratio={metrics['refine_ratio']:.4f} "
+                    f"delta_psnr={metrics['delta_psnr']:.4f} delta_ssim={metrics['delta_ssim']:.4f} "
+                    f"delta_sharp={metrics['delta_sharp_ratio']:.4f} delta_wm_l1={metrics['delta_wm_l1']:.6f} "
                     f"balanced={metrics['balanced_score']:.4f} paired={metrics['paired_score']:.4f} "
                     f"wm_paired={metrics['wm_paired_score']:.4f} detail_paired={metrics['detail_paired_score']:.4f} "
                     f"coarse_psnr={metrics['coarse_psnr']:.4f} "
@@ -1297,6 +1397,8 @@ def main():
             f"FID={metrics['fid']:.4f} SharpRatio={metrics['sharp_ratio']:.4f} "
             f"CoarseSharpRatio={metrics['coarse_sharp_ratio']:.4f} "
             f"RefineL1={metrics['refine_l1']:.6f} RefineRatio={metrics['refine_ratio']:.4f} "
+            f"DeltaPSNR={metrics['delta_psnr']:.4f} DeltaSSIM={metrics['delta_ssim']:.4f} "
+            f"DeltaSharp={metrics['delta_sharp_ratio']:.4f} DeltaWM_L1={metrics['delta_wm_l1']:.6f} "
             f"Score={metrics['balanced_score']:.4f} Paired={metrics['paired_score']:.4f} "
             f"WM_Paired={metrics['wm_paired_score']:.4f} Detail_Paired={metrics['detail_paired_score']:.4f} "
             f"NoImprove={no_improve_epochs} Degrade={degrade_epochs} SkippedNonFinite={skipped_nonfinite}"

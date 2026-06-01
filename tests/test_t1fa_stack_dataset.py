@@ -117,6 +117,8 @@ def test_stage2_detail_teacher_preset_makes_refinement_less_conservative():
         hf_weight=0.04,
         residual_hf_weight=0.12,
         detail_velocity_weight=0.10,
+        rollout_source_mode="coarse",
+        rollout_noisy_weight=0.0,
         rollout_detail_weight=0.0,
         rollout_hf_weight=0.18,
         rollout_residual_hf_weight=0.18,
@@ -131,6 +133,9 @@ def test_stage2_detail_teacher_preset_makes_refinement_less_conservative():
         dynamic_condition_rollout=False,
         detail_refine_ratio_weight=0.0,
         detail_under_refine_penalty_weight=0.0,
+        detail_delta_psnr_penalty_weight=0.0,
+        detail_delta_ssim_penalty_weight=0.0,
+        detail_delta_wm_penalty_weight=0.0,
     )
 
     out = apply_stage2_training_preset(args)
@@ -146,6 +151,34 @@ def test_stage2_detail_teacher_preset_makes_refinement_less_conservative():
     assert out.rollout_detail_weight >= 0.35
     assert out.dynamic_condition_rollout is True
     assert out.detail_refine_ratio_weight >= 4.0
+    assert out.rollout_source_mode == "both"
+    assert out.rollout_noisy_weight >= 0.35
+    assert out.detail_delta_psnr_penalty_weight >= 0.5
+    assert out.detail_delta_ssim_penalty_weight >= 20.0
+    assert out.detail_delta_wm_penalty_weight >= 20.0
+
+
+def test_resume_required_keys_cover_detail_experiment_settings():
+    from pmrf_t1fa.train_pmrf_t1fa_stage1 import stage1_resume_required_keys
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import stage2_resume_required_keys
+
+    stage1_keys = set(stage1_resume_required_keys())
+    stage2_keys = set(stage2_resume_required_keys())
+
+    for key in ["best_metric", "mse_weight", "grad_weight", "hf_weight", "wm_l1_weight"]:
+        assert key in stage1_keys
+
+    for key in [
+        "source_noise_std",
+        "t_sampling",
+        "rollout_train_steps",
+        "eval_steps",
+        "best_metric",
+        "detail_boost",
+        "rollout_source_mode",
+        "rollout_noisy_weight",
+    ]:
+        assert key in stage2_keys
 
 
 def test_stage1_loss_includes_white_matter_and_roi_terms():
@@ -226,6 +259,7 @@ def test_stage2_loss_includes_rollout_detail_residual_term():
         target=target,
         t=t,
         rollout_pred=rollout,
+        noisy_rollout_pred=None,
         ssim_loss_fn=SSIMLoss(),
         grad_loss_fn=GradientLoss(),
         lpips_loss_fn=ZeroLPIPSLoss(),
@@ -246,6 +280,7 @@ def test_stage2_loss_includes_rollout_detail_residual_term():
         wm_grad_weight=0.0,
         residual_hf_weight=0.0,
         detail_velocity_weight=0.0,
+        rollout_noisy_weight=0.0,
         rollout_detail_weight=1.0,
         rollout_l1_weight=0.0,
         rollout_ssim_weight=0.0,
@@ -261,6 +296,67 @@ def test_stage2_loss_includes_rollout_detail_residual_term():
 
     assert losses["rollout_detail"].item() > 0.0
     assert torch.allclose(losses["total"], losses["rollout_detail"])
+
+
+def test_stage2_loss_includes_noisy_source_rollout_supervision():
+    from pmrf_t1fa.models.pmrf_t1fa import GradientLoss, SSIMLoss
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import ZeroLPIPSLoss, build_stage2_loss
+
+    coarse = torch.zeros(1, 1, 8, 8)
+    target = torch.zeros_like(coarse)
+    target[:, :, 2:6, 2:6] = 0.5
+    rollout = target.clone()
+    noisy_rollout = torch.zeros_like(coarse)
+    mask = torch.ones_like(coarse)
+    t = torch.zeros(1)
+    zero = torch.zeros_like(coarse)
+
+    losses = build_stage2_loss(
+        x_t=coarse,
+        v_pred=zero,
+        v_detail=None,
+        v_target=target - coarse,
+        coarse=coarse,
+        target=target,
+        t=t,
+        rollout_pred=rollout,
+        noisy_rollout_pred=noisy_rollout,
+        ssim_loss_fn=SSIMLoss(),
+        grad_loss_fn=GradientLoss(),
+        lpips_loss_fn=ZeroLPIPSLoss(),
+        brain_mask=mask,
+        wm_mask=mask,
+        epoch=0,
+        lpips_warmup_epochs=1,
+        lpips_max_weight=0.0,
+        velocity_weight=0.0,
+        image_mse_weight=0.0,
+        l1_weight=0.0,
+        ssim_weight=0.0,
+        grad_weight=0.0,
+        detail_weight=0.0,
+        hf_weight=0.0,
+        brain_l1_weight=0.0,
+        wm_l1_weight=0.0,
+        wm_grad_weight=0.0,
+        residual_hf_weight=0.0,
+        detail_velocity_weight=0.0,
+        rollout_detail_weight=0.0,
+        rollout_noisy_weight=1.0,
+        rollout_l1_weight=0.0,
+        rollout_ssim_weight=0.0,
+        rollout_hf_weight=0.0,
+        rollout_residual_hf_weight=0.0,
+        rollout_wm_l1_weight=0.0,
+        rollout_wm_grad_weight=0.0,
+        roi_consistency_weight=0.0,
+        roi_rows=2,
+        roi_cols=2,
+        roi_min_pixels=1,
+    )
+
+    assert losses["rollout_noisy"].item() > 0.0
+    assert torch.allclose(losses["total"], losses["rollout_noisy"])
 
 
 def test_predict_stage1_residual_uses_center_slice_for_stacked_input():
@@ -560,6 +656,9 @@ def test_detail_paired_score_rewards_sharpness_over_smoothing():
         detail_target_sharp_ratio=0.90,
         detail_max_sharp_ratio=1.20,
         detail_oversharp_penalty_weight=12.0,
+        detail_delta_psnr_penalty_weight=0.5,
+        detail_delta_ssim_penalty_weight=20.0,
+        detail_delta_wm_penalty_weight=20.0,
     )
     base = {
         "psnr": 28.0,
@@ -579,6 +678,10 @@ def test_detail_paired_score_rewards_sharpness_over_smoothing():
 
     noisy = dict(base, psnr=28.3, sharp_ratio=2.20)
     assert compute_detail_paired_score(base, args) > compute_detail_paired_score(noisy, args)
+
+    bad_delta = dict(base, sharp_ratio=0.90, delta_psnr=-2.0, delta_ssim=-0.10, delta_wm_l1=-0.05)
+    stable_delta = dict(base, sharp_ratio=0.74, delta_psnr=-0.05, delta_ssim=0.0, delta_wm_l1=0.01)
+    assert compute_detail_paired_score(stable_delta, args) > compute_detail_paired_score(bad_delta, args)
 
 
 def test_stage1_detail_paired_score_rewards_sharper_valid_predictions():

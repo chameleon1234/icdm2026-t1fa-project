@@ -142,26 +142,29 @@ def apply_stage2_training_preset(args):
     if args.rollout_train_steps == [4, 8, 10]:
         args.rollout_train_steps = [4, 8, 10, 25]
     args.eval_steps = max(int(args.eval_steps), 10)
-    args.velocity_weight = min(float(args.velocity_weight), 0.12)
-    args.image_mse_weight = min(float(args.image_mse_weight), 0.35)
-    args.l1_weight = min(float(args.l1_weight), 0.70)
-    args.ssim_weight = min(float(args.ssim_weight), 0.45)
+    # Core velocity / single-step losses — reduced L1/SSIM to weaken smoothing bias
+    args.velocity_weight = min(float(args.velocity_weight), 0.15)
+    args.image_mse_weight = min(float(args.image_mse_weight), 0.30)
+    args.l1_weight = min(float(args.l1_weight), 0.45)       # was 0.70 — lower to reduce smoothing
+    args.ssim_weight = min(float(args.ssim_weight), 0.35)   # was 0.45
     args.grad_weight = max(float(args.grad_weight), 0.12)
-    args.hf_weight = max(float(args.hf_weight), 0.12)
-    args.residual_hf_weight = max(float(args.residual_hf_weight), 0.30)
-    args.detail_weight = max(float(args.detail_weight), 0.25)
-    args.detail_velocity_weight = max(float(args.detail_velocity_weight), 0.18)
+    # HF / detail losses — increased to counteract L1 smoothing
+    args.hf_weight = max(float(args.hf_weight), 0.35)                # was 0.12
+    args.residual_hf_weight = max(float(args.residual_hf_weight), 0.60)  # was 0.30
+    args.detail_weight = max(float(args.detail_weight), 0.40)        # was 0.25
+    args.detail_velocity_weight = max(float(args.detail_velocity_weight), 0.20)
+    # Rollout losses — HF-heavy for detail recovery
     args.rollout_source_mode = "both"
-    args.rollout_noisy_l1_weight = max(float(args.rollout_noisy_l1_weight), 0.20)
+    args.rollout_noisy_l1_weight = max(float(args.rollout_noisy_l1_weight), 0.15)
     args.rollout_noisy_detail_weight = max(float(args.rollout_noisy_detail_weight), 0.10)
-    args.rollout_noisy_hf_weight = max(float(args.rollout_noisy_hf_weight), 0.08)
-    args.rollout_detail_weight = max(float(args.rollout_detail_weight), 0.35)
-    args.rollout_hf_weight = max(float(args.rollout_hf_weight), 0.35)
-    args.rollout_residual_hf_weight = max(float(args.rollout_residual_hf_weight), 0.45)
-    args.rollout_wm_l1_weight = max(float(args.rollout_wm_l1_weight), 0.12)
-    args.rollout_wm_grad_weight = max(float(args.rollout_wm_grad_weight), 0.08)
-    args.wm_l1_weight = max(float(args.wm_l1_weight), 0.16)
-    args.wm_grad_weight = max(float(args.wm_grad_weight), 0.08)
+    args.rollout_noisy_hf_weight = max(float(args.rollout_noisy_hf_weight), 0.12)
+    args.rollout_detail_weight = max(float(args.rollout_detail_weight), 0.40)
+    args.rollout_hf_weight = max(float(args.rollout_hf_weight), 0.70)                 # was 0.35
+    args.rollout_residual_hf_weight = max(float(args.rollout_residual_hf_weight), 0.80)  # was 0.45
+    args.rollout_wm_l1_weight = max(float(args.rollout_wm_l1_weight), 0.10)
+    args.rollout_wm_grad_weight = max(float(args.rollout_wm_grad_weight), 0.10)
+    args.wm_l1_weight = max(float(args.wm_l1_weight), 0.12)
+    args.wm_grad_weight = max(float(args.wm_grad_weight), 0.10)
     args.roi_consistency_weight = max(float(args.roi_consistency_weight), 0.04)
     args.best_metric = "detail_paired"
     args.degrade_check_mode = "teacher"
@@ -178,7 +181,9 @@ def apply_stage2_training_preset(args):
     if float(getattr(args, "detail_min_delta_ssim", float("-inf"))) <= float("-inf"):
         args.detail_min_delta_ssim = -0.0003
     args.detail_fidelity_gate_penalty = max(float(getattr(args, "detail_fidelity_gate_penalty", 1.0)), 2.0)
-    # Velocity schedule: decaying for multi-step teacher
+    # Velocity schedule: decaying is the v6 detail-teacher default. The quick
+    # constant probe can still be run by disabling the preset and passing the
+    # same weights explicitly, but the named preset should match the v6 design.
     args.velocity_schedule = "decaying"
     # State-aware remaining detail auxiliary losses
     args.remaining_detail_weight = max(float(getattr(args, "remaining_detail_weight", 0.0)), 0.08)

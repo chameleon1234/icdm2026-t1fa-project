@@ -174,7 +174,7 @@ def test_stage2_detail_teacher_preset_makes_refinement_less_conservative():
     assert out.detail_refine_ratio_weight >= 2.0
     assert out.detail_under_refine_penalty_weight >= 2.0
     assert out.rollout_source_mode == "both"
-    assert out.rollout_noisy_l1_weight >= 0.20
+    assert out.rollout_noisy_l1_weight >= 0.15
     assert out.rollout_noisy_detail_weight >= 0.10
     assert out.rollout_noisy_hf_weight >= 0.08
     assert out.detail_delta_psnr_penalty_weight >= 0.5

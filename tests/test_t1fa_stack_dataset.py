@@ -181,7 +181,7 @@ def test_stage2_detail_teacher_preset_makes_refinement_less_conservative():
     assert out.detail_delta_ssim_penalty_weight >= 20.0
     assert out.detail_delta_wm_penalty_weight >= 20.0
     assert out.velocity_schedule == "decaying"
-    assert out.detail_fidelity_gate_penalty <= 0.3
+    assert out.detail_fidelity_gate_penalty >= 2.0
     assert out.detail_min_delta_psnr == -0.005
     assert out.detail_min_delta_ssim == -0.0003
     assert out.remaining_detail_weight >= 0.08
@@ -456,23 +456,23 @@ def test_stage2_loss_includes_noisy_source_rollout_supervision():
     assert torch.allclose(losses["total"], expected)
 
 
-def test_detail_paired_fidelity_gate_penalizes_negative_scores_instead_of_improving_them():
+def test_detail_paired_fidelity_gate_caps_failed_scores_below_wm_paired_baseline():
     from types import SimpleNamespace
 
-    from pmrf_t1fa.train_pmrf_t1fa_stage2 import compute_detail_paired_score
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import compute_detail_paired_score, compute_wm_paired_score
 
     metrics = {
-        "psnr": 10.0,
-        "ssim": 0.5,
-        "mse_proxy": 0.20,
-        "l1": 0.20,
-        "brain_l1": 0.10,
-        "wm_l1": 0.10,
-        "grad": 0.10,
-        "roi": 0.10,
-        "sharp_ratio": 0.80,
-        "coarse_sharp_ratio": 0.70,
-        "refine_ratio": 0.10,
+        "psnr": 28.0,
+        "ssim": 0.90,
+        "mse_proxy": 0.0015,
+        "l1": 0.018,
+        "brain_l1": 0.035,
+        "wm_l1": 0.040,
+        "grad": 0.05,
+        "roi": 0.015,
+        "sharp_ratio": 0.95,
+        "coarse_sharp_ratio": 0.40,
+        "refine_ratio": 0.50,
         "delta_psnr": -0.10,
         "delta_ssim": -0.01,
         "delta_wm_l1": 0.0,
@@ -492,13 +492,13 @@ def test_detail_paired_fidelity_gate_penalizes_negative_scores_instead_of_improv
         detail_target_sharp_ratio=0.90,
         detail_max_sharp_ratio=1.20,
         detail_oversharp_penalty_weight=12.0,
-        detail_refine_ratio_weight=0.0,
+        detail_refine_ratio_weight=4.0,
         detail_refine_target_ratio=0.50,
         detail_under_refine_penalty_weight=0.0,
         detail_delta_psnr_penalty_weight=0.0,
         detail_delta_ssim_penalty_weight=0.0,
         detail_delta_wm_penalty_weight=0.0,
-        detail_fidelity_gate_penalty=0.3,
+        detail_fidelity_gate_penalty=2.0,
     )
 
     passing_gate = compute_detail_paired_score(
@@ -509,9 +509,11 @@ def test_detail_paired_fidelity_gate_penalizes_negative_scores_instead_of_improv
         metrics,
         SimpleNamespace(**base_args, detail_min_delta_psnr=0.0, detail_min_delta_ssim=0.0),
     )
+    wm_baseline = compute_wm_paired_score(metrics, SimpleNamespace(**base_args))
 
-    assert passing_gate < 0.0
+    assert passing_gate > wm_baseline
     assert failing_gate < passing_gate
+    assert failing_gate <= wm_baseline - base_args["detail_fidelity_gate_penalty"]
 
 
 def test_stage2_legacy_noisy_rollout_weight_does_not_double_count_split_weights():

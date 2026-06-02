@@ -177,7 +177,7 @@ def apply_stage2_training_preset(args):
         args.detail_min_delta_psnr = -0.005
     if float(getattr(args, "detail_min_delta_ssim", float("-inf"))) <= float("-inf"):
         args.detail_min_delta_ssim = -0.0003
-    args.detail_fidelity_gate_penalty = min(float(getattr(args, "detail_fidelity_gate_penalty", 1.0)), 0.3)
+    args.detail_fidelity_gate_penalty = max(float(getattr(args, "detail_fidelity_gate_penalty", 1.0)), 2.0)
     # Velocity schedule: decaying for multi-step teacher
     args.velocity_schedule = "decaying"
     # State-aware remaining detail auxiliary losses
@@ -312,7 +312,7 @@ def parse_args():
     parser.add_argument("--detail_delta_ssim_penalty_weight", type=float, default=0.0)
     parser.add_argument("--detail_delta_wm_penalty_weight", type=float, default=0.0)
     parser.add_argument("--detail_fidelity_gate_penalty", type=float, default=1.0,
-                        help="When fidelity gate fails (PSNR/SSIM below min thresholds), multiply score by this factor (0.3 = strong penalty).")
+                        help="Margin below the WM paired baseline when fidelity gate fails; prevents sharp-but-unfaithful checkpoints from winning.")
     parser.add_argument("--detail_min_delta_psnr", type=float, default=float("-inf"),
                         help="Minimum delta PSNR (Stage2 - Stage1) to pass fidelity gate. -0.005 recommended for teacher.")
     parser.add_argument("--detail_min_delta_ssim", type=float, default=float("-inf"),
@@ -443,8 +443,9 @@ def compute_detail_paired_score(metrics: Dict[str, float], args) -> float:
         + float(getattr(args, "detail_delta_wm_penalty_weight", 0.0))
         * max(-float(metrics.get("delta_wm_l1", 0.0)), 0.0)
     )
+    wm_paired_score = compute_wm_paired_score(metrics, args)
     score = (
-        compute_wm_paired_score(metrics, args)
+        wm_paired_score
         + args.detail_sharp_weight * sharp_gain
         + refine_bonus
         - args.detail_coarse_penalty_weight * smooth_penalty
@@ -453,8 +454,8 @@ def compute_detail_paired_score(metrics: Dict[str, float], args) -> float:
         - getattr(args, "detail_oversharp_penalty_weight", 12.0) * oversharp_penalty
     )
     # Fidelity hard gate: if Stage2 regresses PSNR or SSIM beyond threshold,
-    # multiply the entire score by a strong penalty to prevent selecting
-    # checkpoints that are sharper but less faithful.
+    # cap the score below the WM paired baseline so sharp/refine bonuses
+    # cannot select a checkpoint that is less faithful than the coarse prior.
     min_delta_psnr = float(getattr(args, "detail_min_delta_psnr", float("-inf")))
     min_delta_ssim = float(getattr(args, "detail_min_delta_ssim", float("-inf")))
     fidelity_pass = (
@@ -462,7 +463,8 @@ def compute_detail_paired_score(metrics: Dict[str, float], args) -> float:
         and float(metrics.get("delta_ssim", 0.0)) >= min_delta_ssim
     )
     if not fidelity_pass:
-        score -= abs(float(getattr(args, "detail_fidelity_gate_penalty", 1.0)))
+        margin = abs(float(getattr(args, "detail_fidelity_gate_penalty", 1.0)))
+        score = min(score, wm_paired_score - margin)
     return score
 
 

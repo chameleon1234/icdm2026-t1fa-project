@@ -441,7 +441,11 @@ def infer_stage2_condition_mode(checkpoint_args: Optional[dict]) -> str:
     return "coarse" if checkpoint_args.get("condition_on_coarse", True) else "none"
 
 
-def stage2_condition_channels(condition_mode: str, stage1_channels: int) -> int:
+def stage2_condition_channels(
+    condition_mode: str,
+    stage1_channels: int,
+    include_delta_from_initial: bool = True,
+) -> int:
     if condition_mode not in STAGE2_CONDITION_MODES:
         raise ValueError(f"Unsupported Stage 2 condition mode: {condition_mode}")
     if condition_mode == "none":
@@ -453,7 +457,8 @@ def stage2_condition_channels(condition_mode: str, stage1_channels: int) -> int:
     if condition_mode == "coarse_t1":
         return 1 + int(stage1_channels)
     if condition_mode == "coarse_t1_edge":
-        return 7 + int(stage1_channels)
+        delta_channels = 1 if include_delta_from_initial else 0
+        return 7 + int(stage1_channels) + delta_channels
     raise ValueError(f"Unsupported Stage 2 condition mode: {condition_mode}")
 
 
@@ -461,7 +466,21 @@ def build_stage2_condition(
     coarse: torch.Tensor,
     t1_img: torch.Tensor,
     condition_mode: str,
+    initial_coarse: Optional[torch.Tensor] = None,
+    include_delta_from_initial: bool = True,
 ) -> Optional[torch.Tensor]:
+    """Build Stage 2 conditioning tensor.
+
+    Args:
+        coarse: Current state (original coarse prediction in static mode,
+                current x_pred in dynamic rollout mode).
+        t1_img: T1 input stack.
+        condition_mode: Conditioning mode.
+        initial_coarse: Original Stage1 coarse prediction, used to compute
+            delta_from_initial (how far the current state has moved from start).
+            Only used in ``coarse_t1_edge`` mode.  Must be inference-available
+            (no target leakage).  When None, delta is zero-filled.
+    """
     if condition_mode not in STAGE2_CONDITION_MODES:
         raise ValueError(f"Unsupported Stage 2 condition mode: {condition_mode}")
     if condition_mode == "none":
@@ -473,6 +492,7 @@ def build_stage2_condition(
     if condition_mode == "coarse_t1":
         return torch.cat([coarse, t1_img], dim=1)
 
+    # coarse_t1_edge mode
     center_t1 = center_channel(t1_img)
     stack_mean = t1_img.mean(dim=1, keepdim=True)
     stack_range = t1_img.max(dim=1, keepdim=True).values - t1_img.min(dim=1, keepdim=True).values
@@ -481,19 +501,27 @@ def build_stage2_condition(
     coarse_edge = single_channel_laplacian(coarse)
     coarse_residual = coarse - center_t1
     residual_edge = single_channel_laplacian(coarse_residual)
-    return torch.cat(
-        [
-            coarse,
-            t1_img,
-            t1_edge,
-            center_offset,
-            stack_range,
-            coarse_edge,
-            coarse_residual,
-            residual_edge,
-        ],
-        dim=1,
-    )
+    # delta_from_initial: how far has the current state moved from the Stage1
+    # prediction? Zero in static mode (coarse == initial_coarse); meaningful
+    # signal during dynamic rollout (x_pred - original_coarse).  This is purely
+    # inference-available — no target leakage.
+    if initial_coarse is not None:
+        delta_from_initial = coarse - initial_coarse
+    else:
+        delta_from_initial = torch.zeros_like(coarse)
+    condition_parts = [
+        coarse,
+        t1_img,
+        t1_edge,
+        center_offset,
+        stack_range,
+        coarse_edge,
+        coarse_residual,
+        residual_edge,
+    ]
+    if include_delta_from_initial:
+        condition_parts.append(delta_from_initial)
+    return torch.cat(condition_parts, dim=1)
 
 
 def predict_stage1_fa(
@@ -700,6 +728,7 @@ def build_xt(
     source_noise_std: float = 0.05,
     noise: Optional[torch.Tensor] = None,
     deterministic_source: bool = False,
+    velocity_schedule: str = "constant",
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     if deterministic_source:
         source = coarse
@@ -708,12 +737,31 @@ def build_xt(
             noise = torch.randn_like(coarse)
         source = coarse + source_noise_std * noise
     t_view = _expand_time(t, target)
-    x_t = (1.0 - t_view) * source + t_view * target
-    v_target = target - source
+    if velocity_schedule == "decaying":
+        # α(t) = 1 - exp(-c·t)  with c=3
+        # α(0)=0, α(1)≈0.95  → early steps cover large structure, late steps refine
+        alpha = 1.0 - torch.exp(-3.0 * t_view)
+        x_t = source + alpha * (target - source)
+        # v_target = dα/dt · (target-source) = c·exp(-c·t) · (target-source)
+        #         = c · (1-α) · (target-source)
+        v_target = 3.0 * torch.exp(-3.0 * t_view) * (target - source)
+    else:  # constant (linear path)
+        x_t = (1.0 - t_view) * source + t_view * target
+        v_target = target - source
     return x_t, source, v_target
 
 
-def project_endpoint(x_t: torch.Tensor, v_pred: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+def project_endpoint(
+    x_t: torch.Tensor,
+    v_pred: torch.Tensor,
+    t: torch.Tensor,
+    velocity_schedule: str = "constant",
+) -> torch.Tensor:
+    if velocity_schedule == "decaying":
+        # For α=1-exp(-3t): (1-α)/α' = exp(-3t)/(3·exp(-3t)) = 1/3
+        # So x_hat = x_t + v_pred / 3
+        return x_t + v_pred / 3.0
+    # constant (linear path): x_hat = x_t + (1-t)·v_pred
     t_view = _expand_time(t, x_t)
     return x_t + (1.0 - t_view) * v_pred
 
@@ -729,11 +777,14 @@ def euler_refine(
     dynamic_condition: bool = False,
     condition_mode: str = "none",
     t1_img: Optional[torch.Tensor] = None,
+    initial_coarse: Optional[torch.Tensor] = None,
+    include_delta_from_initial: bool = True,
 ) -> torch.Tensor:
     if num_steps <= 0:
         raise ValueError(f"num_steps must be positive, got {num_steps}")
 
     x_pred = coarse.clone()
+    initial_coarse = coarse if initial_coarse is None else initial_coarse
     dt = 1.0 / num_steps
     batch_size = coarse.shape[0]
     device = coarse.device
@@ -745,7 +796,13 @@ def euler_refine(
         if dynamic_condition:
             if t1_img is None:
                 raise ValueError("t1_img is required when dynamic_condition=True")
-            step_condition = build_stage2_condition(x_pred, t1_img, condition_mode)
+            step_condition = build_stage2_condition(
+                x_pred,
+                t1_img,
+                condition_mode,
+                initial_coarse=initial_coarse,
+                include_delta_from_initial=include_delta_from_initial,
+            )
         v_pred = compose_stage2_velocity(
             model(x_pred, t_tensor, condition=step_condition),
             t_tensor,
@@ -768,11 +825,14 @@ def euler_refine_train(
     dynamic_condition: bool = False,
     condition_mode: str = "none",
     t1_img: Optional[torch.Tensor] = None,
+    initial_coarse: Optional[torch.Tensor] = None,
+    include_delta_from_initial: bool = True,
 ) -> torch.Tensor:
     if num_steps <= 0:
         raise ValueError(f"num_steps must be positive, got {num_steps}")
 
     x_pred = coarse
+    initial_coarse = coarse if initial_coarse is None else initial_coarse
     dt = 1.0 / num_steps
     batch_size = coarse.shape[0]
     device = coarse.device
@@ -784,7 +844,13 @@ def euler_refine_train(
         if dynamic_condition:
             if t1_img is None:
                 raise ValueError("t1_img is required when dynamic_condition=True")
-            step_condition = build_stage2_condition(x_pred, t1_img, condition_mode)
+            step_condition = build_stage2_condition(
+                x_pred,
+                t1_img,
+                condition_mode,
+                initial_coarse=initial_coarse,
+                include_delta_from_initial=include_delta_from_initial,
+            )
         v_pred = compose_stage2_velocity(
             model(x_pred, t_tensor, condition=step_condition),
             t_tensor,

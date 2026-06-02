@@ -180,6 +180,12 @@ def test_stage2_detail_teacher_preset_makes_refinement_less_conservative():
     assert out.detail_delta_psnr_penalty_weight >= 0.5
     assert out.detail_delta_ssim_penalty_weight >= 20.0
     assert out.detail_delta_wm_penalty_weight >= 20.0
+    assert out.velocity_schedule == "decaying"
+    assert out.detail_fidelity_gate_penalty <= 0.3
+    assert out.detail_min_delta_psnr == -0.005
+    assert out.detail_min_delta_ssim == -0.0003
+    assert out.remaining_detail_weight >= 0.08
+    assert out.rollout_remaining_detail_weight >= 0.10
 
 
 def test_resume_required_keys_cover_detail_experiment_settings():
@@ -248,6 +254,12 @@ def test_resume_required_keys_cover_detail_experiment_settings():
         "detail_delta_psnr_penalty_weight",
         "detail_delta_ssim_penalty_weight",
         "detail_delta_wm_penalty_weight",
+        "velocity_schedule",
+        "detail_fidelity_gate_penalty",
+        "detail_min_delta_psnr",
+        "detail_min_delta_ssim",
+        "remaining_detail_weight",
+        "rollout_remaining_detail_weight",
     ]:
         assert key in stage2_keys
 
@@ -510,6 +522,101 @@ def test_stage2_legacy_noisy_rollout_weight_does_not_double_count_split_weights(
     assert torch.allclose(losses["total"], expected)
 
 
+def test_stage2_rollout_remaining_detail_uses_state_aware_residual():
+    from pmrf_t1fa.models.pmrf_t1fa import GradientLoss, SSIMLoss
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import ZeroLPIPSLoss, build_stage2_loss
+
+    coarse = torch.zeros(1, 1, 8, 8)
+    target = torch.zeros_like(coarse)
+    target[:, :, 2:6, 2:6] = 0.5
+    rollout = torch.zeros_like(coarse)
+    mask = torch.ones_like(coarse)
+    t = torch.zeros(1)
+    zero = torch.zeros_like(coarse)
+
+    losses = build_stage2_loss(
+        x_t=coarse,
+        v_pred=zero,
+        v_detail=None,
+        v_target=target - coarse,
+        coarse=coarse,
+        target=target,
+        t=t,
+        rollout_pred=rollout,
+        noisy_rollout_pred=None,
+        ssim_loss_fn=SSIMLoss(),
+        grad_loss_fn=GradientLoss(),
+        lpips_loss_fn=ZeroLPIPSLoss(),
+        brain_mask=mask,
+        wm_mask=mask,
+        epoch=0,
+        lpips_warmup_epochs=1,
+        lpips_max_weight=0.0,
+        velocity_weight=0.0,
+        image_mse_weight=0.0,
+        l1_weight=0.0,
+        ssim_weight=0.0,
+        grad_weight=0.0,
+        detail_weight=0.0,
+        hf_weight=0.0,
+        brain_l1_weight=0.0,
+        wm_l1_weight=0.0,
+        wm_grad_weight=0.0,
+        residual_hf_weight=0.0,
+        detail_velocity_weight=0.0,
+        rollout_noisy_weight=0.0,
+        rollout_noisy_l1_weight=0.0,
+        rollout_noisy_detail_weight=0.0,
+        rollout_noisy_hf_weight=0.0,
+        rollout_detail_weight=0.0,
+        rollout_l1_weight=0.0,
+        rollout_ssim_weight=0.0,
+        rollout_hf_weight=0.0,
+        rollout_residual_hf_weight=0.0,
+        rollout_wm_l1_weight=0.0,
+        rollout_wm_grad_weight=0.0,
+        roi_consistency_weight=0.0,
+        roi_rows=2,
+        roi_cols=2,
+        roi_min_pixels=1,
+        rollout_remaining_detail_weight=1.0,
+    )
+
+    assert losses["rollout_remaining_detail"].item() > 0.0
+    assert torch.allclose(losses["total"], losses["rollout_remaining_detail"])
+
+
+def test_dynamic_rollout_delta_uses_explicit_initial_coarse_for_noisy_source():
+    from pmrf_t1fa.models.pmrf_t1fa import euler_refine_train
+
+    class CaptureDelta(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.deltas = []
+
+        def forward(self, x_t, t, condition=None):
+            self.deltas.append(condition[:, -1:].detach().clone())
+            return torch.zeros_like(x_t)
+
+    model = CaptureDelta()
+    coarse = torch.zeros(1, 1, 4, 4)
+    source = torch.full_like(coarse, 0.25)
+    t1_img = torch.zeros_like(coarse)
+
+    euler_refine_train(
+        model,
+        source,
+        num_steps=1,
+        dynamic_condition=True,
+        condition_mode="coarse_t1_edge",
+        t1_img=t1_img,
+        initial_coarse=coarse,
+    )
+
+    assert model.deltas
+    assert torch.allclose(model.deltas[0], torch.full_like(coarse, 0.25))
+
+
 def test_predict_stage1_residual_uses_center_slice_for_stacked_input():
     from pmrf_t1fa.models.pmrf_t1fa import predict_stage1_fa
 
@@ -690,14 +797,15 @@ def test_stage2_coarse_t1_edge_condition_keeps_structure_and_detail_guides():
 
     condition = build_stage2_condition(coarse, t1_stack, "coarse_t1_edge")
 
-    assert stage2_condition_channels("coarse_t1_edge", stage1_channels=3) == 10
-    assert condition.shape == torch.Size([1, 10, 4, 4])
+    assert stage2_condition_channels("coarse_t1_edge", stage1_channels=3) == 11
+    assert condition.shape == torch.Size([1, 11, 4, 4])
     assert torch.allclose(condition[:, :1], coarse)
     assert torch.allclose(condition[:, 1:4], t1_stack)
     assert torch.any(condition[:, 4:5].abs() > 0.0)  # T1 center edge
     assert torch.any(condition[:, 7:8].abs() > 0.0)  # coarse edge
     assert torch.allclose(condition[:, 8:9], coarse - t1_stack[:, 1:2])
     assert torch.any(condition[:, 9:10].abs() > 0.0)  # residual edge
+    assert torch.allclose(condition[:, 10:11], torch.zeros_like(coarse))  # delta from initial
 
 
 def test_euler_refine_train_backpropagates_through_multistep_rollout():

@@ -121,6 +121,12 @@ def stage2_resume_required_keys() -> list[str]:
         "detail_delta_psnr_penalty_weight",
         "detail_delta_ssim_penalty_weight",
         "detail_delta_wm_penalty_weight",
+        "velocity_schedule",
+        "detail_fidelity_gate_penalty",
+        "detail_min_delta_psnr",
+        "detail_min_delta_ssim",
+        "remaining_detail_weight",
+        "rollout_remaining_detail_weight",
     ]
 
 
@@ -163,9 +169,20 @@ def apply_stage2_training_preset(args):
     args.dynamic_condition_rollout = True
     args.detail_refine_ratio_weight = max(float(args.detail_refine_ratio_weight), 2.0)
     args.detail_under_refine_penalty_weight = max(float(args.detail_under_refine_penalty_weight), 2.0)
-    args.detail_delta_psnr_penalty_weight = max(float(args.detail_delta_psnr_penalty_weight), 0.5)
-    args.detail_delta_ssim_penalty_weight = max(float(args.detail_delta_ssim_penalty_weight), 20.0)
+    args.detail_delta_psnr_penalty_weight = max(float(args.detail_delta_psnr_penalty_weight), 5.0)
+    args.detail_delta_ssim_penalty_weight = max(float(args.detail_delta_ssim_penalty_weight), 80.0)
     args.detail_delta_wm_penalty_weight = max(float(args.detail_delta_wm_penalty_weight), 20.0)
+    # Fidelity hard gate: prevent selecting checkpoints that are sharper but less faithful
+    if float(getattr(args, "detail_min_delta_psnr", float("-inf"))) <= float("-inf"):
+        args.detail_min_delta_psnr = -0.005
+    if float(getattr(args, "detail_min_delta_ssim", float("-inf"))) <= float("-inf"):
+        args.detail_min_delta_ssim = -0.0003
+    args.detail_fidelity_gate_penalty = min(float(getattr(args, "detail_fidelity_gate_penalty", 1.0)), 0.3)
+    # Velocity schedule: decaying for multi-step teacher
+    args.velocity_schedule = "decaying"
+    # State-aware remaining detail auxiliary losses
+    args.remaining_detail_weight = max(float(getattr(args, "remaining_detail_weight", 0.0)), 0.08)
+    args.rollout_remaining_detail_weight = max(float(getattr(args, "rollout_remaining_detail_weight", 0.0)), 0.10)
     return args
 
 
@@ -294,6 +311,18 @@ def parse_args():
     parser.add_argument("--detail_delta_psnr_penalty_weight", type=float, default=0.0)
     parser.add_argument("--detail_delta_ssim_penalty_weight", type=float, default=0.0)
     parser.add_argument("--detail_delta_wm_penalty_weight", type=float, default=0.0)
+    parser.add_argument("--detail_fidelity_gate_penalty", type=float, default=1.0,
+                        help="When fidelity gate fails (PSNR/SSIM below min thresholds), multiply score by this factor (0.3 = strong penalty).")
+    parser.add_argument("--detail_min_delta_psnr", type=float, default=float("-inf"),
+                        help="Minimum delta PSNR (Stage2 - Stage1) to pass fidelity gate. -0.005 recommended for teacher.")
+    parser.add_argument("--detail_min_delta_ssim", type=float, default=float("-inf"),
+                        help="Minimum delta SSIM (Stage2 - Stage1) to pass fidelity gate. -0.0003 recommended for teacher.")
+    parser.add_argument("--remaining_detail_weight", type=float, default=0.0,
+                        help="Weight for remaining-detail auxiliary loss (state-aware, single-step).")
+    parser.add_argument("--rollout_remaining_detail_weight", type=float, default=0.0,
+                        help="Weight for remaining-detail auxiliary loss on rollout predictions.")
+    parser.add_argument("--velocity_schedule", default="constant", choices=["constant", "decaying"],
+                        help="Velocity schedule: constant (linear path) or decaying (remaining transport, better for multi-step).")
     parser.add_argument("--skip_nonfinite_batches", action="store_true")
     parser.add_argument("--rollback_on_degrade", action="store_true")
     parser.add_argument("--disable_rollback_on_degrade", action="store_false", dest="rollback_on_degrade")
@@ -414,7 +443,7 @@ def compute_detail_paired_score(metrics: Dict[str, float], args) -> float:
         + float(getattr(args, "detail_delta_wm_penalty_weight", 0.0))
         * max(-float(metrics.get("delta_wm_l1", 0.0)), 0.0)
     )
-    return (
+    score = (
         compute_wm_paired_score(metrics, args)
         + args.detail_sharp_weight * sharp_gain
         + refine_bonus
@@ -423,6 +452,18 @@ def compute_detail_paired_score(metrics: Dict[str, float], args) -> float:
         - delta_penalty
         - getattr(args, "detail_oversharp_penalty_weight", 12.0) * oversharp_penalty
     )
+    # Fidelity hard gate: if Stage2 regresses PSNR or SSIM beyond threshold,
+    # multiply the entire score by a strong penalty to prevent selecting
+    # checkpoints that are sharper but less faithful.
+    min_delta_psnr = float(getattr(args, "detail_min_delta_psnr", float("-inf")))
+    min_delta_ssim = float(getattr(args, "detail_min_delta_ssim", float("-inf")))
+    fidelity_pass = (
+        float(metrics.get("delta_psnr", 0.0)) >= min_delta_psnr
+        and float(metrics.get("delta_ssim", 0.0)) >= min_delta_ssim
+    )
+    if not fidelity_pass:
+        score = score * float(getattr(args, "detail_fidelity_gate_penalty", 1.0))
+    return score
 
 
 def sample_stage2_time(
@@ -691,8 +732,12 @@ def build_stage2_loss(
     roi_rows: int,
     roi_cols: int,
     roi_min_pixels: int,
+    rollout_steps: int = 8,
+    velocity_schedule: str = "constant",
+    remaining_detail_weight: float = 0.0,
+    rollout_remaining_detail_weight: float = 0.0,
 ) -> Dict[str, torch.Tensor]:
-    x_hat = clamp_to_image_range(project_endpoint(x_t, v_pred, t).float())
+    x_hat = clamp_to_image_range(project_endpoint(x_t, v_pred, t, velocity_schedule=velocity_schedule).float())
     v_pred_fp32 = v_pred.float()
     v_target_fp32 = v_target.float()
     coarse_fp32 = coarse.float()
@@ -723,6 +768,21 @@ def build_stage2_loss(
     loss_rollout_residual_hf = F.l1_loss(laplacian_filter(rollout_detail_pred), laplacian_filter(detail_target))
     loss_rollout_wm_l1 = masked_l1_loss(rollout_fp32, target_fp32, wm_mask)
     loss_rollout_wm_grad = masked_gradient_l1_loss(rollout_fp32, target_fp32, wm_mask, grad_loss_fn)
+    # State-aware remaining detail auxiliary losses.
+    # Instead of always comparing against the fixed "target - coarse" residual,
+    # these compare the model's prediction against what's *actually remaining* from
+    # the current state (x_t or rollout_pred) to the target.
+    loss_remaining_detail = x_t.new_tensor(0.0)
+    if remaining_detail_weight > 0.0:
+        remaining_detail_target = target_fp32 - x_t.float()
+        loss_remaining_detail = F.l1_loss(detail_pred, remaining_detail_target)
+    loss_rollout_remaining_detail = x_t.new_tensor(0.0)
+    if rollout_remaining_detail_weight > 0.0:
+        rollout_remaining_detail = detail_target - rollout_detail_pred
+        loss_rollout_remaining_detail = F.l1_loss(rollout_remaining_detail, torch.zeros_like(rollout_remaining_detail)) + F.l1_loss(
+            laplacian_filter(rollout_remaining_detail),
+            torch.zeros_like(rollout_remaining_detail),
+        )
     has_split_noisy_weight = (
         rollout_noisy_l1_weight > 0.0
         or rollout_noisy_detail_weight > 0.0
@@ -737,9 +797,10 @@ def build_stage2_loss(
     else:
         noisy_rollout_fp32 = clamp_to_image_range(noisy_rollout_pred.float())
         noisy_rollout_detail = noisy_rollout_fp32 - coarse_fp32
+        noisy_remaining_detail = detail_target - noisy_rollout_detail
         loss_rollout_noisy_l1 = F.l1_loss(noisy_rollout_fp32, target_fp32)
-        loss_rollout_noisy_detail = F.l1_loss(noisy_rollout_detail, detail_target)
-        loss_rollout_noisy_hf = F.l1_loss(laplacian_filter(noisy_rollout_detail), laplacian_filter(detail_target))
+        loss_rollout_noisy_detail = F.l1_loss(noisy_remaining_detail, torch.zeros_like(noisy_remaining_detail))
+        loss_rollout_noisy_hf = F.l1_loss(laplacian_filter(noisy_remaining_detail), torch.zeros_like(noisy_remaining_detail))
     loss_rollout_noisy = loss_rollout_noisy_l1 + loss_rollout_noisy_detail + loss_rollout_noisy_hf
     loss_roi = roi_consistency_loss(
         x_hat,
@@ -754,6 +815,27 @@ def build_stage2_loss(
 
     warmup_ratio = min(float(epoch + 1) / max(lpips_warmup_epochs, 1), 1.0)
     w_lpips = lpips_max_weight * warmup_ratio
+
+    # Step-differentiated rollout supervision:
+    #  Short rollouts (4) → heavier L1/WM (fast structure recovery)
+    #  Long rollouts (10, 25) → heavier HF/residual HF (gradual detail refinement)
+    #  Medium rollouts (8) → balanced
+    if rollout_steps <= 4:
+        scale_l1 = 1.5
+        scale_wm = 1.5
+        scale_hf = 0.3
+        scale_detail = 0.3
+    elif rollout_steps <= 8:
+        scale_l1 = 1.0
+        scale_wm = 1.0
+        scale_hf = 1.0
+        scale_detail = 1.0
+    else:  # 10, 25, etc. — long rollout
+        scale_l1 = 0.6
+        scale_wm = 0.6
+        scale_hf = 1.5
+        scale_detail = 1.5
+
     total = (
         velocity_weight * loss_vel
         + image_mse_weight * loss_img_mse
@@ -771,15 +853,17 @@ def build_stage2_loss(
         + rollout_noisy_l1_weight * loss_rollout_noisy_l1
         + rollout_noisy_detail_weight * loss_rollout_noisy_detail
         + rollout_noisy_hf_weight * loss_rollout_noisy_hf
-        + rollout_detail_weight * loss_rollout_detail
-        + rollout_l1_weight * loss_rollout_l1
-        + rollout_ssim_weight * loss_rollout_ssim
-        + rollout_hf_weight * loss_rollout_hf
-        + rollout_residual_hf_weight * loss_rollout_residual_hf
-        + rollout_wm_l1_weight * loss_rollout_wm_l1
-        + rollout_wm_grad_weight * loss_rollout_wm_grad
+        + scale_detail * rollout_detail_weight * loss_rollout_detail
+        + scale_l1 * rollout_l1_weight * loss_rollout_l1
+        + scale_l1 * rollout_ssim_weight * loss_rollout_ssim
+        + scale_hf * rollout_hf_weight * loss_rollout_hf
+        + scale_hf * rollout_residual_hf_weight * loss_rollout_residual_hf
+        + scale_wm * rollout_wm_l1_weight * loss_rollout_wm_l1
+        + scale_wm * rollout_wm_grad_weight * loss_rollout_wm_grad
         + roi_consistency_weight * loss_roi
         + w_lpips * loss_lpips
+        + remaining_detail_weight * loss_remaining_detail
+        + rollout_remaining_detail_weight * loss_rollout_remaining_detail
     )
     return {
         "total": total,
@@ -793,6 +877,8 @@ def build_stage2_loss(
         "detail": loss_detail,
         "hf": loss_hf,
         "residual_hf": loss_residual_hf,
+        "remaining_detail": loss_remaining_detail,
+        "rollout_remaining_detail": loss_rollout_remaining_detail,
         "detail_velocity": loss_detail_velocity,
         "rollout_noisy": loss_rollout_noisy,
         "rollout_noisy_l1": loss_rollout_noisy_l1,
@@ -966,6 +1052,8 @@ def main():
         f"eval_steps={args.eval_steps} | stage1_device={stage1_device} | "
         f"stage2_model_variant={args.stage2_model_variant} | detail_boost={args.detail_boost} | "
         f"dynamic_condition_rollout={args.dynamic_condition_rollout} | "
+        f"velocity_schedule={args.velocity_schedule} | "
+        f"remaining_detail={args.remaining_detail_weight}/{args.rollout_remaining_detail_weight} | "
         f"stage1_detail_scale={stage1_detail_scale}"
     )
 
@@ -982,6 +1070,8 @@ def main():
             "detail": 0.0,
             "hf": 0.0,
             "residual_hf": 0.0,
+            "remaining_detail": 0.0,
+            "rollout_remaining_detail": 0.0,
             "detail_velocity": 0.0,
             "rollout_noisy": 0.0,
             "rollout_noisy_l1": 0.0,
@@ -1028,8 +1118,9 @@ def main():
                     t=t,
                     source_noise_std=args.source_noise_std,
                     deterministic_source=args.t_sampling == "endpoint",
+                    velocity_schedule=args.velocity_schedule,
                 )
-                condition = build_stage2_condition(coarse, t1_img, args.condition_mode)
+                condition = build_stage2_condition(coarse, t1_img, args.condition_mode, initial_coarse=coarse)
                 raw_output = flow_model(x_t, t, condition=condition)
                 v_pred = compose_stage2_velocity(raw_output, t, detail_boost=args.detail_boost)
                 _, v_detail = split_stage2_output(raw_output)
@@ -1053,6 +1144,7 @@ def main():
                     dynamic_condition=args.dynamic_condition_rollout,
                     condition_mode=args.condition_mode,
                     t1_img=t1_img,
+                    initial_coarse=coarse,
                 )
                 noisy_rollout_pred = None
                 if args.rollout_source_mode == "both":
@@ -1066,6 +1158,7 @@ def main():
                         dynamic_condition=args.dynamic_condition_rollout,
                         condition_mode=args.condition_mode,
                         t1_img=t1_img,
+                        initial_coarse=coarse,
                     )
                 brain_mask, wm_mask = build_training_masks(
                     t1_img,
@@ -1121,6 +1214,10 @@ def main():
                     roi_rows=args.roi_rows,
                     roi_cols=args.roi_cols,
                     roi_min_pixels=args.roi_min_pixels,
+                    rollout_steps=int(rollout_steps),
+                    velocity_schedule=args.velocity_schedule,
+                    remaining_detail_weight=args.remaining_detail_weight,
+                    rollout_remaining_detail_weight=args.rollout_remaining_detail_weight,
                 )
 
             finite_flags = {key: torch.isfinite(value).all().item() for key, value in losses.items() if torch.is_tensor(value)}
@@ -1162,7 +1259,7 @@ def main():
                 if global_step % args.preview_every == 0:
                     flow_model.eval()
                     with torch.no_grad(), accelerator.autocast():
-                        condition = build_stage2_condition(fixed_coarse, fixed_t1, args.condition_mode)
+                        condition = build_stage2_condition(fixed_coarse, fixed_t1, args.condition_mode, initial_coarse=fixed_coarse)
                         preview_refined = euler_refine(
                             flow_model,
                             fixed_coarse,
@@ -1172,6 +1269,7 @@ def main():
                             dynamic_condition=args.dynamic_condition_rollout,
                             condition_mode=args.condition_mode,
                             t1_img=fixed_t1,
+                            initial_coarse=fixed_coarse,
                         )
                         save_preview(preview_dir, global_step, fixed_t1, fixed_coarse, preview_refined, fixed_fa)
                     flow_model.train()
@@ -1228,8 +1326,9 @@ def main():
                         t=t_eval,
                         source_noise_std=args.source_noise_std,
                         deterministic_source=True,
+                        velocity_schedule=args.velocity_schedule,
                     )
-                    condition = build_stage2_condition(coarse, t1_img, args.condition_mode)
+                    condition = build_stage2_condition(coarse, t1_img, args.condition_mode, initial_coarse=coarse)
                     raw_output = flow_model(x_t, t_eval, condition=condition)
                     v_pred = compose_stage2_velocity(raw_output, t_eval, detail_boost=args.detail_boost)
                     refined = euler_refine(
@@ -1241,6 +1340,7 @@ def main():
                         dynamic_condition=args.dynamic_condition_rollout,
                         condition_mode=args.condition_mode,
                         t1_img=t1_img,
+                        initial_coarse=coarse,
                     )
                 val_total["vel"] += F.mse_loss(v_pred.float(), v_target.float()).item()
                 refined = clamp_to_image_range(refined.float())
@@ -1316,7 +1416,7 @@ def main():
         metrics["wm_paired_score"] = compute_wm_paired_score(metrics, args)
         metrics["detail_paired_score"] = compute_detail_paired_score(metrics, args)
         with torch.no_grad():
-            fixed_condition = build_stage2_condition(fixed_coarse, fixed_t1, args.condition_mode)
+            fixed_condition = build_stage2_condition(fixed_coarse, fixed_t1, args.condition_mode, initial_coarse=fixed_coarse)
             fixed_preview = clamp_to_image_range(
                 euler_refine(
                     flow_model,
@@ -1327,6 +1427,7 @@ def main():
                     dynamic_condition=args.dynamic_condition_rollout,
                     condition_mode=args.condition_mode,
                     t1_img=fixed_t1,
+                    initial_coarse=fixed_coarse,
                 ).float()
             )
         is_degraded, degrade_reasons, degrade_stats = detect_stage2_anomaly(
@@ -1380,6 +1481,8 @@ def main():
                     f"train_rollout_noisy_l1={running['rollout_noisy_l1'] / max(len(train_loader), 1):.6f} "
                     f"train_rollout_noisy_detail={running['rollout_noisy_detail'] / max(len(train_loader), 1):.6f} "
                     f"train_rollout_noisy_hf={running['rollout_noisy_hf'] / max(len(train_loader), 1):.6f} "
+                    f"train_remaining_detail={running['remaining_detail'] / max(len(train_loader), 1):.6f} "
+                    f"train_rollout_remaining_detail={running['rollout_remaining_detail'] / max(len(train_loader), 1):.6f} "
                     f"train_rollout_detail={running['rollout_detail'] / max(len(train_loader), 1):.6f} "
                     f"train_rollout_l1={running['rollout_l1'] / max(len(train_loader), 1):.6f} "
                     f"train_rollout_hf={running['rollout_hf'] / max(len(train_loader), 1):.6f} "

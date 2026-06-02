@@ -51,6 +51,8 @@ def parse_args():
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--eval_steps", type=int, default=-1, help="Use checkpoint args when set to -1")
+    parser.add_argument("--dynamic_condition_rollout", action="store_true", help="Override checkpoint and rebuild condition from the current rollout state.")
+    parser.add_argument("--disable_dynamic_condition_rollout", action="store_true", help="Override checkpoint and use the static initial condition.")
     parser.add_argument(
         "--condition_on_coarse",
         action="store_true",
@@ -126,13 +128,22 @@ def load_stage2(
     stage1_channels: int,
 ) -> RefinementFlowUNet:
     checkpoint = torch.load(stage2_ckpt, map_location="cpu")
-    condition_channels = stage2_condition_channels(condition_mode, stage1_channels)
+    state_dict = checkpoint_state_dict(checkpoint)
+    inferred_condition_channels = int(state_dict["inc.weight"].shape[1]) - 1 if "inc.weight" in state_dict else None
+    expected_with_delta = stage2_condition_channels(condition_mode, stage1_channels, include_delta_from_initial=True)
+    expected_without_delta = stage2_condition_channels(condition_mode, stage1_channels, include_delta_from_initial=False)
+    if inferred_condition_channels in {expected_with_delta, expected_without_delta}:
+        condition_channels = inferred_condition_channels
+    else:
+        condition_channels = expected_with_delta
+    include_delta_from_initial = condition_channels == expected_with_delta
     stage2_args = checkpoint_args(checkpoint)
     if stage2_args.get("stage2_model_variant", "single") == "detail":
         model = DetailRefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
     else:
         model = RefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
-    model.load_state_dict(checkpoint_state_dict(checkpoint))
+    model.load_state_dict(state_dict)
+    model.include_delta_from_initial = include_delta_from_initial
     model.to(device)
     model.eval()
     return model
@@ -318,6 +329,12 @@ def evaluate(args):
 
     eval_steps = args.eval_steps if args.eval_steps > 0 else int(stage2_args.get("eval_steps", 1))
     detail_boost = float(stage2_args.get("detail_boost", 0.0))
+    dynamic_condition = bool(stage2_args.get("dynamic_condition_rollout", False))
+    if args.dynamic_condition_rollout:
+        dynamic_condition = True
+    if args.disable_dynamic_condition_rollout:
+        dynamic_condition = False
+    velocity_schedule = str(stage2_args.get("velocity_schedule", "constant"))
 
     stage1, stage1_prediction_mode, stage1_channels, stage1_detail_scale = load_stage1(args.stage1_ckpt, device)
     test_dataset = make_slice_dataset(args.test_t1_dir, args.test_fa_dir, stage1_channels)
@@ -335,6 +352,7 @@ def evaluate(args):
         condition_mode=condition_mode,
         stage1_channels=stage1_channels,
     )
+    include_delta = bool(getattr(stage2, "include_delta_from_initial", True))
 
     psnr_metric = PeakSignalNoiseRatio(data_range=1.0).to(device)
     ssim_metric = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
@@ -388,6 +406,9 @@ def evaluate(args):
         f"Condition on coarse: {condition_on_coarse}\n"
         f"Eval steps: {eval_steps}\n"
         f"Detail boost: {detail_boost}\n"
+        f"Dynamic condition rollout: {dynamic_condition}\n"
+        f"Delta-from-initial condition: {include_delta}\n"
+        f"Velocity schedule: {velocity_schedule}\n"
         f"Stage 1 input channels: {stage1_channels}\n"
         f"Test slices: {len(test_dataset)}"
     )
@@ -403,7 +424,13 @@ def evaluate(args):
             prediction_mode=stage1_prediction_mode,
             detail_scale=stage1_detail_scale,
         )
-        condition = build_stage2_condition(coarse, t1_img, condition_mode)
+        condition = build_stage2_condition(
+            coarse,
+            t1_img,
+            condition_mode,
+            initial_coarse=coarse,
+            include_delta_from_initial=include_delta,
+        )
         refined = clamp_to_image_range(
             euler_refine(
                 stage2,
@@ -411,6 +438,11 @@ def evaluate(args):
                 num_steps=eval_steps,
                 condition=condition,
                 detail_boost=detail_boost,
+                dynamic_condition=dynamic_condition,
+                condition_mode=condition_mode,
+                t1_img=t1_img,
+                initial_coarse=coarse,
+                include_delta_from_initial=include_delta,
             ).float()
         )
 
@@ -501,6 +533,9 @@ def evaluate(args):
         "condition_on_coarse": condition_on_coarse,
         "eval_steps": eval_steps,
         "detail_boost": detail_boost,
+        "dynamic_condition_rollout": dynamic_condition,
+        "include_delta_from_initial": include_delta,
+        "velocity_schedule": velocity_schedule,
         "stage1_detail_scale": stage1_detail_scale,
         "test_slices": len(test_dataset),
         "PSNR_mean": float(np.mean(per_image["PSNR"])),

@@ -159,13 +159,22 @@ def load_stage2(
     stage1_channels: int,
 ) -> RefinementFlowUNet:
     checkpoint = torch.load(stage2_ckpt, map_location="cpu")
-    condition_channels = stage2_condition_channels(condition_mode, stage1_channels)
+    state_dict = checkpoint_state_dict(checkpoint)
+    inferred_condition_channels = int(state_dict["inc.weight"].shape[1]) - 1 if "inc.weight" in state_dict else None
+    expected_with_delta = stage2_condition_channels(condition_mode, stage1_channels, include_delta_from_initial=True)
+    expected_without_delta = stage2_condition_channels(condition_mode, stage1_channels, include_delta_from_initial=False)
+    if inferred_condition_channels in {expected_with_delta, expected_without_delta}:
+        condition_channels = inferred_condition_channels
+    else:
+        condition_channels = expected_with_delta
+    include_delta_from_initial = condition_channels == expected_with_delta
     ckpt_args = checkpoint_args(checkpoint)
     if ckpt_args.get("stage2_model_variant", "single") == "detail":
         model = DetailRefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
     else:
         model = RefinementFlowUNet(input_channels=1, condition_channels=condition_channels)
-    model.load_state_dict(checkpoint_state_dict(checkpoint))
+    model.load_state_dict(state_dict)
+    model.include_delta_from_initial = include_delta_from_initial
     model.to(device)
     model.eval()
     return model
@@ -241,7 +250,14 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
             prediction = coarse
         else:
             assert stage2 is not None
-            condition = build_stage2_condition(coarse, t1_img, condition_mode)
+            include_delta = bool(getattr(stage2, "include_delta_from_initial", True))
+            condition = build_stage2_condition(
+                coarse,
+                t1_img,
+                condition_mode,
+                initial_coarse=coarse,
+                include_delta_from_initial=include_delta,
+            )
             prediction = euler_refine(
                 stage2,
                 coarse,
@@ -252,6 +268,8 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
                 dynamic_condition=dynamic_condition,
                 condition_mode=condition_mode,
                 t1_img=t1_img,
+                initial_coarse=coarse,
+                include_delta_from_initial=include_delta,
             )
 
         batch_filenames = batch["fname"]

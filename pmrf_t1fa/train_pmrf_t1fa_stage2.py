@@ -462,7 +462,7 @@ def compute_detail_paired_score(metrics: Dict[str, float], args) -> float:
         and float(metrics.get("delta_ssim", 0.0)) >= min_delta_ssim
     )
     if not fidelity_pass:
-        score = score * float(getattr(args, "detail_fidelity_gate_penalty", 1.0))
+        score -= abs(float(getattr(args, "detail_fidelity_gate_penalty", 1.0)))
     return score
 
 
@@ -775,7 +775,8 @@ def build_stage2_loss(
     loss_remaining_detail = x_t.new_tensor(0.0)
     if remaining_detail_weight > 0.0:
         remaining_detail_target = target_fp32 - x_t.float()
-        loss_remaining_detail = F.l1_loss(detail_pred, remaining_detail_target)
+        remaining_detail_pred = x_hat - x_t.float()
+        loss_remaining_detail = F.l1_loss(remaining_detail_pred, remaining_detail_target)
     loss_rollout_remaining_detail = x_t.new_tensor(0.0)
     if rollout_remaining_detail_weight > 0.0:
         rollout_remaining_detail = detail_target - rollout_detail_pred

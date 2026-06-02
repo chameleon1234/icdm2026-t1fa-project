@@ -205,6 +205,45 @@ def _write_manifest(path: Path, rows: list[dict[str, Any]]) -> None:
         writer.writerows(rows)
 
 
+def build_export_summary(
+    method: str,
+    args: argparse.Namespace,
+    output_dir: Path,
+    exported: int,
+    manifest_path: Path,
+    stage1_prediction_mode: str,
+    stage1_detail_scale: float,
+    stage1_channels: int,
+    condition_mode: str,
+    condition_on_coarse: bool,
+    eval_steps: int,
+    detail_boost: float,
+    dynamic_condition: bool,
+    include_delta_from_initial: bool,
+    velocity_schedule: str,
+) -> dict[str, Any]:
+    is_stage2 = args.stage == "stage2"
+    return {
+        "method": method,
+        "stage": args.stage,
+        "output_dir": str(output_dir),
+        "exported": exported,
+        "stage1_ckpt": str(args.stage1_ckpt),
+        "stage1_prediction_mode": stage1_prediction_mode,
+        "stage1_detail_scale": stage1_detail_scale,
+        "stage1_channels": stage1_channels,
+        "stage2_ckpt": str(args.stage2_ckpt) if is_stage2 else "",
+        "condition_mode": condition_mode if is_stage2 else "none",
+        "condition_on_coarse": condition_on_coarse if is_stage2 else False,
+        "eval_steps": eval_steps if is_stage2 else 0,
+        "detail_boost": detail_boost if is_stage2 else 0.0,
+        "dynamic_condition_rollout": dynamic_condition if is_stage2 else False,
+        "include_delta_from_initial": include_delta_from_initial if is_stage2 else False,
+        "velocity_schedule": velocity_schedule if is_stage2 else "none",
+        "manifest": str(manifest_path),
+    }
+
+
 @torch.no_grad()
 def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
     config = _read_yaml(args.config)
@@ -226,7 +265,10 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
     condition_mode, condition_on_coarse, eval_steps, detail_boost, dynamic_condition = resolve_stage2_settings(args)
     stage2 = None
+    velocity_schedule = "none"
     if args.stage == "stage2":
+        stage2_checkpoint = torch.load(args.stage2_ckpt, map_location="cpu")
+        velocity_schedule = str(checkpoint_args(stage2_checkpoint).get("velocity_schedule", "constant"))
         stage2 = load_stage2(
             args.stage2_ckpt,
             device,
@@ -292,23 +334,24 @@ def export_predictions(args: argparse.Namespace) -> dict[str, Any]:
 
     manifest_path = output_dir / "export_manifest.csv"
     _write_manifest(manifest_path, exported_rows)
-    summary = {
-        "method": method,
-        "stage": args.stage,
-        "output_dir": str(output_dir),
-        "exported": exported,
-        "stage1_ckpt": str(args.stage1_ckpt),
-        "stage1_prediction_mode": stage1_prediction_mode,
-        "stage1_detail_scale": stage1_detail_scale,
-        "stage1_channels": stage1_channels,
-        "stage2_ckpt": str(args.stage2_ckpt) if args.stage == "stage2" else "",
-        "condition_mode": condition_mode if args.stage == "stage2" else "none",
-        "condition_on_coarse": condition_on_coarse if args.stage == "stage2" else False,
-        "eval_steps": eval_steps if args.stage == "stage2" else 0,
-        "detail_boost": detail_boost if args.stage == "stage2" else 0.0,
-        "dynamic_condition_rollout": dynamic_condition if args.stage == "stage2" else False,
-        "manifest": str(manifest_path),
-    }
+    include_delta = bool(getattr(stage2, "include_delta_from_initial", False)) if args.stage == "stage2" else False
+    summary = build_export_summary(
+        method=method,
+        args=args,
+        output_dir=output_dir,
+        exported=exported,
+        manifest_path=manifest_path,
+        stage1_prediction_mode=stage1_prediction_mode,
+        stage1_detail_scale=stage1_detail_scale,
+        stage1_channels=stage1_channels,
+        condition_mode=condition_mode,
+        condition_on_coarse=condition_on_coarse,
+        eval_steps=eval_steps,
+        detail_boost=detail_boost,
+        dynamic_condition=dynamic_condition,
+        include_delta_from_initial=include_delta,
+        velocity_schedule=velocity_schedule,
+    )
     with open(output_dir / "export_summary.json", "w", encoding="utf-8") as handle:
         json.dump(summary, handle, indent=2, ensure_ascii=False)
 

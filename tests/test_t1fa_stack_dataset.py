@@ -456,6 +456,64 @@ def test_stage2_loss_includes_noisy_source_rollout_supervision():
     assert torch.allclose(losses["total"], expected)
 
 
+def test_detail_paired_fidelity_gate_penalizes_negative_scores_instead_of_improving_them():
+    from types import SimpleNamespace
+
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import compute_detail_paired_score
+
+    metrics = {
+        "psnr": 10.0,
+        "ssim": 0.5,
+        "mse_proxy": 0.20,
+        "l1": 0.20,
+        "brain_l1": 0.10,
+        "wm_l1": 0.10,
+        "grad": 0.10,
+        "roi": 0.10,
+        "sharp_ratio": 0.80,
+        "coarse_sharp_ratio": 0.70,
+        "refine_ratio": 0.10,
+        "delta_psnr": -0.10,
+        "delta_ssim": -0.01,
+        "delta_wm_l1": 0.0,
+    }
+    base_args = dict(
+        paired_psnr_weight=1.0,
+        paired_ssim_weight=1.0,
+        paired_mse_weight=200.0,
+        paired_mae_weight=50.0,
+        paired_brain_mae_weight=4.0,
+        paired_wm_mae_weight=8.0,
+        paired_grad_weight=0.8,
+        paired_roi_weight=4.0,
+        paired_sharp_weight=2.0,
+        detail_sharp_weight=2.0,
+        detail_coarse_penalty_weight=8.0,
+        detail_target_sharp_ratio=0.90,
+        detail_max_sharp_ratio=1.20,
+        detail_oversharp_penalty_weight=12.0,
+        detail_refine_ratio_weight=0.0,
+        detail_refine_target_ratio=0.50,
+        detail_under_refine_penalty_weight=0.0,
+        detail_delta_psnr_penalty_weight=0.0,
+        detail_delta_ssim_penalty_weight=0.0,
+        detail_delta_wm_penalty_weight=0.0,
+        detail_fidelity_gate_penalty=0.3,
+    )
+
+    passing_gate = compute_detail_paired_score(
+        metrics,
+        SimpleNamespace(**base_args, detail_min_delta_psnr=-1.0, detail_min_delta_ssim=-1.0),
+    )
+    failing_gate = compute_detail_paired_score(
+        metrics,
+        SimpleNamespace(**base_args, detail_min_delta_psnr=0.0, detail_min_delta_ssim=0.0),
+    )
+
+    assert passing_gate < 0.0
+    assert failing_gate < passing_gate
+
+
 def test_stage2_legacy_noisy_rollout_weight_does_not_double_count_split_weights():
     from pmrf_t1fa.models.pmrf_t1fa import GradientLoss, SSIMLoss
     from pmrf_t1fa.train_pmrf_t1fa_stage2 import ZeroLPIPSLoss, build_stage2_loss
@@ -584,6 +642,69 @@ def test_stage2_rollout_remaining_detail_uses_state_aware_residual():
 
     assert losses["rollout_remaining_detail"].item() > 0.0
     assert torch.allclose(losses["total"], losses["rollout_remaining_detail"])
+
+
+def test_stage2_single_step_remaining_detail_uses_current_state_frame():
+    from pmrf_t1fa.models.pmrf_t1fa import GradientLoss, SSIMLoss
+    from pmrf_t1fa.train_pmrf_t1fa_stage2 import ZeroLPIPSLoss, build_stage2_loss
+
+    coarse = torch.zeros(1, 1, 8, 8)
+    x_t = torch.full_like(coarse, 0.25)
+    target = torch.full_like(coarse, 0.50)
+    mask = torch.ones_like(coarse)
+    t = torch.zeros(1)
+    v_pred = target - x_t
+
+    losses = build_stage2_loss(
+        x_t=x_t,
+        v_pred=v_pred,
+        v_detail=None,
+        v_target=target - x_t,
+        coarse=coarse,
+        target=target,
+        t=t,
+        rollout_pred=target,
+        noisy_rollout_pred=None,
+        ssim_loss_fn=SSIMLoss(),
+        grad_loss_fn=GradientLoss(),
+        lpips_loss_fn=ZeroLPIPSLoss(),
+        brain_mask=mask,
+        wm_mask=mask,
+        epoch=0,
+        lpips_warmup_epochs=1,
+        lpips_max_weight=0.0,
+        velocity_weight=0.0,
+        image_mse_weight=0.0,
+        l1_weight=0.0,
+        ssim_weight=0.0,
+        grad_weight=0.0,
+        detail_weight=0.0,
+        hf_weight=0.0,
+        brain_l1_weight=0.0,
+        wm_l1_weight=0.0,
+        wm_grad_weight=0.0,
+        residual_hf_weight=0.0,
+        detail_velocity_weight=0.0,
+        rollout_noisy_weight=0.0,
+        rollout_noisy_l1_weight=0.0,
+        rollout_noisy_detail_weight=0.0,
+        rollout_noisy_hf_weight=0.0,
+        rollout_detail_weight=0.0,
+        rollout_l1_weight=0.0,
+        rollout_ssim_weight=0.0,
+        rollout_hf_weight=0.0,
+        rollout_residual_hf_weight=0.0,
+        rollout_wm_l1_weight=0.0,
+        rollout_wm_grad_weight=0.0,
+        roi_consistency_weight=0.0,
+        roi_rows=2,
+        roi_cols=2,
+        roi_min_pixels=1,
+        remaining_detail_weight=1.0,
+    )
+
+    assert torch.allclose(losses["remaining_detail"], torch.zeros_like(losses["remaining_detail"]))
+    assert torch.allclose(losses["total"], losses["remaining_detail"])
 
 
 def test_dynamic_rollout_delta_uses_explicit_initial_coarse_for_noisy_source():

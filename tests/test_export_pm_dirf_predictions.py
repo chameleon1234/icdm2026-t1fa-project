@@ -123,3 +123,37 @@ def test_load_stage2_supports_stage1_guided_edge_condition_mode(tmp_path):
     assert dynamic_condition is True
     assert loaded.inc.weight.shape[1] == 11
     assert hasattr(loaded, "out_detail")
+
+
+def test_export_summary_records_v6_rollout_semantics(tmp_path):
+    from types import SimpleNamespace
+
+    from scripts.export_pm_dirf_predictions import build_export_summary
+
+    args = SimpleNamespace(
+        stage="stage2",
+        stage1_ckpt="outputs/stage1.pt",
+        stage2_ckpt="outputs/stage2.pt",
+    )
+
+    summary = build_export_summary(
+        method="PM_DIRF_DETAIL_TEACHER_V6_K25",
+        args=args,
+        output_dir=tmp_path,
+        exported=3,
+        manifest_path=tmp_path / "export_manifest.csv",
+        stage1_prediction_mode="residual",
+        stage1_detail_scale=0.4,
+        stage1_channels=5,
+        condition_mode="coarse_t1_edge",
+        condition_on_coarse=True,
+        eval_steps=25,
+        detail_boost=0.9,
+        dynamic_condition=True,
+        include_delta_from_initial=True,
+        velocity_schedule="decaying",
+    )
+
+    assert summary["dynamic_condition_rollout"] is True
+    assert summary["include_delta_from_initial"] is True
+    assert summary["velocity_schedule"] == "decaying"

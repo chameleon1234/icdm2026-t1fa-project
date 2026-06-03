@@ -6,6 +6,7 @@ from pmrf_t1fa.train_pmrf_t1fa_stage2_hp_refiner import (
     build_residual_gate,
     build_hp_refiner_input,
     build_hp_refiner_loss,
+    hp_refiner_best_key,
     highpass,
     sharpness_floor_loss,
     lowpass,
@@ -190,3 +191,27 @@ def test_sharpness_floor_penalizes_refined_blurrier_than_coarse():
 
     assert blurry_loss > 0.0
     assert torch.allclose(sharper_loss, torch.zeros_like(sharper_loss), atol=1e-6)
+
+
+def test_hp_refiner_best_key_rejects_blurry_or_wm_worse_epoch():
+    blurry_metrics = {"delta_sharp": -0.01, "delta_wm_l1": 0.001, "psnr": 30.0}
+    wm_worse_metrics = {"delta_sharp": 0.05, "delta_wm_l1": -0.001, "psnr": 30.0}
+
+    assert hp_refiner_best_key(blurry_metrics, min_delta_sharp=0.03, min_delta_wm_l1=0.0) is None
+    assert hp_refiner_best_key(wm_worse_metrics, min_delta_sharp=0.03, min_delta_wm_l1=0.0) is None
+
+
+def test_hp_refiner_best_key_prioritizes_sharpness_then_wm_then_psnr():
+    sharper = {"delta_sharp": 0.08, "delta_wm_l1": 0.0001, "psnr": 28.0}
+    higher_psnr_but_less_sharp = {"delta_sharp": 0.04, "delta_wm_l1": 0.01, "psnr": 32.0}
+    same_sharp_better_wm = {"delta_sharp": 0.08, "delta_wm_l1": 0.001, "psnr": 27.0}
+
+    sharper_key = hp_refiner_best_key(sharper, min_delta_sharp=0.03, min_delta_wm_l1=0.0)
+    psnr_key = hp_refiner_best_key(higher_psnr_but_less_sharp, min_delta_sharp=0.03, min_delta_wm_l1=0.0)
+    wm_key = hp_refiner_best_key(same_sharp_better_wm, min_delta_sharp=0.03, min_delta_wm_l1=0.0)
+
+    assert sharper_key is not None
+    assert psnr_key is not None
+    assert wm_key is not None
+    assert sharper_key > psnr_key
+    assert wm_key > sharper_key

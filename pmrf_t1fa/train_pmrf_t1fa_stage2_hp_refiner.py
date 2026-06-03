@@ -59,6 +59,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lowpass_weight", type=float, default=2.0)
     parser.add_argument("--sharpness_floor_weight", type=float, default=0.0)
     parser.add_argument("--sharpness_floor_margin", type=float, default=0.0)
+    parser.add_argument(
+        "--best_min_delta_sharp",
+        type=float,
+        default=0.03,
+        help="Hard gate for best checkpoint selection. Epochs below this DeltaSharp cannot become best.",
+    )
+    parser.add_argument(
+        "--best_min_delta_wm_l1",
+        type=float,
+        default=0.0,
+        help="Hard gate for best checkpoint selection. Epochs below this DeltaWM_L1 cannot become best.",
+    )
     parser.add_argument("--final_l1_weight", type=float, default=0.05)
     parser.add_argument("--final_ssim_weight", type=float, default=0.02)
     parser.add_argument("--brain_t1_threshold", type=float, default=0.05)
@@ -69,6 +81,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--residual_gate_mode", default="none", choices=["none", "edge"])
     parser.add_argument("--residual_gate_min", type=float, default=0.2)
     parser.add_argument("--grad_clip", type=float, default=1.0)
+    parser.add_argument("--keep_existing_best", action="store_true", help="Keep existing best checkpoint files in the run directory.")
     return parser.parse_args()
 
 
@@ -295,10 +308,38 @@ def _average_metrics(rows: list[Dict[str, float]]) -> Dict[str, float]:
     return {key: sum(row[key] for row in rows) / len(rows) for key in rows[0]}
 
 
+def hp_refiner_best_key(
+    metrics: Dict[str, float],
+    min_delta_sharp: float = 0.03,
+    min_delta_wm_l1: float = 0.0,
+) -> tuple[float, float, float] | None:
+    """Return a strict clarity-first selection key, or None when gates fail."""
+    delta_sharp = float(metrics["delta_sharp"])
+    delta_wm_l1 = float(metrics["delta_wm_l1"])
+    if delta_sharp < float(min_delta_sharp):
+        return None
+    if delta_wm_l1 < float(min_delta_wm_l1):
+        return None
+    return (delta_sharp, delta_wm_l1, float(metrics["psnr"]))
+
+
+def hp_refiner_legacy_score(metrics: Dict[str, float]) -> float:
+    return (
+        metrics["delta_sharp"]
+        + 10.0 * max(metrics["delta_wm_l1"], 0.0)
+        - 30.0 * max(-metrics["delta_wm_l1"], 0.0)
+        - 0.05 * max(-metrics["delta_psnr"], 0.0)
+    )
+
+
 def main() -> None:
     args = parse_args()
     root_dir, ckpt_dir, preview_dir = ensure_dirs(args.run_name)
     log_path = root_dir / "train.log"
+    if not args.keep_existing_best:
+        for stale_best in (ckpt_dir / "best_hp_refiner.pt", root_dir / "best_hp_refiner.pt"):
+            if stale_best.exists():
+                stale_best.unlink()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if args.stage1_device == "cpu":
         stage1_device = torch.device("cpu")
@@ -317,7 +358,7 @@ def main() -> None:
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scaler = torch.cuda.amp.GradScaler(enabled=device.type == "cuda" and args.mixed_precision == "fp16")
     ssim_loss_fn = SSIMLoss().to(device)
-    best_score = float("-inf")
+    best_key: tuple[float, float, float] | None = None
     global_step = 0
 
     print(
@@ -326,6 +367,7 @@ def main() -> None:
         f"hp/lp kernels={args.hp_kernel_size}/{args.lp_kernel_size} | weights hp={args.hp_residual_weight}/{args.hp_image_weight} "
         f"wm_hp={args.wm_hp_weight} wm_final={args.wm_final_l1_weight} wm_guard={args.wm_guard_weight}@{args.wm_guard_margin} "
         f"lowpass={args.lowpass_weight} sharp_floor={args.sharpness_floor_weight}@{args.sharpness_floor_margin} "
+        f"best_gate=delta_sharp>={args.best_min_delta_sharp},delta_wm_l1>={args.best_min_delta_wm_l1} "
         f"residual_scale={args.residual_scale} "
         f"gate={args.residual_gate_mode}@{args.residual_gate_min} "
         f"final={args.final_l1_weight}/{args.final_ssim_weight}"
@@ -403,21 +445,19 @@ def main() -> None:
         metrics = _average_metrics(rows)
         train_batches = max(len(train_loader), 1)
         train_summary = {key: value / train_batches for key, value in train_totals.items()}
-        score = (
-            metrics["delta_sharp"]
-            + 10.0 * max(metrics["delta_wm_l1"], 0.0)
-            - 30.0 * max(-metrics["delta_wm_l1"], 0.0)
-            - 0.05 * max(-metrics["delta_psnr"], 0.0)
-        )
-        is_best = score > best_score
+        score = hp_refiner_legacy_score(metrics)
+        candidate_key = hp_refiner_best_key(metrics, args.best_min_delta_sharp, args.best_min_delta_wm_l1)
+        passed_best_gate = candidate_key is not None
+        is_best = passed_best_gate and (best_key is None or candidate_key > best_key)
         if is_best:
-            best_score = score
+            best_key = candidate_key
             torch.save(
                 {
                     "model": model.state_dict(),
                     "args": vars(args),
                     "epoch": epoch + 1,
                     "score": score,
+                    "best_key": list(candidate_key),
                     "metrics": metrics,
                     "stage1_channels": stage1_channels,
                 },
@@ -430,12 +470,20 @@ def main() -> None:
                 "args": vars(args),
                 "epoch": epoch + 1,
                 "score": score,
+                "best_key": list(candidate_key) if candidate_key is not None else None,
                 "metrics": metrics,
                 "stage1_channels": stage1_channels,
             },
             ckpt_dir / "latest_hp_refiner.pt",
         )
-        log_row = {"epoch": epoch + 1, "score": score, **{f"train_{k}": v for k, v in train_summary.items()}, **metrics}
+        log_row = {
+            "epoch": epoch + 1,
+            "score": score,
+            "passed_best_gate": passed_best_gate,
+            "best_key": list(candidate_key) if candidate_key is not None else None,
+            **{f"train_{k}": v for k, v in train_summary.items()},
+            **metrics,
+        }
         with open(log_path, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(log_row, ensure_ascii=False) + "\n")
         print(
@@ -443,7 +491,7 @@ def main() -> None:
             f"L1={metrics['l1']:.6f} HP_L1={metrics['hp_l1']:.6f} WM_L1={metrics['wm_l1']:.6f} "
             f"SharpRatio={metrics['sharp_ratio']:.4f} CoarseSharpRatio={metrics['coarse_sharp_ratio']:.4f} "
             f"DeltaSharp={metrics['delta_sharp']:.4f} DeltaWM_L1={metrics['delta_wm_l1']:.6f} "
-            f"DeltaPSNR={metrics['delta_psnr']:.4f} Score={score:.4f} Best={int(is_best)}"
+            f"DeltaPSNR={metrics['delta_psnr']:.4f} Score={score:.4f} Gate={int(passed_best_gate)} Best={int(is_best)}"
         )
 
 

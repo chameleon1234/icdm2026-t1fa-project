@@ -63,6 +63,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--brain_fa_threshold", type=float, default=0.02)
     parser.add_argument("--wm_quantile", type=float, default=0.65)
     parser.add_argument("--wm_min_threshold", type=float, default=0.20)
+    parser.add_argument("--residual_scale", type=float, default=0.0, help="If >0, bound hp residual with tanh(raw) * residual_scale.")
     parser.add_argument("--grad_clip", type=float, default=1.0)
     return parser.parse_args()
 
@@ -85,6 +86,12 @@ def lowpass(x: torch.Tensor, kernel_size: int = 13) -> torch.Tensor:
 
 def highpass(x: torch.Tensor, kernel_size: int = 5) -> torch.Tensor:
     return x - lowpass(x, kernel_size=kernel_size)
+
+
+def apply_hp_residual_cap(hp_pred: torch.Tensor, residual_scale: float) -> torch.Tensor:
+    if residual_scale <= 0:
+        return hp_pred
+    return torch.tanh(hp_pred) * float(residual_scale)
 
 
 class NAFBlock(nn.Module):
@@ -269,7 +276,7 @@ def main() -> None:
         f"stage1_channels={stage1_channels} | device={device} | width={args.width} blocks={args.num_blocks} | "
         f"hp/lp kernels={args.hp_kernel_size}/{args.lp_kernel_size} | weights hp={args.hp_residual_weight}/{args.hp_image_weight} "
         f"wm_hp={args.wm_hp_weight} wm_final={args.wm_final_l1_weight} wm_guard={args.wm_guard_weight}@{args.wm_guard_margin} "
-        f"lowpass={args.lowpass_weight} "
+        f"lowpass={args.lowpass_weight} residual_scale={args.residual_scale} "
         f"final={args.final_l1_weight}/{args.final_ssim_weight}"
     )
 
@@ -292,7 +299,7 @@ def main() -> None:
             model_input = build_hp_refiner_input(t1_img, coarse)
             optimizer.zero_grad(set_to_none=True)
             with _autocast_context(device, args.mixed_precision):
-                hp_pred = model(model_input)
+                hp_pred = apply_hp_residual_cap(model(model_input), args.residual_scale)
                 losses = build_hp_refiner_loss(
                     hp_pred,
                     coarse,
@@ -334,7 +341,7 @@ def main() -> None:
                 target = reduce_rgb_to_single_channel(batch["fa_slice"].to(device))
                 with _autocast_context(device, args.mixed_precision):
                     coarse = predict_stage1_batch(stage1, t1_img, stage1_device, stage1_prediction_mode, stage1_detail_scale).to(device)
-                    hp_pred = model(build_hp_refiner_input(t1_img, coarse))
+                    hp_pred = apply_hp_residual_cap(model(build_hp_refiner_input(t1_img, coarse)), args.residual_scale)
                     refined = clamp_to_image_range(coarse + hp_pred)
                 rows.append(_metric_dict(refined.float(), coarse.float(), target.float(), t1_img, ssim_loss_fn, args))
 

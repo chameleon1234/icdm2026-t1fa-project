@@ -2,6 +2,7 @@ import torch
 
 from pmrf_t1fa.train_pmrf_t1fa_stage2_hp_refiner import (
     HighPassRefinerNet,
+    apply_hp_residual_cap,
     build_hp_refiner_input,
     build_hp_refiner_loss,
     highpass,
@@ -36,6 +37,17 @@ def test_highpass_refiner_net_preserves_spatial_shape():
     y = model(x)
 
     assert y.shape == (2, 1, 16, 16)
+
+
+def test_hp_residual_cap_bounds_prediction_amplitude():
+    raw = torch.tensor([[[[-10.0, -0.2, 0.2, 10.0]]]])
+
+    capped = apply_hp_residual_cap(raw, residual_scale=0.15)
+    unchanged = apply_hp_residual_cap(raw, residual_scale=0.0)
+
+    assert capped.min() >= -0.15
+    assert capped.max() <= 0.15
+    assert torch.allclose(unchanged, raw)
 
 
 def test_hp_refiner_residual_loss_zero_when_prediction_matches_target_residual():

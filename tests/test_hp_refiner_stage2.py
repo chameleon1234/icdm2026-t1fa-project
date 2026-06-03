@@ -7,6 +7,7 @@ from pmrf_t1fa.train_pmrf_t1fa_stage2_hp_refiner import (
     build_hp_refiner_input,
     build_hp_refiner_loss,
     highpass,
+    sharpness_floor_loss,
     lowpass,
 )
 
@@ -98,6 +99,8 @@ def test_hp_refiner_residual_loss_zero_when_prediction_matches_target_residual()
         wm_guard_weight=0.0,
         wm_guard_margin=0.0,
         lowpass_weight=1.0,
+        sharpness_floor_weight=0.0,
+        sharpness_floor_margin=0.0,
         final_l1_weight=0.0,
         final_ssim_weight=0.0,
         ssim_loss_fn=None,
@@ -128,6 +131,8 @@ def test_hp_refiner_image_losses_zero_when_final_matches_target():
         wm_guard_weight=0.0,
         wm_guard_margin=0.0,
         lowpass_weight=0.0,
+        sharpness_floor_weight=0.0,
+        sharpness_floor_margin=0.0,
         final_l1_weight=1.0,
         final_ssim_weight=0.0,
         ssim_loss_fn=None,
@@ -160,6 +165,8 @@ def test_hp_refiner_wm_guard_penalizes_predictions_worse_than_coarse():
         wm_guard_weight=1.0,
         wm_guard_margin=0.0,
         lowpass_weight=0.0,
+        sharpness_floor_weight=0.0,
+        sharpness_floor_margin=0.0,
         final_l1_weight=0.0,
         final_ssim_weight=0.0,
         ssim_loss_fn=None,
@@ -169,3 +176,17 @@ def test_hp_refiner_wm_guard_penalizes_predictions_worse_than_coarse():
 
     assert bad_losses["wm_guard"] > 0.0
     assert torch.allclose(good_losses["wm_guard"], torch.zeros_like(good_losses["wm_guard"]))
+
+
+def test_sharpness_floor_penalizes_refined_blurrier_than_coarse():
+    coarse = torch.zeros((1, 1, 16, 16))
+    coarse[:, :, :, 8:] = 1.0
+    target = coarse.clone()
+    blurry = lowpass(coarse, kernel_size=7)
+    sharper = coarse.clone()
+
+    blurry_loss = sharpness_floor_loss(blurry, coarse, target, margin=0.0)
+    sharper_loss = sharpness_floor_loss(sharper, coarse, target, margin=0.0)
+
+    assert blurry_loss > 0.0
+    assert torch.allclose(sharper_loss, torch.zeros_like(sharper_loss), atol=1e-6)

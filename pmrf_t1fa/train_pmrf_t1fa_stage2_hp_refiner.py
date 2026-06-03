@@ -57,6 +57,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--wm_guard_weight", type=float, default=0.0)
     parser.add_argument("--wm_guard_margin", type=float, default=0.0)
     parser.add_argument("--lowpass_weight", type=float, default=2.0)
+    parser.add_argument("--sharpness_floor_weight", type=float, default=0.0)
+    parser.add_argument("--sharpness_floor_margin", type=float, default=0.0)
     parser.add_argument("--final_l1_weight", type=float, default=0.05)
     parser.add_argument("--final_ssim_weight", type=float, default=0.02)
     parser.add_argument("--brain_t1_threshold", type=float, default=0.05)
@@ -107,6 +109,19 @@ def build_residual_gate(t1_stack: torch.Tensor, coarse: torch.Tensor, mode: str,
     edge_confidence = _normalize_per_sample(t1_edge + coarse_edge)
     gate_floor = min(max(float(gate_min), 0.0), 1.0)
     return gate_floor + (1.0 - gate_floor) * edge_confidence
+
+
+def _laplacian_variance_tensor(x: torch.Tensor) -> torch.Tensor:
+    lap = laplacian_filter(x.float()).flatten(start_dim=1)
+    return lap.var(dim=1, unbiased=False).mean()
+
+
+def sharpness_floor_loss(refined: torch.Tensor, coarse: torch.Tensor, target: torch.Tensor, margin: float) -> torch.Tensor:
+    refined_var = _laplacian_variance_tensor(refined)
+    coarse_var = _laplacian_variance_tensor(coarse).detach()
+    target_var = _laplacian_variance_tensor(target).detach()
+    floor = coarse_var + float(margin) * target_var
+    return F.relu(floor - refined_var)
 
 
 def apply_hp_residual_cap(
@@ -176,6 +191,8 @@ def build_hp_refiner_loss(
     wm_guard_weight: float,
     wm_guard_margin: float,
     lowpass_weight: float,
+    sharpness_floor_weight: float,
+    sharpness_floor_margin: float,
     final_l1_weight: float,
     final_ssim_weight: float,
     ssim_loss_fn: SSIMLoss | None,
@@ -192,6 +209,7 @@ def build_hp_refiner_loss(
     coarse_wm_l1 = masked_l1_loss(coarse, target, wm_mask).detach()
     wm_guard = F.relu(wm_final_l1 - coarse_wm_l1 + float(wm_guard_margin))
     lowpass_consistency = masked_l1_loss(lowpass(final, lp_kernel_size), lowpass(coarse, lp_kernel_size), brain_mask)
+    sharpness_floor = sharpness_floor_loss(final, coarse, target, sharpness_floor_margin)
     final_l1 = F.l1_loss(final, target)
     final_ssim = final.new_tensor(0.0) if ssim_loss_fn is None else ssim_loss_fn(final, target)
     total = (
@@ -201,6 +219,7 @@ def build_hp_refiner_loss(
         + wm_final_l1_weight * wm_final_l1
         + wm_guard_weight * wm_guard
         + lowpass_weight * lowpass_consistency
+        + sharpness_floor_weight * sharpness_floor
         + final_l1_weight * final_l1
         + final_ssim_weight * final_ssim
     )
@@ -212,6 +231,7 @@ def build_hp_refiner_loss(
         "wm_final_l1": wm_final_l1,
         "wm_guard": wm_guard,
         "lowpass": lowpass_consistency,
+        "sharpness_floor": sharpness_floor,
         "final_l1": final_l1,
         "final_ssim": final_ssim,
         "final": final,
@@ -305,7 +325,8 @@ def main() -> None:
         f"stage1_channels={stage1_channels} | device={device} | width={args.width} blocks={args.num_blocks} | "
         f"hp/lp kernels={args.hp_kernel_size}/{args.lp_kernel_size} | weights hp={args.hp_residual_weight}/{args.hp_image_weight} "
         f"wm_hp={args.wm_hp_weight} wm_final={args.wm_final_l1_weight} wm_guard={args.wm_guard_weight}@{args.wm_guard_margin} "
-        f"lowpass={args.lowpass_weight} residual_scale={args.residual_scale} "
+        f"lowpass={args.lowpass_weight} sharp_floor={args.sharpness_floor_weight}@{args.sharpness_floor_margin} "
+        f"residual_scale={args.residual_scale} "
         f"gate={args.residual_gate_mode}@{args.residual_gate_min} "
         f"final={args.final_l1_weight}/{args.final_ssim_weight}"
     )
@@ -346,6 +367,8 @@ def main() -> None:
                     args.wm_guard_weight,
                     args.wm_guard_margin,
                     args.lowpass_weight,
+                    args.sharpness_floor_weight,
+                    args.sharpness_floor_margin,
                     args.final_l1_weight,
                     args.final_ssim_weight,
                     ssim_loss_fn,

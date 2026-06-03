@@ -3,6 +3,7 @@ import torch
 from pmrf_t1fa.train_pmrf_t1fa_stage2_hp_refiner import (
     HighPassRefinerNet,
     apply_hp_residual_cap,
+    build_residual_gate,
     build_hp_refiner_input,
     build_hp_refiner_loss,
     highpass,
@@ -48,6 +49,31 @@ def test_hp_residual_cap_bounds_prediction_amplitude():
     assert capped.min() >= -0.15
     assert capped.max() <= 0.15
     assert torch.allclose(unchanged, raw)
+
+
+def test_hp_residual_cap_applies_spatial_gate():
+    raw = torch.full((1, 1, 4, 4), 10.0)
+    gate = torch.full_like(raw, 0.25)
+
+    capped = apply_hp_residual_cap(raw, residual_scale=0.4, residual_gate=gate)
+
+    assert capped.max() <= 0.1
+
+
+def test_edge_residual_gate_has_valid_shape_and_range():
+    t1_stack = torch.zeros((1, 5, 8, 8))
+    coarse = torch.zeros((1, 1, 8, 8))
+    t1_stack[:, 2, :, 4:] = 1.0
+    coarse[:, :, 4:, :] = 1.0
+
+    gate = build_residual_gate(t1_stack, coarse, mode="edge", gate_min=0.2)
+    none_gate = build_residual_gate(t1_stack, coarse, mode="none", gate_min=0.2)
+
+    assert gate.shape == coarse.shape
+    assert gate.min() >= 0.2
+    assert gate.max() <= 1.0
+    assert gate[:, :, :, 3:5].mean() > gate[:, :, :, :2].mean()
+    assert none_gate is None
 
 
 def test_hp_refiner_residual_loss_zero_when_prediction_matches_target_residual():

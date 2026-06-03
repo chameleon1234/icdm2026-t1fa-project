@@ -64,6 +64,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--wm_quantile", type=float, default=0.65)
     parser.add_argument("--wm_min_threshold", type=float, default=0.20)
     parser.add_argument("--residual_scale", type=float, default=0.0, help="If >0, bound hp residual with tanh(raw) * residual_scale.")
+    parser.add_argument("--residual_gate_mode", default="none", choices=["none", "edge"])
+    parser.add_argument("--residual_gate_min", type=float, default=0.2)
     parser.add_argument("--grad_clip", type=float, default=1.0)
     return parser.parse_args()
 
@@ -88,10 +90,37 @@ def highpass(x: torch.Tensor, kernel_size: int = 5) -> torch.Tensor:
     return x - lowpass(x, kernel_size=kernel_size)
 
 
-def apply_hp_residual_cap(hp_pred: torch.Tensor, residual_scale: float) -> torch.Tensor:
+def _normalize_per_sample(x: torch.Tensor) -> torch.Tensor:
+    flat = x.flatten(start_dim=1)
+    min_val = flat.min(dim=1).values.view(-1, 1, 1, 1)
+    max_val = flat.max(dim=1).values.view(-1, 1, 1, 1)
+    return (x - min_val) / (max_val - min_val).clamp_min(1e-6)
+
+
+def build_residual_gate(t1_stack: torch.Tensor, coarse: torch.Tensor, mode: str, gate_min: float) -> torch.Tensor | None:
+    if mode == "none":
+        return None
+    if mode != "edge":
+        raise ValueError(f"Unsupported residual gate mode: {mode}")
+    t1_edge = torch.abs(single_channel_laplacian(center_channel(t1_stack)))
+    coarse_edge = torch.abs(single_channel_laplacian(coarse))
+    edge_confidence = _normalize_per_sample(t1_edge + coarse_edge)
+    gate_floor = min(max(float(gate_min), 0.0), 1.0)
+    return gate_floor + (1.0 - gate_floor) * edge_confidence
+
+
+def apply_hp_residual_cap(
+    hp_pred: torch.Tensor,
+    residual_scale: float,
+    residual_gate: torch.Tensor | None = None,
+) -> torch.Tensor:
     if residual_scale <= 0:
-        return hp_pred
-    return torch.tanh(hp_pred) * float(residual_scale)
+        capped = hp_pred
+    else:
+        capped = torch.tanh(hp_pred) * float(residual_scale)
+    if residual_gate is None:
+        return capped
+    return capped * residual_gate.to(dtype=capped.dtype, device=capped.device)
 
 
 class NAFBlock(nn.Module):
@@ -277,6 +306,7 @@ def main() -> None:
         f"hp/lp kernels={args.hp_kernel_size}/{args.lp_kernel_size} | weights hp={args.hp_residual_weight}/{args.hp_image_weight} "
         f"wm_hp={args.wm_hp_weight} wm_final={args.wm_final_l1_weight} wm_guard={args.wm_guard_weight}@{args.wm_guard_margin} "
         f"lowpass={args.lowpass_weight} residual_scale={args.residual_scale} "
+        f"gate={args.residual_gate_mode}@{args.residual_gate_min} "
         f"final={args.final_l1_weight}/{args.final_ssim_weight}"
     )
 
@@ -297,9 +327,10 @@ def main() -> None:
                 args.wm_min_threshold,
             )
             model_input = build_hp_refiner_input(t1_img, coarse)
+            residual_gate = build_residual_gate(t1_img, coarse, args.residual_gate_mode, args.residual_gate_min)
             optimizer.zero_grad(set_to_none=True)
             with _autocast_context(device, args.mixed_precision):
-                hp_pred = apply_hp_residual_cap(model(model_input), args.residual_scale)
+                hp_pred = apply_hp_residual_cap(model(model_input), args.residual_scale, residual_gate)
                 losses = build_hp_refiner_loss(
                     hp_pred,
                     coarse,
@@ -341,7 +372,8 @@ def main() -> None:
                 target = reduce_rgb_to_single_channel(batch["fa_slice"].to(device))
                 with _autocast_context(device, args.mixed_precision):
                     coarse = predict_stage1_batch(stage1, t1_img, stage1_device, stage1_prediction_mode, stage1_detail_scale).to(device)
-                    hp_pred = apply_hp_residual_cap(model(build_hp_refiner_input(t1_img, coarse)), args.residual_scale)
+                    residual_gate = build_residual_gate(t1_img, coarse, args.residual_gate_mode, args.residual_gate_min)
+                    hp_pred = apply_hp_residual_cap(model(build_hp_refiner_input(t1_img, coarse)), args.residual_scale, residual_gate)
                     refined = clamp_to_image_range(coarse + hp_pred)
                 rows.append(_metric_dict(refined.float(), coarse.float(), target.float(), t1_img, ssim_loss_fn, args))
 

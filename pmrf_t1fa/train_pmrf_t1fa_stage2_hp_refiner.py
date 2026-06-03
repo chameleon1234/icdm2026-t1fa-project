@@ -285,7 +285,7 @@ def build_hp_refiner_loss(
     final_ssim_weight: float,
     ssim_loss_fn: SSIMLoss | None,
 ) -> Dict[str, torch.Tensor]:
-    final = coarse + hp_pred
+    final = clamp_to_image_range(coarse + hp_pred)
     highpass_supervision_target = target if hp_target_image is None else hp_target_image
     hp_target = highpass(highpass_supervision_target, hp_kernel_size) - highpass(coarse, hp_kernel_size)
     hp_final_target = highpass(highpass_supervision_target, hp_kernel_size)

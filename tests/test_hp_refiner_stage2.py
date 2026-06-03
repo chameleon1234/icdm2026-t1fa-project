@@ -57,6 +57,8 @@ def test_hp_refiner_residual_loss_zero_when_prediction_matches_target_residual()
         hp_image_weight=1.0,
         wm_hp_weight=1.0,
         wm_final_l1_weight=0.0,
+        wm_guard_weight=0.0,
+        wm_guard_margin=0.0,
         lowpass_weight=1.0,
         final_l1_weight=0.0,
         final_ssim_weight=0.0,
@@ -85,6 +87,8 @@ def test_hp_refiner_image_losses_zero_when_final_matches_target():
         hp_image_weight=1.0,
         wm_hp_weight=1.0,
         wm_final_l1_weight=1.0,
+        wm_guard_weight=0.0,
+        wm_guard_margin=0.0,
         lowpass_weight=0.0,
         final_l1_weight=1.0,
         final_ssim_weight=0.0,
@@ -95,3 +99,35 @@ def test_hp_refiner_image_losses_zero_when_final_matches_target():
     assert torch.allclose(losses["wm_hp"], torch.zeros_like(losses["wm_hp"]), atol=1e-6)
     assert torch.allclose(losses["wm_final_l1"], torch.zeros_like(losses["wm_final_l1"]), atol=1e-6)
     assert torch.allclose(losses["final_l1"], torch.zeros_like(losses["final_l1"]), atol=1e-6)
+
+
+def test_hp_refiner_wm_guard_penalizes_predictions_worse_than_coarse():
+    coarse = torch.zeros((1, 1, 8, 8))
+    target = torch.zeros((1, 1, 8, 8))
+    bad_hp_pred = torch.full_like(coarse, 0.25)
+    good_hp_pred = torch.zeros_like(coarse)
+    mask = torch.ones_like(coarse)
+
+    common = dict(
+        coarse=coarse,
+        target=target,
+        brain_mask=mask,
+        wm_mask=mask,
+        hp_kernel_size=5,
+        lp_kernel_size=9,
+        hp_residual_weight=0.0,
+        hp_image_weight=0.0,
+        wm_hp_weight=0.0,
+        wm_final_l1_weight=0.0,
+        wm_guard_weight=1.0,
+        wm_guard_margin=0.0,
+        lowpass_weight=0.0,
+        final_l1_weight=0.0,
+        final_ssim_weight=0.0,
+        ssim_loss_fn=None,
+    )
+    bad_losses = build_hp_refiner_loss(hp_pred=bad_hp_pred, **common)
+    good_losses = build_hp_refiner_loss(hp_pred=good_hp_pred, **common)
+
+    assert bad_losses["wm_guard"] > 0.0
+    assert torch.allclose(good_losses["wm_guard"], torch.zeros_like(good_losses["wm_guard"]))

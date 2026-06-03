@@ -54,6 +54,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hp_image_weight", type=float, default=1.0)
     parser.add_argument("--wm_hp_weight", type=float, default=2.0)
     parser.add_argument("--wm_final_l1_weight", type=float, default=0.5)
+    parser.add_argument("--wm_guard_weight", type=float, default=0.0)
+    parser.add_argument("--wm_guard_margin", type=float, default=0.0)
     parser.add_argument("--lowpass_weight", type=float, default=2.0)
     parser.add_argument("--final_l1_weight", type=float, default=0.05)
     parser.add_argument("--final_ssim_weight", type=float, default=0.02)
@@ -135,6 +137,8 @@ def build_hp_refiner_loss(
     hp_image_weight: float,
     wm_hp_weight: float,
     wm_final_l1_weight: float,
+    wm_guard_weight: float,
+    wm_guard_margin: float,
     lowpass_weight: float,
     final_l1_weight: float,
     final_ssim_weight: float,
@@ -149,6 +153,8 @@ def build_hp_refiner_loss(
     hp_image = F.l1_loss(hp_final, hp_final_target)
     wm_hp = (hp_error * wm_mask.to(dtype=hp_error.dtype, device=hp_error.device)).sum() / wm_mask.sum().clamp_min(1.0)
     wm_final_l1 = masked_l1_loss(final, target, wm_mask)
+    coarse_wm_l1 = masked_l1_loss(coarse, target, wm_mask).detach()
+    wm_guard = F.relu(wm_final_l1 - coarse_wm_l1 + float(wm_guard_margin))
     lowpass_consistency = masked_l1_loss(lowpass(final, lp_kernel_size), lowpass(coarse, lp_kernel_size), brain_mask)
     final_l1 = F.l1_loss(final, target)
     final_ssim = final.new_tensor(0.0) if ssim_loss_fn is None else ssim_loss_fn(final, target)
@@ -157,6 +163,7 @@ def build_hp_refiner_loss(
         + hp_image_weight * hp_image
         + wm_hp_weight * wm_hp
         + wm_final_l1_weight * wm_final_l1
+        + wm_guard_weight * wm_guard
         + lowpass_weight * lowpass_consistency
         + final_l1_weight * final_l1
         + final_ssim_weight * final_ssim
@@ -167,6 +174,7 @@ def build_hp_refiner_loss(
         "hp_image": hp_image,
         "wm_hp": wm_hp,
         "wm_final_l1": wm_final_l1,
+        "wm_guard": wm_guard,
         "lowpass": lowpass_consistency,
         "final_l1": final_l1,
         "final_ssim": final_ssim,
@@ -260,7 +268,8 @@ def main() -> None:
         f"HP refiner training on {len(train_dataset)} train slices / {len(val_dataset)} val slices | "
         f"stage1_channels={stage1_channels} | device={device} | width={args.width} blocks={args.num_blocks} | "
         f"hp/lp kernels={args.hp_kernel_size}/{args.lp_kernel_size} | weights hp={args.hp_residual_weight}/{args.hp_image_weight} "
-        f"wm_hp={args.wm_hp_weight} wm_final={args.wm_final_l1_weight} lowpass={args.lowpass_weight} "
+        f"wm_hp={args.wm_hp_weight} wm_final={args.wm_final_l1_weight} wm_guard={args.wm_guard_weight}@{args.wm_guard_margin} "
+        f"lowpass={args.lowpass_weight} "
         f"final={args.final_l1_weight}/{args.final_ssim_weight}"
     )
 
@@ -296,6 +305,8 @@ def main() -> None:
                     args.hp_image_weight,
                     args.wm_hp_weight,
                     args.wm_final_l1_weight,
+                    args.wm_guard_weight,
+                    args.wm_guard_margin,
                     args.lowpass_weight,
                     args.final_l1_weight,
                     args.final_ssim_weight,
@@ -330,7 +341,12 @@ def main() -> None:
         metrics = _average_metrics(rows)
         train_batches = max(len(train_loader), 1)
         train_summary = {key: value / train_batches for key, value in train_totals.items()}
-        score = metrics["delta_sharp"] + 10.0 * metrics["delta_wm_l1"] - 0.05 * max(-metrics["delta_psnr"], 0.0)
+        score = (
+            metrics["delta_sharp"]
+            + 10.0 * max(metrics["delta_wm_l1"], 0.0)
+            - 30.0 * max(-metrics["delta_wm_l1"], 0.0)
+            - 0.05 * max(-metrics["delta_psnr"], 0.0)
+        )
         is_best = score > best_score
         if is_best:
             best_score = score

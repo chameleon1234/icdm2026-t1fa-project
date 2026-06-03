@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 from pmrf_t1fa.train_pmrf_t1fa_stage2_hp_refiner import (
     HighPassRefinerNet,
@@ -8,6 +9,7 @@ from pmrf_t1fa.train_pmrf_t1fa_stage2_hp_refiner import (
     build_hp_refiner_loss,
     hp_refiner_best_key,
     highpass,
+    load_teacher_batch,
     multiscale_highpass_loss,
     sharpness_floor_loss,
     lowpass,
@@ -90,6 +92,7 @@ def test_hp_refiner_residual_loss_zero_when_prediction_matches_target_residual()
         hp_pred=hp_target,
         coarse=coarse,
         target=target,
+        hp_target_image=None,
         brain_mask=mask,
         wm_mask=mask,
         hp_kernel_size=5,
@@ -114,6 +117,92 @@ def test_hp_refiner_residual_loss_zero_when_prediction_matches_target_residual()
     assert torch.allclose(losses["hp_residual"], torch.zeros_like(losses["hp_residual"]), atol=1e-6)
 
 
+def test_hp_refiner_can_use_teacher_image_for_highpass_target_only():
+    coarse = torch.zeros((1, 1, 16, 16))
+    real_target = torch.zeros((1, 1, 16, 16))
+    teacher_target = torch.zeros((1, 1, 16, 16))
+    real_target[:, :, 4:12, 8:] = 0.25
+    teacher_target[:, :, 4:12, 8:] = 0.50
+    hp_pred = highpass(teacher_target, kernel_size=5) - highpass(coarse, kernel_size=5)
+    mask = torch.ones_like(coarse)
+
+    teacher_losses = build_hp_refiner_loss(
+        hp_pred=hp_pred,
+        coarse=coarse,
+        target=real_target,
+        hp_target_image=teacher_target,
+        brain_mask=mask,
+        wm_mask=mask,
+        hp_kernel_size=5,
+        lp_kernel_size=9,
+        hp_residual_weight=1.0,
+        hp_image_weight=1.0,
+        wm_hp_weight=1.0,
+        multiscale_hp_weight=0.0,
+        multiscale_wm_hp_weight=0.0,
+        multiscale_hp_kernels=(3, 5, 9),
+        wm_final_l1_weight=0.0,
+        wm_guard_weight=0.0,
+        wm_guard_margin=0.0,
+        lowpass_weight=0.0,
+        sharpness_floor_weight=0.0,
+        sharpness_floor_margin=0.0,
+        final_l1_weight=1.0,
+        final_ssim_weight=0.0,
+        ssim_loss_fn=None,
+    )
+    real_losses = build_hp_refiner_loss(
+        hp_pred=hp_pred,
+        coarse=coarse,
+        target=real_target,
+        hp_target_image=None,
+        brain_mask=mask,
+        wm_mask=mask,
+        hp_kernel_size=5,
+        lp_kernel_size=9,
+        hp_residual_weight=1.0,
+        hp_image_weight=0.0,
+        wm_hp_weight=0.0,
+        multiscale_hp_weight=0.0,
+        multiscale_wm_hp_weight=0.0,
+        multiscale_hp_kernels=(3, 5, 9),
+        wm_final_l1_weight=0.0,
+        wm_guard_weight=0.0,
+        wm_guard_margin=0.0,
+        lowpass_weight=0.0,
+        sharpness_floor_weight=0.0,
+        sharpness_floor_margin=0.0,
+        final_l1_weight=1.0,
+        final_ssim_weight=0.0,
+        ssim_loss_fn=None,
+    )
+
+    assert torch.allclose(teacher_losses["hp_residual"], torch.zeros_like(teacher_losses["hp_residual"]), atol=1e-6)
+    assert real_losses["hp_residual"] > 0.0
+    assert teacher_losses["final_l1"] > 0.0
+
+
+def test_load_teacher_batch_reads_aligned_png_names(tmp_path):
+    teacher_dir = tmp_path / "teacher"
+    teacher_dir.mkdir()
+    image = np.zeros((8, 8), dtype=np.uint8)
+    image[:, 4:] = 255
+    encoded = __import__("cv2").imencode(".png", image)[1]
+    encoded.tofile(str(teacher_dir / "sub-001_z002.png"))
+
+    batch = load_teacher_batch(
+        teacher_dir,
+        ["sub-001_z002.png"],
+        device=torch.device("cpu"),
+        target_shape=torch.Size((1, 1, 16, 16)),
+    )
+
+    assert batch.shape == (1, 1, 16, 16)
+    assert batch.min() >= -1.0
+    assert batch.max() <= 1.0
+    assert batch[:, :, :, 10:].mean() > batch[:, :, :, :6].mean()
+
+
 def test_hp_refiner_image_losses_zero_when_final_matches_target():
     coarse = torch.zeros((1, 1, 16, 16))
     target = torch.zeros((1, 1, 16, 16))
@@ -125,6 +214,7 @@ def test_hp_refiner_image_losses_zero_when_final_matches_target():
         hp_pred=hp_pred,
         coarse=coarse,
         target=target,
+        hp_target_image=None,
         brain_mask=mask,
         wm_mask=mask,
         hp_kernel_size=5,
@@ -162,6 +252,7 @@ def test_hp_refiner_wm_guard_penalizes_predictions_worse_than_coarse():
     common = dict(
         coarse=coarse,
         target=target,
+        hp_target_image=None,
         brain_mask=mask,
         wm_mask=mask,
         hp_kernel_size=5,

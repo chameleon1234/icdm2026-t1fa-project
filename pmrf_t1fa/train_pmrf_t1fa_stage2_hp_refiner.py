@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 from typing import Dict
 
+import cv2
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -33,6 +35,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train_fa_dir", default="data/processed/train/fa_slices")
     parser.add_argument("--val_t1_dir", default="data/processed/val/t1_slices")
     parser.add_argument("--val_fa_dir", default="data/processed/val/fa_slices")
+    parser.add_argument("--train_teacher_pred_dir", default="", help="Optional aligned PNG folder used as high-pass teacher for training.")
+    parser.add_argument("--val_teacher_pred_dir", default="", help="Optional aligned PNG folder used as high-pass teacher for validation loss.")
     parser.add_argument("--stage1_ckpt", default="outputs/pmrf_t1fa_stage1_wmroi_detail_5slice/checkpoints/best_stage1.pt")
     parser.add_argument("--stage1_device", default="auto", choices=["auto", "cuda", "cpu"])
     parser.add_argument("--run_name", default="pmrf_t1fa_stage2_hp_refiner_smoke")
@@ -106,6 +110,36 @@ def lowpass(x: torch.Tensor, kernel_size: int = 13) -> torch.Tensor:
 
 def highpass(x: torch.Tensor, kernel_size: int = 5) -> torch.Tensor:
     return x - lowpass(x, kernel_size=kernel_size)
+
+
+def read_prediction_png(path: Path, target_hw: tuple[int, int] | None = None) -> torch.Tensor:
+    stream = np.fromfile(str(path), dtype=np.uint8)
+    image = cv2.imdecode(stream, cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        raise ValueError(f"Failed to read teacher prediction PNG: {path}")
+    if target_hw is not None and image.shape[:2] != target_hw:
+        image = cv2.resize(image, (target_hw[1], target_hw[0]), interpolation=cv2.INTER_CUBIC)
+    tensor = torch.from_numpy(image).float().unsqueeze(0)
+    return (tensor / 127.5) - 1.0
+
+
+def load_teacher_batch(
+    teacher_dir: str | Path,
+    filenames,
+    device: torch.device,
+    target_shape: torch.Size,
+) -> torch.Tensor:
+    teacher_root = Path(teacher_dir)
+    if not teacher_root.exists():
+        raise FileNotFoundError(f"Missing teacher prediction directory: {teacher_root}")
+    target_hw = (int(target_shape[-2]), int(target_shape[-1]))
+    slices = []
+    for filename in filenames:
+        path = teacher_root / str(filename)
+        if not path.exists():
+            raise FileNotFoundError(f"Missing teacher prediction for {filename}: {path}")
+        slices.append(read_prediction_png(path, target_hw=target_hw))
+    return torch.stack(slices, dim=0).to(device=device)
 
 
 def _normalize_per_sample(x: torch.Tensor) -> torch.Tensor:
@@ -228,6 +262,7 @@ def build_hp_refiner_loss(
     hp_pred: torch.Tensor,
     coarse: torch.Tensor,
     target: torch.Tensor,
+    hp_target_image: torch.Tensor | None,
     brain_mask: torch.Tensor,
     wm_mask: torch.Tensor,
     hp_kernel_size: int,
@@ -249,19 +284,20 @@ def build_hp_refiner_loss(
     ssim_loss_fn: SSIMLoss | None,
 ) -> Dict[str, torch.Tensor]:
     final = coarse + hp_pred
-    hp_target = highpass(target, hp_kernel_size) - highpass(coarse, hp_kernel_size)
-    hp_final_target = highpass(target, hp_kernel_size)
+    highpass_supervision_target = target if hp_target_image is None else hp_target_image
+    hp_target = highpass(highpass_supervision_target, hp_kernel_size) - highpass(coarse, hp_kernel_size)
+    hp_final_target = highpass(highpass_supervision_target, hp_kernel_size)
     hp_final = highpass(final, hp_kernel_size)
     hp_error = torch.abs(hp_final - hp_final_target)
     hp_residual = F.l1_loss(hp_pred, hp_target)
     hp_image = F.l1_loss(hp_final, hp_final_target)
     wm_hp = (hp_error * wm_mask.to(dtype=hp_error.dtype, device=hp_error.device)).sum() / wm_mask.sum().clamp_min(1.0)
-    multiscale_losses = multiscale_highpass_loss(final, target, wm_mask, kernels=multiscale_hp_kernels)
+    multiscale_losses = multiscale_highpass_loss(final, highpass_supervision_target, wm_mask, kernels=multiscale_hp_kernels)
     wm_final_l1 = masked_l1_loss(final, target, wm_mask)
     coarse_wm_l1 = masked_l1_loss(coarse, target, wm_mask).detach()
     wm_guard = F.relu(wm_final_l1 - coarse_wm_l1 + float(wm_guard_margin))
     lowpass_consistency = masked_l1_loss(lowpass(final, lp_kernel_size), lowpass(coarse, lp_kernel_size), brain_mask)
-    sharpness_floor = sharpness_floor_loss(final, coarse, target, sharpness_floor_margin)
+    sharpness_floor = sharpness_floor_loss(final, coarse, highpass_supervision_target, sharpness_floor_margin)
     final_l1 = F.l1_loss(final, target)
     final_ssim = final.new_tensor(0.0) if ssim_loss_fn is None else ssim_loss_fn(final, target)
     total = (
@@ -413,6 +449,7 @@ def main() -> None:
         f"wm_final={args.wm_final_l1_weight} wm_guard={args.wm_guard_weight}@{args.wm_guard_margin} "
         f"lowpass={args.lowpass_weight} sharp_floor={args.sharpness_floor_weight}@{args.sharpness_floor_margin} "
         f"best_gate=delta_sharp>={args.best_min_delta_sharp},delta_wm_l1>={args.best_min_delta_wm_l1} "
+        f"teacher_train={args.train_teacher_pred_dir or 'none'} teacher_val={args.val_teacher_pred_dir or 'none'} "
         f"residual_scale={args.residual_scale} "
         f"gate={args.residual_gate_mode}@{args.residual_gate_min} "
         f"final={args.final_l1_weight}/{args.final_ssim_weight}"
@@ -426,6 +463,9 @@ def main() -> None:
             target = reduce_rgb_to_single_channel(batch["fa_slice"].to(device))
             with torch.no_grad(), _autocast_context(device, args.mixed_precision):
                 coarse = predict_stage1_batch(stage1, t1_img, stage1_device, stage1_prediction_mode, stage1_detail_scale).to(device)
+            hp_target_image = None
+            if args.train_teacher_pred_dir:
+                hp_target_image = load_teacher_batch(args.train_teacher_pred_dir, batch["fname"], device, target.shape)
             brain_mask, wm_mask = build_training_masks(
                 t1_img,
                 target,
@@ -443,6 +483,7 @@ def main() -> None:
                     hp_pred,
                     coarse,
                     target,
+                    hp_target_image,
                     brain_mask,
                     wm_mask,
                     args.hp_kernel_size,
@@ -485,6 +526,9 @@ def main() -> None:
                 target = reduce_rgb_to_single_channel(batch["fa_slice"].to(device))
                 with _autocast_context(device, args.mixed_precision):
                     coarse = predict_stage1_batch(stage1, t1_img, stage1_device, stage1_prediction_mode, stage1_detail_scale).to(device)
+                    hp_target_image = None
+                    if args.val_teacher_pred_dir:
+                        hp_target_image = load_teacher_batch(args.val_teacher_pred_dir, batch["fname"], device, target.shape)
                     residual_gate = build_residual_gate(t1_img, coarse, args.residual_gate_mode, args.residual_gate_min)
                     hp_pred = apply_hp_residual_cap(model(build_hp_refiner_input(t1_img, coarse)), args.residual_scale, residual_gate)
                     refined = clamp_to_image_range(coarse + hp_pred)

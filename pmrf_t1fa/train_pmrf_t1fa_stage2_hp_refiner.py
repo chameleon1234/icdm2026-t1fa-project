@@ -53,6 +53,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hp_residual_weight", type=float, default=1.0)
     parser.add_argument("--hp_image_weight", type=float, default=1.0)
     parser.add_argument("--wm_hp_weight", type=float, default=2.0)
+    parser.add_argument("--multiscale_hp_weight", type=float, default=0.0)
+    parser.add_argument("--multiscale_wm_hp_weight", type=float, default=0.0)
+    parser.add_argument("--multiscale_hp_kernels", default="3,5,9")
     parser.add_argument("--wm_final_l1_weight", type=float, default=0.5)
     parser.add_argument("--wm_guard_weight", type=float, default=0.0)
     parser.add_argument("--wm_guard_margin", type=float, default=0.0)
@@ -137,6 +140,38 @@ def sharpness_floor_loss(refined: torch.Tensor, coarse: torch.Tensor, target: to
     return F.relu(floor - refined_var)
 
 
+def parse_kernel_list(value: str) -> tuple[int, ...]:
+    kernels = tuple(int(part.strip()) for part in value.split(",") if part.strip())
+    if not kernels:
+        raise ValueError("At least one high-pass kernel is required.")
+    for kernel in kernels:
+        if kernel < 1 or kernel % 2 == 0:
+            raise ValueError(f"High-pass kernels must be positive odd integers, got {kernel}.")
+    return kernels
+
+
+def multiscale_highpass_loss(
+    refined: torch.Tensor,
+    target: torch.Tensor,
+    wm_mask: torch.Tensor,
+    kernels: tuple[int, ...] = (3, 5, 9),
+) -> Dict[str, torch.Tensor]:
+    hp_losses = []
+    wm_losses = []
+    wm_mask = wm_mask.to(dtype=refined.dtype, device=refined.device)
+    denom = wm_mask.sum().clamp_min(1.0)
+    for kernel in kernels:
+        refined_hp = highpass(refined, kernel)
+        target_hp = highpass(target, kernel)
+        error = torch.abs(refined_hp - target_hp)
+        hp_losses.append(error.mean())
+        wm_losses.append((error * wm_mask).sum() / denom)
+    return {
+        "multiscale_hp": torch.stack(hp_losses).mean(),
+        "multiscale_wm_hp": torch.stack(wm_losses).mean(),
+    }
+
+
 def apply_hp_residual_cap(
     hp_pred: torch.Tensor,
     residual_scale: float,
@@ -200,6 +235,9 @@ def build_hp_refiner_loss(
     hp_residual_weight: float,
     hp_image_weight: float,
     wm_hp_weight: float,
+    multiscale_hp_weight: float,
+    multiscale_wm_hp_weight: float,
+    multiscale_hp_kernels: tuple[int, ...],
     wm_final_l1_weight: float,
     wm_guard_weight: float,
     wm_guard_margin: float,
@@ -218,6 +256,7 @@ def build_hp_refiner_loss(
     hp_residual = F.l1_loss(hp_pred, hp_target)
     hp_image = F.l1_loss(hp_final, hp_final_target)
     wm_hp = (hp_error * wm_mask.to(dtype=hp_error.dtype, device=hp_error.device)).sum() / wm_mask.sum().clamp_min(1.0)
+    multiscale_losses = multiscale_highpass_loss(final, target, wm_mask, kernels=multiscale_hp_kernels)
     wm_final_l1 = masked_l1_loss(final, target, wm_mask)
     coarse_wm_l1 = masked_l1_loss(coarse, target, wm_mask).detach()
     wm_guard = F.relu(wm_final_l1 - coarse_wm_l1 + float(wm_guard_margin))
@@ -229,6 +268,8 @@ def build_hp_refiner_loss(
         hp_residual_weight * hp_residual
         + hp_image_weight * hp_image
         + wm_hp_weight * wm_hp
+        + multiscale_hp_weight * multiscale_losses["multiscale_hp"]
+        + multiscale_wm_hp_weight * multiscale_losses["multiscale_wm_hp"]
         + wm_final_l1_weight * wm_final_l1
         + wm_guard_weight * wm_guard
         + lowpass_weight * lowpass_consistency
@@ -241,6 +282,8 @@ def build_hp_refiner_loss(
         "hp_residual": hp_residual,
         "hp_image": hp_image,
         "wm_hp": wm_hp,
+        "multiscale_hp": multiscale_losses["multiscale_hp"],
+        "multiscale_wm_hp": multiscale_losses["multiscale_wm_hp"],
         "wm_final_l1": wm_final_l1,
         "wm_guard": wm_guard,
         "lowpass": lowpass_consistency,
@@ -336,6 +379,7 @@ def main() -> None:
     args = parse_args()
     root_dir, ckpt_dir, preview_dir = ensure_dirs(args.run_name)
     log_path = root_dir / "train.log"
+    multiscale_hp_kernels = parse_kernel_list(args.multiscale_hp_kernels)
     if not args.keep_existing_best:
         for stale_best in (ckpt_dir / "best_hp_refiner.pt", root_dir / "best_hp_refiner.pt"):
             if stale_best.exists():
@@ -365,7 +409,8 @@ def main() -> None:
         f"HP refiner training on {len(train_dataset)} train slices / {len(val_dataset)} val slices | "
         f"stage1_channels={stage1_channels} | device={device} | width={args.width} blocks={args.num_blocks} | "
         f"hp/lp kernels={args.hp_kernel_size}/{args.lp_kernel_size} | weights hp={args.hp_residual_weight}/{args.hp_image_weight} "
-        f"wm_hp={args.wm_hp_weight} wm_final={args.wm_final_l1_weight} wm_guard={args.wm_guard_weight}@{args.wm_guard_margin} "
+        f"wm_hp={args.wm_hp_weight} multiscale_hp={args.multiscale_hp_weight}/{args.multiscale_wm_hp_weight}@{args.multiscale_hp_kernels} "
+        f"wm_final={args.wm_final_l1_weight} wm_guard={args.wm_guard_weight}@{args.wm_guard_margin} "
         f"lowpass={args.lowpass_weight} sharp_floor={args.sharpness_floor_weight}@{args.sharpness_floor_margin} "
         f"best_gate=delta_sharp>={args.best_min_delta_sharp},delta_wm_l1>={args.best_min_delta_wm_l1} "
         f"residual_scale={args.residual_scale} "
@@ -405,6 +450,9 @@ def main() -> None:
                     args.hp_residual_weight,
                     args.hp_image_weight,
                     args.wm_hp_weight,
+                    args.multiscale_hp_weight,
+                    args.multiscale_wm_hp_weight,
+                    multiscale_hp_kernels,
                     args.wm_final_l1_weight,
                     args.wm_guard_weight,
                     args.wm_guard_margin,

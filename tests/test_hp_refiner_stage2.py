@@ -8,6 +8,7 @@ from pmrf_t1fa.train_pmrf_t1fa_stage2_hp_refiner import (
     build_hp_refiner_loss,
     hp_refiner_best_key,
     highpass,
+    multiscale_highpass_loss,
     sharpness_floor_loss,
     lowpass,
 )
@@ -96,6 +97,9 @@ def test_hp_refiner_residual_loss_zero_when_prediction_matches_target_residual()
         hp_residual_weight=1.0,
         hp_image_weight=1.0,
         wm_hp_weight=1.0,
+        multiscale_hp_weight=0.0,
+        multiscale_wm_hp_weight=0.0,
+        multiscale_hp_kernels=(3, 5, 9),
         wm_final_l1_weight=0.0,
         wm_guard_weight=0.0,
         wm_guard_margin=0.0,
@@ -128,6 +132,9 @@ def test_hp_refiner_image_losses_zero_when_final_matches_target():
         hp_residual_weight=0.0,
         hp_image_weight=1.0,
         wm_hp_weight=1.0,
+        multiscale_hp_weight=0.0,
+        multiscale_wm_hp_weight=0.0,
+        multiscale_hp_kernels=(3, 5, 9),
         wm_final_l1_weight=1.0,
         wm_guard_weight=0.0,
         wm_guard_margin=0.0,
@@ -162,6 +169,9 @@ def test_hp_refiner_wm_guard_penalizes_predictions_worse_than_coarse():
         hp_residual_weight=0.0,
         hp_image_weight=0.0,
         wm_hp_weight=0.0,
+        multiscale_hp_weight=0.0,
+        multiscale_wm_hp_weight=0.0,
+        multiscale_hp_kernels=(3, 5, 9),
         wm_final_l1_weight=0.0,
         wm_guard_weight=1.0,
         wm_guard_margin=0.0,
@@ -191,6 +201,29 @@ def test_sharpness_floor_penalizes_refined_blurrier_than_coarse():
 
     assert blurry_loss > 0.0
     assert torch.allclose(sharper_loss, torch.zeros_like(sharper_loss), atol=1e-6)
+
+
+def test_multiscale_highpass_loss_zero_when_refined_matches_target():
+    target = torch.zeros((1, 1, 16, 16))
+    target[:, :, 4:12, 8:] = 0.5
+    mask = torch.ones_like(target)
+
+    losses = multiscale_highpass_loss(target, target, mask, kernels=(3, 5, 9))
+
+    assert torch.allclose(losses["multiscale_hp"], torch.zeros_like(losses["multiscale_hp"]), atol=1e-6)
+    assert torch.allclose(losses["multiscale_wm_hp"], torch.zeros_like(losses["multiscale_wm_hp"]), atol=1e-6)
+
+
+def test_multiscale_highpass_loss_penalizes_blurry_refined_image():
+    target = torch.zeros((1, 1, 16, 16))
+    target[:, :, 4:12, 8:] = 0.5
+    blurry = lowpass(target, kernel_size=7)
+    mask = torch.ones_like(target)
+
+    losses = multiscale_highpass_loss(blurry, target, mask, kernels=(3, 5, 9))
+
+    assert losses["multiscale_hp"] > 0.0
+    assert losses["multiscale_wm_hp"] > 0.0
 
 
 def test_hp_refiner_best_key_rejects_blurry_or_wm_worse_epoch():

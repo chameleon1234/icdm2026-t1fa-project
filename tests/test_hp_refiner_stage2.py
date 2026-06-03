@@ -109,6 +109,7 @@ def test_hp_refiner_residual_loss_zero_when_prediction_matches_target_residual()
         lowpass_weight=1.0,
         sharpness_floor_weight=0.0,
         sharpness_floor_margin=0.0,
+        teacher_hint_weight=0.0,
         final_l1_weight=0.0,
         final_ssim_weight=0.0,
         ssim_loss_fn=None,
@@ -147,6 +148,7 @@ def test_hp_refiner_can_use_teacher_image_for_highpass_target_only():
         lowpass_weight=0.0,
         sharpness_floor_weight=0.0,
         sharpness_floor_margin=0.0,
+        teacher_hint_weight=0.2,
         final_l1_weight=1.0,
         final_ssim_weight=0.0,
         ssim_loss_fn=None,
@@ -172,6 +174,7 @@ def test_hp_refiner_can_use_teacher_image_for_highpass_target_only():
         lowpass_weight=0.0,
         sharpness_floor_weight=0.0,
         sharpness_floor_margin=0.0,
+        teacher_hint_weight=0.2,
         final_l1_weight=1.0,
         final_ssim_weight=0.0,
         ssim_loss_fn=None,
@@ -179,6 +182,8 @@ def test_hp_refiner_can_use_teacher_image_for_highpass_target_only():
 
     assert torch.allclose(teacher_losses["hp_residual"], torch.zeros_like(teacher_losses["hp_residual"]), atol=1e-6)
     assert real_losses["hp_residual"] > 0.0
+    assert teacher_losses["teacher_hint"] > 0.0
+    assert torch.allclose(real_losses["teacher_hint"], torch.zeros_like(real_losses["teacher_hint"]))
     assert teacher_losses["final_l1"] > 0.0
 
 
@@ -231,6 +236,7 @@ def test_hp_refiner_image_losses_zero_when_final_matches_target():
         lowpass_weight=0.0,
         sharpness_floor_weight=0.0,
         sharpness_floor_margin=0.0,
+        teacher_hint_weight=0.0,
         final_l1_weight=1.0,
         final_ssim_weight=0.0,
         ssim_loss_fn=None,
@@ -269,6 +275,7 @@ def test_hp_refiner_wm_guard_penalizes_predictions_worse_than_coarse():
         lowpass_weight=0.0,
         sharpness_floor_weight=0.0,
         sharpness_floor_margin=0.0,
+        teacher_hint_weight=0.0,
         final_l1_weight=0.0,
         final_ssim_weight=0.0,
         ssim_loss_fn=None,

@@ -66,6 +66,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lowpass_weight", type=float, default=2.0)
     parser.add_argument("--sharpness_floor_weight", type=float, default=0.0)
     parser.add_argument("--sharpness_floor_margin", type=float, default=0.0)
+    parser.add_argument("--teacher_hint_weight", type=float, default=0.0, help="Small low-pass guidance toward teacher predictions when teacher folders are provided.")
     parser.add_argument(
         "--best_min_delta_sharp",
         type=float,
@@ -279,6 +280,7 @@ def build_hp_refiner_loss(
     lowpass_weight: float,
     sharpness_floor_weight: float,
     sharpness_floor_margin: float,
+    teacher_hint_weight: float,
     final_l1_weight: float,
     final_ssim_weight: float,
     ssim_loss_fn: SSIMLoss | None,
@@ -298,6 +300,10 @@ def build_hp_refiner_loss(
     wm_guard = F.relu(wm_final_l1 - coarse_wm_l1 + float(wm_guard_margin))
     lowpass_consistency = masked_l1_loss(lowpass(final, lp_kernel_size), lowpass(coarse, lp_kernel_size), brain_mask)
     sharpness_floor = sharpness_floor_loss(final, coarse, highpass_supervision_target, sharpness_floor_margin)
+    if hp_target_image is None:
+        teacher_hint = final.new_tensor(0.0)
+    else:
+        teacher_hint = masked_l1_loss(lowpass(final, lp_kernel_size), lowpass(hp_target_image, lp_kernel_size), brain_mask)
     final_l1 = F.l1_loss(final, target)
     final_ssim = final.new_tensor(0.0) if ssim_loss_fn is None else ssim_loss_fn(final, target)
     total = (
@@ -310,6 +316,7 @@ def build_hp_refiner_loss(
         + wm_guard_weight * wm_guard
         + lowpass_weight * lowpass_consistency
         + sharpness_floor_weight * sharpness_floor
+        + teacher_hint_weight * teacher_hint
         + final_l1_weight * final_l1
         + final_ssim_weight * final_ssim
     )
@@ -324,6 +331,7 @@ def build_hp_refiner_loss(
         "wm_guard": wm_guard,
         "lowpass": lowpass_consistency,
         "sharpness_floor": sharpness_floor,
+        "teacher_hint": teacher_hint,
         "final_l1": final_l1,
         "final_ssim": final_ssim,
         "final": final,
@@ -448,6 +456,7 @@ def main() -> None:
         f"wm_hp={args.wm_hp_weight} multiscale_hp={args.multiscale_hp_weight}/{args.multiscale_wm_hp_weight}@{args.multiscale_hp_kernels} "
         f"wm_final={args.wm_final_l1_weight} wm_guard={args.wm_guard_weight}@{args.wm_guard_margin} "
         f"lowpass={args.lowpass_weight} sharp_floor={args.sharpness_floor_weight}@{args.sharpness_floor_margin} "
+        f"teacher_hint={args.teacher_hint_weight} "
         f"best_gate=delta_sharp>={args.best_min_delta_sharp},delta_wm_l1>={args.best_min_delta_wm_l1} "
         f"teacher_train={args.train_teacher_pred_dir or 'none'} teacher_val={args.val_teacher_pred_dir or 'none'} "
         f"residual_scale={args.residual_scale} "
@@ -500,6 +509,7 @@ def main() -> None:
                     args.lowpass_weight,
                     args.sharpness_floor_weight,
                     args.sharpness_floor_margin,
+                    args.teacher_hint_weight,
                     args.final_l1_weight,
                     args.final_ssim_weight,
                     ssim_loss_fn,

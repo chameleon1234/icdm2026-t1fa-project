@@ -175,3 +175,40 @@ def test_run_regression_cv_reports_mmse_metrics():
     assert "spearman_r" in summary
     assert set(["subject_id", "y_true", "y_pred"]).issubset(predictions.columns)
     assert predictions["y_pred"].between(0.0, 30.0).all()
+
+
+def test_run_repeated_classification_cv_reports_metric_uncertainty():
+    from src.eval.downstream_utility import run_repeated_classification_cv
+
+    rows = []
+    for class_id, group_name in enumerate(["CN", "SCD", "MCI", "AD"], start=1):
+        for idx in range(5):
+            rows.append(
+                {
+                    "method": "toy",
+                    "subject_id": f"sub-{class_id}{idx:02d}",
+                    "group_id": class_id,
+                    "group_name": group_name,
+                    "n_slices": 3,
+                    "f0": float(class_id) + idx * 0.02,
+                    "f1": float(class_id % 2) + idx * 0.01,
+                }
+            )
+    features = pd.DataFrame(rows)
+
+    summary = run_repeated_classification_cv(
+        features,
+        method="toy",
+        task="four_class",
+        n_splits=5,
+        seeds=[1, 2, 3],
+        max_features=1,
+    )
+
+    assert summary["method"] == "toy"
+    assert summary["task"] == "four_class"
+    assert summary["n_repeats"] == 3
+    assert summary["n_subjects"] == 20
+    assert 0.0 <= summary["macro_f1_mean"] <= 1.0
+    assert summary["macro_f1_std"] >= 0.0
+    assert summary["macro_f1_ci95_low"] <= summary["macro_f1_mean"] <= summary["macro_f1_ci95_high"]

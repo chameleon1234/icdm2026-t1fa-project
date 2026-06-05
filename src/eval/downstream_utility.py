@@ -356,6 +356,61 @@ def run_classification_cv(
     return summary, predictions
 
 
+def _mean_std_ci(values: list[float]) -> tuple[float, float, float, float]:
+    arr = np.asarray(values, dtype=np.float64)
+    finite = arr[np.isfinite(arr)]
+    if finite.size == 0:
+        return float("nan"), float("nan"), float("nan"), float("nan")
+    mean = float(np.mean(finite))
+    std = float(np.std(finite, ddof=1)) if finite.size > 1 else 0.0
+    half_width = 1.96 * std / float(np.sqrt(finite.size)) if finite.size > 1 else 0.0
+    return mean, std, mean - half_width, mean + half_width
+
+
+def run_repeated_classification_cv(
+    features: pd.DataFrame,
+    method: str,
+    task: str,
+    n_splits: int = 5,
+    seeds: Iterable[int] = (42,),
+    max_features: int = 0,
+) -> dict[str, float | int | str]:
+    seed_list = [int(seed) for seed in seeds]
+    if not seed_list:
+        raise ValueError("At least one seed is required for repeated classification CV")
+
+    summaries = [
+        run_classification_cv(
+            features,
+            method=method,
+            task=task,
+            n_splits=n_splits,
+            random_state=seed,
+            max_features=max_features,
+        )[0]
+        for seed in seed_list
+    ]
+    result: dict[str, float | int | str] = {
+        "method": method,
+        "task": task,
+        "n_repeats": int(len(seed_list)),
+        "seed_min": int(min(seed_list)),
+        "seed_max": int(max(seed_list)),
+        "n_subjects": int(summaries[0]["n_subjects"]),
+        "n_features": int(summaries[0]["n_features"]),
+        "n_selected_features": int(summaries[0]["n_selected_features"]),
+        "n_splits": int(summaries[0]["n_splits"]),
+    }
+    for metric in ["accuracy", "balanced_accuracy", "macro_f1", "macro_auc_ovr"]:
+        values = [float(summary[metric]) for summary in summaries]
+        mean, std, low, high = _mean_std_ci(values)
+        result[f"{metric}_mean"] = mean
+        result[f"{metric}_std"] = std
+        result[f"{metric}_ci95_low"] = low
+        result[f"{metric}_ci95_high"] = high
+    return result
+
+
 def _correlation_or_nan(y_true: np.ndarray, y_pred: np.ndarray, rank: bool = False) -> float:
     if len(y_true) < 2 or np.std(y_true) <= 1e-8 or np.std(y_pred) <= 1e-8:
         return float("nan")

@@ -20,6 +20,7 @@ from src.eval.downstream_utility import (
     extract_subject_features_from_folder,
     parse_method_specs,
     run_classification_cv,
+    run_repeated_classification_cv,
     run_regression_cv,
 )
 
@@ -37,6 +38,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--regression_targets", default="", help="Comma-separated subject-level regression targets, e.g. MMSE.")
     parser.add_argument("--n_splits", type=int, default=5)
     parser.add_argument("--random_state", type=int, default=42)
+    parser.add_argument("--repeat_seeds", default="", help="Comma-separated seeds for repeated classification CV robustness output.")
     parser.add_argument("--max_features", type=int, default=0, help="Fold-internal SelectKBest feature cap. 0 keeps all image features.")
     parser.add_argument("--regression_clip_min", type=float, default=0.0, help="Minimum clipped regression prediction.")
     parser.add_argument("--regression_clip_max", type=float, default=30.0, help="Maximum clipped regression prediction.")
@@ -94,6 +96,10 @@ def _parse_fusion_spec(spec: str) -> tuple[str, str, str]:
     return name, left, right
 
 
+def _parse_seed_list(text: str) -> list[int]:
+    return [int(item.strip()) for item in text.split(",") if item.strip()]
+
+
 def _write_confusion_png(path: Path, matrix_df: pd.DataFrame, title: str) -> None:
     cell = 74
     top = 52
@@ -142,10 +148,12 @@ def main() -> None:
     if not tasks:
         tasks = list(config.get("evaluation", {}).get("classification_tasks", ["four_class"]))
     regression_targets = [target.strip() for target in args.regression_targets.split(",") if target.strip()]
+    repeat_seeds = _parse_seed_list(args.repeat_seeds)
 
     subject_index = _load_subject_index(args, config)
     feature_tables: dict[str, pd.DataFrame] = {}
     all_summaries = []
+    all_repeated_summaries = []
     all_predictions = []
     all_regression_summaries = []
     all_regression_predictions = []
@@ -188,6 +196,17 @@ def main() -> None:
             )
             all_summaries.append(summary)
             all_predictions.append(predictions)
+            if repeat_seeds:
+                all_repeated_summaries.append(
+                    run_repeated_classification_cv(
+                        features,
+                        method=method_name,
+                        task=task,
+                        n_splits=args.n_splits,
+                        seeds=repeat_seeds,
+                        max_features=args.max_features,
+                    )
+                )
             matrix_df = confusion_matrix_frame(predictions)
             matrix_csv = confusion_root / f"{method_name}_{task}_confusion.csv"
             matrix_df.to_csv(matrix_csv, encoding="utf-8")
@@ -229,6 +248,13 @@ def main() -> None:
         regression_prediction_df.to_csv(regression_prediction_path, index=False, encoding="utf-8")
         with open(regression_json_path, "w", encoding="utf-8") as handle:
             json.dump(_json_ready(all_regression_summaries), handle, indent=2, ensure_ascii=False)
+    if all_repeated_summaries:
+        repeated_summary_df = pd.DataFrame(all_repeated_summaries)
+        repeated_summary_path = output_root / "classification_repeated_summary.csv"
+        repeated_json_path = output_root / "classification_repeated_summary.json"
+        repeated_summary_df.to_csv(repeated_summary_path, index=False, encoding="utf-8")
+        with open(repeated_json_path, "w", encoding="utf-8") as handle:
+            json.dump(_json_ready(all_repeated_summaries), handle, indent=2, ensure_ascii=False)
 
     print(f"Saved subject features to: {feature_path}")
     print(f"Saved classification summary to: {summary_path}")
@@ -237,11 +263,15 @@ def main() -> None:
     if all_regression_summaries:
         print(f"Saved regression summary to: {output_root / 'regression_summary.csv'}")
         print(f"Saved regression predictions to: {output_root / 'regression_predictions.csv'}")
+    if all_repeated_summaries:
+        print(f"Saved repeated classification summary to: {output_root / 'classification_repeated_summary.csv'}")
     if not summary_df.empty:
         display_cols = ["method", "task", "n_subjects", "macro_f1", "balanced_accuracy", "macro_auc_ovr"]
         print(summary_df[display_cols].to_string(index=False))
     if all_regression_summaries:
         print(pd.DataFrame(all_regression_summaries)[["method", "target", "n_subjects", "mae", "rmse", "pearson_r", "spearman_r"]].to_string(index=False))
+    if all_repeated_summaries:
+        print(pd.DataFrame(all_repeated_summaries)[["method", "task", "n_repeats", "macro_f1_mean", "macro_f1_std", "macro_f1_ci95_low", "macro_f1_ci95_high"]].to_string(index=False))
 
 
 if __name__ == "__main__":

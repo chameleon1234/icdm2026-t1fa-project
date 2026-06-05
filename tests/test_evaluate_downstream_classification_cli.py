@@ -65,6 +65,8 @@ def test_evaluate_downstream_classification_cli_writes_summary_outputs(tmp_path)
             "four_class",
             "--regression_targets",
             "MMSE",
+            "--repeat_seeds",
+            "1,2",
             "--n_splits",
             "3",
             "--output_root",
@@ -82,9 +84,12 @@ def test_evaluate_downstream_classification_cli_writes_summary_outputs(tmp_path)
     assert (output_root / "classification_summary.json").exists()
     assert (output_root / "regression_summary.csv").exists()
     assert (output_root / "regression_predictions.csv").exists()
+    assert (output_root / "classification_repeated_summary.csv").exists()
     assert (output_root / "confusion_matrices" / "Toy_four_class_confusion.png").exists()
     assert (output_root / "confusion_matrices" / "ToySelf_four_class_confusion.png").exists()
     assert summary.loc[0, "method"] == "Toy"
     assert summary.loc[0, "task"] == "four_class"
     assert int(summary.loc[0, "n_subjects"]) == 12
     assert "ToySelf" in set(summary["method"])
+    repeated = pd.read_csv(output_root / "classification_repeated_summary.csv")
+    assert int(repeated.loc[0, "n_repeats"]) == 2

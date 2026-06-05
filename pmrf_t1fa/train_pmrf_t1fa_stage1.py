@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 
 import lpips
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from accelerate import Accelerator
 from torch.utils.data import DataLoader, Subset
@@ -40,8 +41,59 @@ class ZeroLPIPSLoss(torch.nn.Module):
         return pred.new_zeros((pred.shape[0],))
 
 
+class Stage1PatchDiscriminator(nn.Module):
+    """Small conditional PatchGAN discriminator for Stage 1 FA realism.
+
+    The discriminator sees the same T1 stack as the generator plus either the
+    real FA or generated FA.  This keeps the adversarial signal paired to the
+    anatomy instead of encouraging unconditional texture hallucination.
+    """
+
+    def __init__(self, in_channels: int, width: int = 32):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(in_channels, width, 4, stride=2, padding=1),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(width, width * 2, 4, stride=2, padding=1),
+            nn.GroupNorm(1, width * 2),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(width * 2, width * 4, 4, stride=2, padding=1),
+            nn.GroupNorm(1, width * 4),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(width * 4, 1, 3, padding=1),
+        )
+
+    def forward(self, condition: torch.Tensor, image: torch.Tensor) -> torch.Tensor:
+        return self.net(torch.cat([condition, image], dim=1))
+
+
+def lsgan_discriminator_loss(real_logits: torch.Tensor, fake_logits: torch.Tensor) -> torch.Tensor:
+    return 0.5 * (F.mse_loss(real_logits, torch.ones_like(real_logits)) + F.mse_loss(fake_logits, torch.zeros_like(fake_logits)))
+
+
+def lsgan_generator_loss(fake_logits: torch.Tensor) -> torch.Tensor:
+    return F.mse_loss(fake_logits, torch.ones_like(fake_logits))
+
+
+def set_requires_grad(module: nn.Module, value: bool) -> None:
+    for param in module.parameters():
+        param.requires_grad = value
+
+
+def add_stage1_adversarial_checkpoint_state(
+    checkpoint: Dict,
+    discriminator: nn.Module | None,
+    disc_optimizer: torch.optim.Optimizer | None,
+) -> None:
+    if discriminator is None or disc_optimizer is None:
+        return
+    checkpoint["discriminator"] = discriminator.state_dict()
+    checkpoint["disc_optimizer"] = disc_optimizer.state_dict()
+
+
 def stage1_resume_required_keys() -> list[str]:
     return [
+        "stage1_training_preset",
         "context_slices",
         "stage1_model_variant",
         "stage1_prediction_mode",
@@ -73,7 +125,21 @@ def stage1_resume_required_keys() -> list[str]:
         "detail_target_sharp_ratio",
         "detail_max_sharp_ratio",
         "detail_oversharp_penalty_weight",
+        "adv_weight",
+        "disc_lr",
+        "disc_width",
     ]
+
+
+def apply_stage1_training_preset(args):
+    if getattr(args, "stage1_training_preset", "none") != "sharp_adversarial":
+        return args
+    args.stage1_model_variant = "detail"
+    args.lpips_max_weight = max(float(args.lpips_max_weight), 0.10)
+    args.adv_weight = max(float(args.adv_weight), 0.01)
+    args.disc_lr = max(float(args.disc_lr), 2e-5)
+    args.best_metric = "detail_paired"
+    return args
 
 
 def parse_args():
@@ -83,6 +149,7 @@ def parse_args():
     parser.add_argument("--val_t1_dir", default="data/processed/val/t1_slices")
     parser.add_argument("--val_fa_dir", default="data/processed/val/fa_slices")
     parser.add_argument("--run_name", default="pmrf_t1fa_stage1")
+    parser.add_argument("--stage1_training_preset", default="none", choices=["none", "sharp_adversarial"])
     parser.add_argument("--stage1_model_variant", default="single", choices=["single", "detail"])
     parser.add_argument("--stage1_prediction_mode", default="residual", choices=["absolute", "residual"])
     parser.add_argument("--stage1_detail_scale", type=float, default=0.60)
@@ -103,6 +170,9 @@ def parse_args():
     parser.add_argument("--no_auto_resume", action="store_true")
     parser.add_argument("--lpips_max_weight", type=float, default=0.03)
     parser.add_argument("--disable_lpips", action="store_true")
+    parser.add_argument("--adv_weight", type=float, default=0.0, help="Small conditional LSGAN weight for sharp Stage 1 training.")
+    parser.add_argument("--disc_lr", type=float, default=2e-5)
+    parser.add_argument("--disc_width", type=int, default=32)
     parser.add_argument("--mse_weight", type=float, default=0.50)
     parser.add_argument("--l1_start_weight", type=float, default=1.00)
     parser.add_argument("--l1_end_weight", type=float, default=0.60)
@@ -153,6 +223,7 @@ def parse_args():
     if args.context_slices < 1 or args.context_slices % 2 == 0:
         raise ValueError(f"--context_slices must be a positive odd integer, got {args.context_slices}")
     if args.posterior_mean_preset:
+        args.stage1_training_preset = "none"
         args.stage1_model_variant = "single"
         args.stage1_detail_scale = 0.0
         args.lpips_max_weight = 0.0
@@ -164,10 +235,13 @@ def parse_args():
         args.grad_weight = 0.03
         args.hf_weight = 0.01
         args.best_metric = "paired"
+        args.adv_weight = 0.0
+    args = apply_stage1_training_preset(args)
     if args.stage1_model_variant == "single":
         args.stage1_detail_scale = 0.0
         args.detail_hf_weight = 0.0
         args.detail_lap_weight = 0.0
+        args.adv_weight = 0.0 if args.stage1_training_preset == "none" else args.adv_weight
     if args.disable_lpips:
         args.lpips_max_weight = 0.0
     return args
@@ -555,6 +629,11 @@ def main():
     else:
         model = Stage1Net(in_channels=stage1_channels, out_channels=1)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    discriminator = None
+    disc_optimizer = None
+    if args.adv_weight > 0.0:
+        discriminator = Stage1PatchDiscriminator(in_channels=stage1_channels + 1, width=args.disc_width)
+        disc_optimizer = torch.optim.AdamW(discriminator.parameters(), lr=args.disc_lr, betas=(0.5, 0.999))
     ssim_loss_fn = SSIMLoss()
     grad_loss_fn = GradientLoss()
     if args.disable_lpips or args.lpips_max_weight <= 0.0:
@@ -567,9 +646,36 @@ def main():
     for param in lpips_loss_fn.parameters():
         param.requires_grad = False
 
-    model, optimizer, train_loader, val_loader, ssim_loss_fn, grad_loss_fn, lpips_loss_fn, fid_metric, kid_metric = accelerator.prepare(
-        model, optimizer, train_loader, val_loader, ssim_loss_fn, grad_loss_fn, lpips_loss_fn, fid_metric, kid_metric
-    )
+    if discriminator is not None:
+        (
+            model,
+            optimizer,
+            discriminator,
+            disc_optimizer,
+            train_loader,
+            val_loader,
+            ssim_loss_fn,
+            grad_loss_fn,
+            lpips_loss_fn,
+            fid_metric,
+            kid_metric,
+        ) = accelerator.prepare(
+            model,
+            optimizer,
+            discriminator,
+            disc_optimizer,
+            train_loader,
+            val_loader,
+            ssim_loss_fn,
+            grad_loss_fn,
+            lpips_loss_fn,
+            fid_metric,
+            kid_metric,
+        )
+    else:
+        model, optimizer, train_loader, val_loader, ssim_loss_fn, grad_loss_fn, lpips_loss_fn, fid_metric, kid_metric = accelerator.prepare(
+            model, optimizer, train_loader, val_loader, ssim_loss_fn, grad_loss_fn, lpips_loss_fn, fid_metric, kid_metric
+        )
 
     fixed_t1, fixed_fa = pick_fixed_preview_batch(val_dataset, accelerator.device, stage1_channels)
 
@@ -614,6 +720,9 @@ def main():
         )
         accelerator.unwrap_model(model).load_state_dict(checkpoint["model"])
         optimizer.load_state_dict(checkpoint["optimizer"])
+        if discriminator is not None and "discriminator" in checkpoint and "disc_optimizer" in checkpoint:
+            accelerator.unwrap_model(discriminator).load_state_dict(checkpoint["discriminator"])
+            disc_optimizer.load_state_dict(checkpoint["disc_optimizer"])
         best_metrics["psnr"] = checkpoint.get("best_psnr", best_metrics["psnr"])
         best_metrics["ssim"] = checkpoint.get("best_ssim", best_metrics["ssim"])
         best_metrics["mse"] = checkpoint.get("best_mse", best_metrics["mse"])
@@ -635,7 +744,8 @@ def main():
     accelerator.print(f"Stage 1 training on {len(train_dataset)} train slices / {len(val_dataset)} val slices")
     accelerator.print(
         f"Stage 1 input context_slices={stage1_channels} | posterior_mean_preset={args.posterior_mean_preset} | "
-        f"stage1_model_variant={args.stage1_model_variant} | stage1_detail_scale={args.stage1_detail_scale}"
+        f"stage1_training_preset={args.stage1_training_preset} | stage1_model_variant={args.stage1_model_variant} | "
+        f"stage1_detail_scale={args.stage1_detail_scale} | lpips_max={args.lpips_max_weight} | adv={args.adv_weight}"
     )
     accelerator.print(f"Device={accelerator.device} | mixed_precision={args.mixed_precision}")
 
@@ -655,6 +765,8 @@ def main():
             "wm_grad": 0.0,
             "roi": 0.0,
             "lpips": 0.0,
+            "adv_g": 0.0,
+            "adv_d": 0.0,
         }
         skipped_nonfinite = 0
 
@@ -714,11 +826,34 @@ def main():
                 args.stage1_detail_scale,
                 args.lpips_max_weight,
             )
+            loss_adv_g = coarse_pred.new_tensor(0.0)
+            loss_adv_d = coarse_pred.new_tensor(0.0)
+            if discriminator is not None:
+                disc_optimizer.zero_grad(set_to_none=True)
+                set_requires_grad(discriminator, True)
+                fake_for_disc = clamp_to_image_range(coarse_pred.detach())
+                real_logits = discriminator(t1_img, fa_img)
+                fake_logits = discriminator(t1_img, fake_for_disc)
+                loss_adv_d = lsgan_discriminator_loss(real_logits, fake_logits)
+                accelerator.backward(loss_adv_d)
+                disc_optimizer.step()
+
+                set_requires_grad(discriminator, False)
+                fake_logits_for_g = discriminator(t1_img, clamp_to_image_range(coarse_pred))
+                loss_adv_g = lsgan_generator_loss(fake_logits_for_g)
+                losses["total"] = losses["total"] + float(args.adv_weight) * loss_adv_g
+                losses["adv_g"] = loss_adv_g
+                losses["adv_d"] = loss_adv_d.detach()
+            else:
+                losses["adv_g"] = loss_adv_g
+                losses["adv_d"] = loss_adv_d
 
             finite_flags = {key: torch.isfinite(value).all().item() for key, value in losses.items() if torch.is_tensor(value)}
             if not all(finite_flags.values()):
                 skipped_nonfinite += 1
                 optimizer.zero_grad(set_to_none=True)
+                if disc_optimizer is not None:
+                    disc_optimizer.zero_grad(set_to_none=True)
                 if accelerator.is_main_process:
                     with open(log_path, "a", encoding="utf-8") as handle:
                         handle.write(
@@ -735,6 +870,8 @@ def main():
             if args.grad_clip > 0:
                 accelerator.clip_grad_norm_(model.parameters(), args.grad_clip)
             optimizer.step()
+            if discriminator is not None:
+                set_requires_grad(discriminator, True)
 
             global_step += 1
             for key in running:
@@ -746,6 +883,7 @@ def main():
                     l1_w=losses["w_l1"].item(),
                     ssim_w=losses["w_ssim"].item(),
                     lpips_w=losses["w_lpips"].item(),
+                    adv=losses["adv_g"].item(),
                     dhf=losses["detail_hf"].item(),
                     wm=losses["wm_l1"].item(),
                 )
@@ -902,6 +1040,11 @@ def main():
             "no_improve_epochs": no_improve_epochs,
             "args": vars(args),
         }
+        add_stage1_adversarial_checkpoint_state(
+            checkpoint,
+            accelerator.unwrap_model(discriminator) if discriminator is not None else None,
+            disc_optimizer,
+        )
 
         if accelerator.is_main_process:
             with open(log_path, "a", encoding="utf-8") as handle:

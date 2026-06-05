@@ -9,15 +9,20 @@ import cv2
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import Ridge
 from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score,
     confusion_matrix,
     f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score,
     roc_auc_score,
 )
 from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import make_pipeline
+from sklearn.feature_selection import SelectKBest, f_classif, f_regression
 from sklearn.preprocessing import StandardScaler
 
 from src.data.subject_index import normalize_subject_id
@@ -30,6 +35,10 @@ METADATA_COLUMNS = {
     "group_name",
     "split",
     "n_slices",
+    "gender",
+    "age",
+    "edu",
+    "MMSE",
 }
 
 TASK_DEFINITIONS = {
@@ -192,6 +201,9 @@ def extract_subject_features_from_folder(
             "split": str(metadata[subject_id]["split"]),
             "n_slices": int(len(paths)),
         }
+        for optional_key in ["gender", "age", "edu", "MMSE"]:
+            if optional_key in metadata[subject_id]:
+                row[optional_key] = metadata[subject_id][optional_key]
         row.update(_aggregate_slice_features(slice_features))
         rows.append(row)
 
@@ -226,12 +238,53 @@ def feature_columns(features: pd.DataFrame) -> list[str]:
     return columns
 
 
+def _selected_feature_count(n_features: int, max_features: int) -> int:
+    if max_features <= 0:
+        return n_features
+    return int(min(max_features, n_features))
+
+
+def build_fused_feature_table(
+    features: pd.DataFrame,
+    fused_name: str,
+    left_method: str,
+    right_method: str,
+) -> pd.DataFrame:
+    left = features.loc[features["method"] == left_method].copy()
+    right = features.loc[features["method"] == right_method].copy()
+    if left.empty:
+        raise ValueError(f"Missing left method for fusion: {left_method}")
+    if right.empty:
+        raise ValueError(f"Missing right method for fusion: {right_method}")
+
+    join_columns = [
+        column
+        for column in ["subject_id", "group_id", "group_name", "split", "gender", "age", "edu", "MMSE", "n_slices"]
+        if column in left.columns and column in right.columns
+    ]
+    left_features = feature_columns(left)
+    right_features = feature_columns(right)
+
+    left_prefixed = left[join_columns + left_features].rename(
+        columns={column: f"{left_method}__{column}" for column in left_features}
+    )
+    right_prefixed = right[["subject_id"] + right_features].rename(
+        columns={column: f"{right_method}__{column}" for column in right_features}
+    )
+    fused = left_prefixed.merge(right_prefixed, on="subject_id", how="inner", validate="one_to_one")
+    if fused.empty:
+        raise ValueError(f"No overlapping subjects for fusion {left_method}+{right_method}")
+    fused.insert(0, "method", fused_name)
+    return fused.sort_values("subject_id").reset_index(drop=True)
+
+
 def run_classification_cv(
     features: pd.DataFrame,
     method: str,
     task: str,
     n_splits: int = 5,
     random_state: int = 42,
+    max_features: int = 0,
 ) -> tuple[dict[str, float | int | str], pd.DataFrame]:
     subset, y, classes = _prepare_task(features, task)
     columns = feature_columns(subset)
@@ -241,15 +294,22 @@ def run_classification_cv(
     if actual_splits < 2:
         raise ValueError(f"Task {task!r} has too few subjects per class for cross-validation")
 
-    classifier = make_pipeline(
-        StandardScaler(),
-        LogisticRegression(
-            max_iter=2000,
-            class_weight="balanced",
-            solver="lbfgs",
-            random_state=random_state,
-        ),
+    selected_count = _selected_feature_count(len(columns), max_features)
+    steps = []
+    if selected_count < len(columns):
+        steps.append(SelectKBest(score_func=f_classif, k=selected_count))
+    steps.extend(
+        [
+            StandardScaler(),
+            LogisticRegression(
+                max_iter=2000,
+                class_weight="balanced",
+                solver="lbfgs",
+                random_state=random_state,
+            ),
+        ]
     )
+    classifier = make_pipeline(*steps)
     cv = StratifiedKFold(n_splits=actual_splits, shuffle=True, random_state=random_state)
     y_pred = np.zeros_like(y)
     y_prob = np.zeros((len(y), len(classes)), dtype=np.float32)
@@ -277,6 +337,7 @@ def run_classification_cv(
         "task": task,
         "n_subjects": int(len(y)),
         "n_features": int(len(columns)),
+        "n_selected_features": int(selected_count),
         "n_splits": int(actual_splits),
         "accuracy": float(accuracy_score(y, y_pred)),
         "balanced_accuracy": float(balanced_accuracy_score(y, y_pred)),
@@ -292,6 +353,81 @@ def run_classification_cv(
     predictions["y_pred"] = y_pred
     for class_label in classes:
         predictions[f"prob_class_{class_label}"] = y_prob[:, class_to_col[class_label]]
+    return summary, predictions
+
+
+def _correlation_or_nan(y_true: np.ndarray, y_pred: np.ndarray, rank: bool = False) -> float:
+    if len(y_true) < 2 or np.std(y_true) <= 1e-8 or np.std(y_pred) <= 1e-8:
+        return float("nan")
+    if rank:
+        true_rank = pd.Series(y_true).rank(method="average").to_numpy(dtype=np.float64)
+        pred_rank = pd.Series(y_pred).rank(method="average").to_numpy(dtype=np.float64)
+        return float(np.corrcoef(true_rank, pred_rank)[0, 1])
+    return float(np.corrcoef(y_true, y_pred)[0, 1])
+
+
+def run_regression_cv(
+    features: pd.DataFrame,
+    method: str,
+    target: str = "MMSE",
+    n_splits: int = 5,
+    random_state: int = 42,
+    max_features: int = 0,
+    clip_range: tuple[float, float] | None = None,
+) -> tuple[dict[str, float | int | str], pd.DataFrame]:
+    if target not in features.columns:
+        raise ValueError(f"Target {target!r} is missing from feature table")
+    subset = features.loc[pd.notna(features[target])].copy().reset_index(drop=True)
+    if len(subset) < 4:
+        raise ValueError(f"Not enough subjects with target {target!r} for regression")
+    columns = feature_columns(subset)
+    x = subset[columns].to_numpy(dtype=np.float32)
+    y = subset[target].to_numpy(dtype=np.float32)
+    if "group_name" in subset.columns:
+        strata = subset["group_name"].astype(str).to_numpy()
+    else:
+        strata = pd.qcut(y, q=min(max(2, n_splits), len(subset)), duplicates="drop").astype(str)
+    min_stratum_count = int(pd.Series(strata).value_counts().min())
+    actual_splits = min(max(2, n_splits), len(subset), min_stratum_count)
+
+    selected_count = _selected_feature_count(len(columns), max_features)
+    steps = []
+    if selected_count < len(columns):
+        steps.append(SelectKBest(score_func=f_regression, k=selected_count))
+    steps.extend([StandardScaler(), Ridge(alpha=10.0)])
+    model = make_pipeline(*steps)
+    cv = StratifiedKFold(
+        n_splits=actual_splits,
+        shuffle=True,
+        random_state=random_state,
+    )
+    # Stratify continuous targets by disease group to keep folds clinically balanced.
+    y_pred = np.zeros_like(y, dtype=np.float32)
+    for train_idx, test_idx in cv.split(x, strata):
+        model.fit(x[train_idx], y[train_idx])
+        y_pred[test_idx] = model.predict(x[test_idx]).astype(np.float32)
+    if clip_range is not None:
+        y_pred = np.clip(y_pred, clip_range[0], clip_range[1]).astype(np.float32)
+
+    mse = mean_squared_error(y, y_pred)
+    summary: dict[str, float | int | str] = {
+        "method": method,
+        "target": target,
+        "n_subjects": int(len(y)),
+        "n_features": int(len(columns)),
+        "n_selected_features": int(selected_count),
+        "n_splits": int(actual_splits),
+        "mae": float(mean_absolute_error(y, y_pred)),
+        "rmse": float(np.sqrt(mse)),
+        "r2": float(r2_score(y, y_pred)),
+        "pearson_r": _correlation_or_nan(y, y_pred, rank=False),
+        "spearman_r": _correlation_or_nan(y, y_pred, rank=True),
+    }
+    metadata_columns = [column for column in ["method", "subject_id", "group_id", "group_name", "split"] if column in subset.columns]
+    predictions = subset[metadata_columns].copy()
+    predictions["target"] = target
+    predictions["y_true"] = y
+    predictions["y_pred"] = y_pred
     return summary, predictions
 
 

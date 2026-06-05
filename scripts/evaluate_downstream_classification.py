@@ -15,10 +15,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.data.subject_index import load_subject_index
 from src.eval.downstream_utility import (
+    build_fused_feature_table,
     confusion_matrix_frame,
     extract_subject_features_from_folder,
     parse_method_specs,
     run_classification_cv,
+    run_regression_cv,
 )
 
 
@@ -28,11 +30,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--subject_index_csv", default="", help="Optional prebuilt subject index CSV for tests or custom splits.")
     parser.add_argument("--split", default="test", help="Subject split to evaluate with stratified CV.")
     parser.add_argument("--method", action="append", default=[], help="Method spec in NAME=DIR format. Can be repeated.")
+    parser.add_argument("--fusion", action="append", default=[], help="Fusion spec in NAME=LEFT+RIGHT format using selected method names.")
     parser.add_argument("--include_t1", action="store_true", help="Include the split T1 folder as a T1-only baseline.")
     parser.add_argument("--include_fa_gt", action="store_true", help="Include the split FA folder as an upper-bound reference.")
     parser.add_argument("--tasks", default="", help="Comma-separated task list. Defaults to config evaluation.classification_tasks.")
+    parser.add_argument("--regression_targets", default="", help="Comma-separated subject-level regression targets, e.g. MMSE.")
     parser.add_argument("--n_splits", type=int, default=5)
     parser.add_argument("--random_state", type=int, default=42)
+    parser.add_argument("--max_features", type=int, default=0, help="Fold-internal SelectKBest feature cap. 0 keeps all image features.")
+    parser.add_argument("--regression_clip_min", type=float, default=0.0, help="Minimum clipped regression prediction.")
+    parser.add_argument("--regression_clip_max", type=float, default=30.0, help="Maximum clipped regression prediction.")
     parser.add_argument("--output_root", default="", help="Override downstream output root.")
     parser.add_argument("--brain_threshold", type=float, default=0.02)
     parser.add_argument("--wm_quantile", type=float, default=0.65)
@@ -72,6 +79,19 @@ def _load_subject_index(args: argparse.Namespace, config: dict[str, Any]) -> pd.
 def _default_split_dir(config: dict[str, Any], split: str, modality: str) -> Path:
     processed_root = Path(config["data"]["processed_root"])
     return processed_root / split / f"{modality}_slices"
+
+
+def _parse_fusion_spec(spec: str) -> tuple[str, str, str]:
+    if "=" not in spec or "+" not in spec:
+        raise ValueError(f"Fusion spec must use NAME=LEFT+RIGHT format, got {spec!r}")
+    name, pair = spec.split("=", 1)
+    left, right = pair.split("+", 1)
+    name = name.strip()
+    left = left.strip()
+    right = right.strip()
+    if not name or not left or not right:
+        raise ValueError(f"Invalid fusion spec: {spec!r}")
+    return name, left, right
 
 
 def _write_confusion_png(path: Path, matrix_df: pd.DataFrame, title: str) -> None:
@@ -121,11 +141,14 @@ def main() -> None:
     tasks = [task.strip() for task in args.tasks.split(",") if task.strip()]
     if not tasks:
         tasks = list(config.get("evaluation", {}).get("classification_tasks", ["four_class"]))
+    regression_targets = [target.strip() for target in args.regression_targets.split(",") if target.strip()]
 
     subject_index = _load_subject_index(args, config)
-    all_features = []
+    feature_tables: dict[str, pd.DataFrame] = {}
     all_summaries = []
     all_predictions = []
+    all_regression_summaries = []
+    all_regression_predictions = []
     confusion_root = output_root / "confusion_matrices"
     confusion_root.mkdir(parents=True, exist_ok=True)
 
@@ -138,23 +161,51 @@ def main() -> None:
             brain_threshold=args.brain_threshold,
             wm_quantile=args.wm_quantile,
         )
-        all_features.append(features)
+        feature_tables[spec.name] = features
+
+    if args.fusion:
+        combined_base = pd.concat(feature_tables.values(), ignore_index=True)
+        for raw_spec in args.fusion:
+            fused_name, left_name, right_name = _parse_fusion_spec(raw_spec)
+            if fused_name in feature_tables:
+                raise ValueError(f"Fusion name duplicates an existing method: {fused_name}")
+            feature_tables[fused_name] = build_fused_feature_table(
+                combined_base,
+                fused_name=fused_name,
+                left_method=left_name,
+                right_method=right_name,
+            )
+
+    for method_name, features in feature_tables.items():
         for task in tasks:
             summary, predictions = run_classification_cv(
                 features,
-                method=spec.name,
+                method=method_name,
                 task=task,
                 n_splits=args.n_splits,
                 random_state=args.random_state,
+                max_features=args.max_features,
             )
             all_summaries.append(summary)
             all_predictions.append(predictions)
             matrix_df = confusion_matrix_frame(predictions)
-            matrix_csv = confusion_root / f"{spec.name}_{task}_confusion.csv"
+            matrix_csv = confusion_root / f"{method_name}_{task}_confusion.csv"
             matrix_df.to_csv(matrix_csv, encoding="utf-8")
-            _write_confusion_png(confusion_root / f"{spec.name}_{task}_confusion.png", matrix_df, f"{spec.name} {task}")
+            _write_confusion_png(confusion_root / f"{method_name}_{task}_confusion.png", matrix_df, f"{method_name} {task}")
+        for target in regression_targets:
+            summary, predictions = run_regression_cv(
+                features,
+                method=method_name,
+                target=target,
+                n_splits=args.n_splits,
+                random_state=args.random_state,
+                max_features=args.max_features,
+                clip_range=(args.regression_clip_min, args.regression_clip_max),
+            )
+            all_regression_summaries.append(summary)
+            all_regression_predictions.append(predictions)
 
-    feature_df = pd.concat(all_features, ignore_index=True)
+    feature_df = pd.concat(feature_tables.values(), ignore_index=True)
     summary_df = pd.DataFrame(all_summaries)
     prediction_df = pd.concat(all_predictions, ignore_index=True)
 
@@ -168,13 +219,29 @@ def main() -> None:
     with open(json_path, "w", encoding="utf-8") as handle:
         json.dump(_json_ready(all_summaries), handle, indent=2, ensure_ascii=False)
 
+    if all_regression_summaries:
+        regression_summary_df = pd.DataFrame(all_regression_summaries)
+        regression_prediction_df = pd.concat(all_regression_predictions, ignore_index=True)
+        regression_summary_path = output_root / "regression_summary.csv"
+        regression_prediction_path = output_root / "regression_predictions.csv"
+        regression_json_path = output_root / "regression_summary.json"
+        regression_summary_df.to_csv(regression_summary_path, index=False, encoding="utf-8")
+        regression_prediction_df.to_csv(regression_prediction_path, index=False, encoding="utf-8")
+        with open(regression_json_path, "w", encoding="utf-8") as handle:
+            json.dump(_json_ready(all_regression_summaries), handle, indent=2, ensure_ascii=False)
+
     print(f"Saved subject features to: {feature_path}")
     print(f"Saved classification summary to: {summary_path}")
     print(f"Saved predictions to: {prediction_path}")
     print(f"Saved confusion matrices to: {confusion_root}")
+    if all_regression_summaries:
+        print(f"Saved regression summary to: {output_root / 'regression_summary.csv'}")
+        print(f"Saved regression predictions to: {output_root / 'regression_predictions.csv'}")
     if not summary_df.empty:
         display_cols = ["method", "task", "n_subjects", "macro_f1", "balanced_accuracy", "macro_auc_ovr"]
         print(summary_df[display_cols].to_string(index=False))
+    if all_regression_summaries:
+        print(pd.DataFrame(all_regression_summaries)[["method", "target", "n_subjects", "mae", "rmse", "pearson_r", "spearman_r"]].to_string(index=False))
 
 
 if __name__ == "__main__":

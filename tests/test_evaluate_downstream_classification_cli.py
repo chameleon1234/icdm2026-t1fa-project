@@ -59,8 +59,12 @@ def test_evaluate_downstream_classification_cli_writes_summary_outputs(tmp_path)
             str(subject_index_csv),
             "--method",
             f"Toy={image_dir}",
+            "--fusion",
+            "ToySelf=Toy+Toy",
             "--tasks",
             "four_class",
+            "--regression_targets",
+            "MMSE",
             "--n_splits",
             "3",
             "--output_root",
@@ -76,7 +80,11 @@ def test_evaluate_downstream_classification_cli_writes_summary_outputs(tmp_path)
     assert (output_root / "subject_features.csv").exists()
     assert (output_root / "classification_predictions.csv").exists()
     assert (output_root / "classification_summary.json").exists()
+    assert (output_root / "regression_summary.csv").exists()
+    assert (output_root / "regression_predictions.csv").exists()
     assert (output_root / "confusion_matrices" / "Toy_four_class_confusion.png").exists()
+    assert (output_root / "confusion_matrices" / "ToySelf_four_class_confusion.png").exists()
     assert summary.loc[0, "method"] == "Toy"
     assert summary.loc[0, "task"] == "four_class"
     assert int(summary.loc[0, "n_subjects"]) == 12
+    assert "ToySelf" in set(summary["method"])

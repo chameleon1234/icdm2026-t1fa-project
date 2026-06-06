@@ -1,8 +1,28 @@
 methods:
+  - name: UNet_E99
+    display_name: U-Net (CNN)
+    prediction_dir: outputs/icdm2026/predictions/UNet_E99
+    table_groups: [sota, legacy_baseline]
+    notes: Supervised CNN baseline exported from the legacy U-Net checkpoint.
+  - name: Pix2Pix_E100
+    display_name: Pix2Pix (paired GAN)
+    prediction_dir: outputs/icdm2026/predictions/Pix2Pix_E100
+    table_groups: [sota, legacy_baseline]
+    notes: Paired image-to-image GAN baseline.
+  - name: CycleGAN_E100
+    display_name: CycleGAN (unpaired GAN)
+    prediction_dir: outputs/icdm2026/predictions/CycleGAN_E100
+    table_groups: [sota, legacy_baseline]
+    notes: Unpaired GAN baseline.
+  - name: DDIM_E100_K50
+    display_name: DDIM (50-step diffusion)
+    prediction_dir: outputs/icdm2026/predictions/DDIM_E100_K50
+    table_groups: [sota, legacy_baseline]
+    notes: Diffusion baseline sampled with 50 DDIM steps.
   - name: DIRF_V5_3SLICE_K6
     display_name: DIRF V5 (K6)
     prediction_dir: outputs/icdm2026/predictions/DIRF_V5_3SLICE_K6
-    table_group: sota
+    table_groups: [sota, legacy_baseline]
     notes: High-PSNR DIRF baseline.
   - name: PM_STAGE1
     display_name: PM Stage1

@@ -7,7 +7,7 @@ import pandas as pd
 
 
 DEFAULT_METHODS = [
-    ("UNet_E99", "CNN", "U-Net", "Supervised CNN baseline"),
+    ("UNet_CurrentSplit_E100", "CNN", "U-Net", "Fair U-Net retrained on the current ICDM split"),
     ("Pix2Pix_E100", "GAN", "Pix2Pix", "Paired GAN"),
     ("CycleGAN_E100", "GAN", "CycleGAN", "Unpaired GAN"),
     ("DDIM_E100_K50", "Diffusion", "DDIM", "50-step diffusion"),

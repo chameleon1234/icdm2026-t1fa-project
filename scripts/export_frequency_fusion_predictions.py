@@ -12,8 +12,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--low_dir", required=True, help="PNG folder providing low-frequency structure, e.g. PM_STAGE1.")
     parser.add_argument("--high_dir", required=True, help="PNG folder providing high-frequency texture, e.g. Stage1_LPIPS_GAN.")
     parser.add_argument("--output_dir", required=True)
+    parser.add_argument(
+        "--mode",
+        choices=["low_base_high_detail", "sharp_base_low_residual"],
+        default="low_base_high_detail",
+        help="low_base_high_detail uses LP(low)+HP(high); sharp_base_low_residual keeps high image as base and injects LP(low)-LP(high).",
+    )
     parser.add_argument("--sigma", type=float, default=1.5)
     parser.add_argument("--high_gain", type=float, default=1.0)
+    parser.add_argument("--low_residual_gain", type=float, default=0.35)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--allow_missing", action="store_true")
     return parser.parse_args()
@@ -40,12 +47,25 @@ def _lowpass(image: np.ndarray, sigma: float) -> np.ndarray:
     return cv2.GaussianBlur(image, (0, 0), sigmaX=sigma, sigmaY=sigma)
 
 
-def fuse_frequency(low_image: np.ndarray, high_image: np.ndarray, sigma: float, high_gain: float = 1.0) -> np.ndarray:
+def fuse_frequency(
+    low_image: np.ndarray,
+    high_image: np.ndarray,
+    sigma: float,
+    high_gain: float = 1.0,
+    mode: str = "low_base_high_detail",
+    low_residual_gain: float = 0.35,
+) -> np.ndarray:
     if high_image.shape != low_image.shape:
         high_image = cv2.resize(high_image, (low_image.shape[1], low_image.shape[0]), interpolation=cv2.INTER_CUBIC)
     low_base = _lowpass(low_image, sigma)
-    high_detail = high_image - _lowpass(high_image, sigma)
-    return np.clip(low_base + high_gain * high_detail, 0.0, 1.0)
+    high_base = _lowpass(high_image, sigma)
+    high_detail = high_image - high_base
+    if mode == "low_base_high_detail":
+        return np.clip(low_base + high_gain * high_detail, 0.0, 1.0)
+    if mode == "sharp_base_low_residual":
+        low_residual = low_base - high_base
+        return np.clip(high_image + low_residual_gain * low_residual, 0.0, 1.0)
+    raise ValueError(f"Unknown fusion mode: {mode}")
 
 
 def main() -> None:
@@ -71,7 +91,14 @@ def main() -> None:
             continue
         low_image = _read_png01(low_path)
         high_image = _read_png01(high_path)
-        fused = fuse_frequency(low_image, high_image, sigma=args.sigma, high_gain=args.high_gain)
+        fused = fuse_frequency(
+            low_image,
+            high_image,
+            sigma=args.sigma,
+            high_gain=args.high_gain,
+            mode=args.mode,
+            low_residual_gain=args.low_residual_gain,
+        )
         out_path = output_dir / low_path.name
         _write_png01(out_path, fused)
         rows.append(
@@ -81,7 +108,9 @@ def main() -> None:
                 "high_path": str(high_path),
                 "output_path": str(out_path),
                 "sigma": args.sigma,
+                "mode": args.mode,
                 "high_gain": args.high_gain,
+                "low_residual_gain": args.low_residual_gain,
             }
         )
     if missing and not args.allow_missing:

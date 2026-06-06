@@ -48,6 +48,15 @@ methods:
     prediction_dir: outputs/icdm2026/predictions/FREQ_PMLOW_FLOWHIGH
     table_group: frequency
     is_ours: true
+  - name: FREQ_FLOWBASE_PMLOW_B035
+    display_name: Flow base + PM low residual
+    prediction_dir: outputs/icdm2026/predictions/FREQ_FLOWBASE_PMLOW_B035
+    table_group: frequency
+    is_ours: true
+  - name: FREQ_GANBASE_PMLOW_B035
+    display_name: GAN base + PM low residual
+    prediction_dir: outputs/icdm2026/predictions/FREQ_GANBASE_PMLOW_B035
+    table_group: frequency
   - name: Stage1_LPIPS_ONLY
     metric_name: PM_STAGE1_LPIPS_ONLY_5SLICE
     display_name: Stage1 + LPIPS only

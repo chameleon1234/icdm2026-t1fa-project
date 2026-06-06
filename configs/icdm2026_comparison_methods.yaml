@@ -1,9 +1,9 @@
 methods:
   - name: UNet_E99
-    display_name: U-Net (CNN)
+    display_name: U-Net (CNN, leaked checkpoint)
     prediction_dir: outputs/icdm2026/predictions/UNet_E99
     table_groups: [sota, legacy_baseline]
-    notes: Supervised CNN baseline exported from the legacy U-Net checkpoint.
+    notes: Legacy U-Net checkpoint was trained with an old split; 34/38 current test subjects were in its training subjects, so it is leakage-contaminated and should not be used as a fair comparison without retraining.
   - name: Pix2Pix_E100
     display_name: Pix2Pix (paired GAN)
     prediction_dir: outputs/icdm2026/predictions/Pix2Pix_E100

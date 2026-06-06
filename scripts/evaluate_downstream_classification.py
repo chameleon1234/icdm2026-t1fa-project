@@ -45,6 +45,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output_root", default="", help="Override downstream output root.")
     parser.add_argument("--brain_threshold", type=float, default=0.02)
     parser.add_argument("--wm_quantile", type=float, default=0.65)
+    parser.add_argument("--feature_view", choices=["full", "lowpass", "highpass"], default="full")
+    parser.add_argument("--frequency_sigma", type=float, default=1.5)
     return parser.parse_args()
 
 
@@ -168,6 +170,8 @@ def main() -> None:
             split=args.split,
             brain_threshold=args.brain_threshold,
             wm_quantile=args.wm_quantile,
+            feature_view=args.feature_view,
+            frequency_sigma=args.frequency_sigma,
         )
         feature_tables[spec.name] = features
 

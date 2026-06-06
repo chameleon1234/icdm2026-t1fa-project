@@ -39,6 +39,7 @@ METADATA_COLUMNS = {
     "age",
     "edu",
     "MMSE",
+    "feature_view",
 }
 
 TASK_DEFINITIONS = {
@@ -153,6 +154,18 @@ def extract_slice_features(image_01: np.ndarray, brain_threshold: float = 0.02, 
     return features
 
 
+def transform_feature_view(image_01: np.ndarray, feature_view: str = "full", sigma: float = 1.5) -> np.ndarray:
+    image = np.asarray(image_01, dtype=np.float32)
+    if feature_view == "full":
+        return np.clip(image, 0.0, 1.0)
+    lowpass = cv2.GaussianBlur(image, (0, 0), sigmaX=sigma, sigmaY=sigma)
+    if feature_view == "lowpass":
+        return np.clip(lowpass, 0.0, 1.0)
+    if feature_view == "highpass":
+        return np.clip(np.abs(image - lowpass), 0.0, 1.0)
+    raise ValueError("feature_view must be one of: full, lowpass, highpass")
+
+
 def _aggregate_slice_features(slice_features: list[dict[str, float]]) -> dict[str, float]:
     if not slice_features:
         raise ValueError("Cannot aggregate an empty slice feature list")
@@ -172,6 +185,8 @@ def extract_subject_features_from_folder(
     split: str = "test",
     brain_threshold: float = 0.02,
     wm_quantile: float = 0.65,
+    feature_view: str = "full",
+    frequency_sigma: float = 1.5,
 ) -> pd.DataFrame:
     image_dir = Path(image_dir)
     if not image_dir.exists():
@@ -196,7 +211,11 @@ def extract_subject_features_from_folder(
         if not paths:
             continue
         slice_features = [
-            extract_slice_features(read_grayscale_01(path), brain_threshold=brain_threshold, wm_quantile=wm_quantile)
+            extract_slice_features(
+                transform_feature_view(read_grayscale_01(path), feature_view=feature_view, sigma=frequency_sigma),
+                brain_threshold=brain_threshold,
+                wm_quantile=wm_quantile,
+            )
             for path in paths
         ]
         row: dict[str, float | int | str] = {
@@ -205,6 +224,7 @@ def extract_subject_features_from_folder(
             "group_id": int(metadata[subject_id]["group_id"]),
             "group_name": str(metadata[subject_id]["group_name"]),
             "split": str(metadata[subject_id]["split"]),
+            "feature_view": feature_view,
             "n_slices": int(len(paths)),
         }
         for optional_key in ["gender", "age", "edu", "MMSE"]:

@@ -29,6 +29,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repeat_seeds", default="0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19")
     parser.add_argument("--n_splits", type=int, default=5)
     parser.add_argument("--max_features", type=int, default=12)
+    parser.add_argument("--feature_view", choices=["full", "lowpass", "highpass"], default="full")
+    parser.add_argument("--frequency_sigma", type=float, default=1.5)
     parser.add_argument("--dry_run", action="store_true")
     return parser.parse_args()
 
@@ -62,6 +64,10 @@ def main() -> None:
         str(args.max_features),
         "--output_root",
         args.output_root,
+        "--feature_view",
+        args.feature_view,
+        "--frequency_sigma",
+        str(args.frequency_sigma),
         "--include_t1",
         "--include_fa_gt",
     ]

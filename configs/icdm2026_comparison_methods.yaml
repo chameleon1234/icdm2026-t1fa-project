@@ -39,6 +39,15 @@ methods:
     display_name: Fidelity Direct
     prediction_dir: outputs/icdm2026/predictions/PM_DIRF_FIDELITY_DIRECT_FULL
     table_group: ablation
+  - name: FREQ_PMLOW_GANHIGH
+    display_name: PM low + GAN high
+    prediction_dir: outputs/icdm2026/predictions/FREQ_PMLOW_GANHIGH
+    table_group: frequency
+  - name: FREQ_PMLOW_FLOWHIGH
+    display_name: PM low + Flow high
+    prediction_dir: outputs/icdm2026/predictions/FREQ_PMLOW_FLOWHIGH
+    table_group: frequency
+    is_ours: true
   - name: Stage1_LPIPS_ONLY
     metric_name: PM_STAGE1_LPIPS_ONLY_5SLICE
     display_name: Stage1 + LPIPS only

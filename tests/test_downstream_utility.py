@@ -47,6 +47,37 @@ def test_extract_subject_features_aggregates_slices_without_slice_leakage(tmp_pa
     ].item()
 
 
+def test_extract_subject_features_supports_frequency_views(tmp_path):
+    from src.eval.downstream_utility import extract_subject_features_from_folder
+
+    image_dir = tmp_path / "pred"
+    for z in [20, 21, 22]:
+        image = np.zeros((32, 32), dtype=np.uint8)
+        image[:, :16] = 60
+        image[:, 16:] = 190
+        image[::2, ::2] = 255
+        _write_png(image_dir / f"sub-001_z{z:03d}.png", image)
+
+    subject_index = pd.DataFrame(
+        {
+            "subject_id": ["sub-001"],
+            "group_id": [1],
+            "group_name": ["CN"],
+            "split": ["test"],
+        }
+    )
+
+    full = extract_subject_features_from_folder(image_dir, "full", subject_index, split="test", feature_view="full")
+    low = extract_subject_features_from_folder(image_dir, "low", subject_index, split="test", feature_view="lowpass")
+    high = extract_subject_features_from_folder(image_dir, "high", subject_index, split="test", feature_view="highpass")
+
+    assert full["feature_view"].tolist() == ["full"]
+    assert low["feature_view"].tolist() == ["lowpass"]
+    assert high["feature_view"].tolist() == ["highpass"]
+    assert low["highpass_energy_mean"].item() < full["highpass_energy_mean"].item()
+    assert high["intensity_mean_mean"].item() < full["intensity_mean_mean"].item()
+
+
 def test_run_classification_cv_reports_subject_level_metrics():
     from src.eval.downstream_utility import run_classification_cv
 

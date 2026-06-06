@@ -377,9 +377,11 @@ def write_table_bundle(rows: list[dict[str, Any]], output_root: str | Path) -> d
     main_rows = [row for row in rows if "main" in (row.get("table_groups") or [row.get("table_group")])]
     ablation_rows = [row for row in rows if "ablation" in (row.get("table_groups") or [row.get("table_group")])]
     sota_rows = [row for row in rows if "sota" in (row.get("table_groups") or [row.get("table_group")])]
+    frequency_rows = [row for row in rows if "frequency" in (row.get("table_groups") or [row.get("table_group")])]
     write_markdown_table(main_rows or rows, output_root / "main_results_table.md", title="Main Results Table", title_cn="主结果表")
     write_markdown_table(ablation_rows, output_root / "ablation_table.md", title="Ablation Table", title_cn="消融实验表")
     write_markdown_table(sota_rows, output_root / "sota_comparison_table.md", title="SOTA Comparison Table", title_cn="SOTA 对比表")
+    write_markdown_table(frequency_rows, output_root / "frequency_fusion_table.md", title="Frequency Fusion Table", title_cn="频率融合表")
     return {
         "csv": csv_path,
         "main": output_root / "main_results_table.md",
@@ -388,4 +390,6 @@ def write_table_bundle(rows: list[dict[str, Any]], output_root: str | Path) -> d
         "ablation_cn": output_root / "ablation_table_cn.md",
         "sota": output_root / "sota_comparison_table.md",
         "sota_cn": output_root / "sota_comparison_table_cn.md",
+        "frequency": output_root / "frequency_fusion_table.md",
+        "frequency_cn": output_root / "frequency_fusion_table_cn.md",
     }

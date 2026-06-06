@@ -43,9 +43,15 @@ METADATA_COLUMNS = {
 
 TASK_DEFINITIONS = {
     "four_class": {"include": {"CN", "SCD", "MCI", "AD"}, "labels": {"CN": 0, "SCD": 1, "MCI": 2, "AD": 3}},
+    "cn_vs_scd": {"include": {"CN", "SCD"}, "labels": {"CN": 0, "SCD": 1}},
+    "cn_vs_mci": {"include": {"CN", "MCI"}, "labels": {"CN": 0, "MCI": 1}},
     "cn_vs_ad": {"include": {"CN", "AD"}, "labels": {"CN": 0, "AD": 1}},
+    "scd_vs_mci": {"include": {"SCD", "MCI"}, "labels": {"SCD": 0, "MCI": 1}},
+    "mci_vs_ad": {"include": {"MCI", "AD"}, "labels": {"MCI": 0, "AD": 1}},
     "cn_vs_mci_ad": {"include": {"CN", "MCI", "AD"}, "labels": {"CN": 0, "MCI": 1, "AD": 1}},
+    "cn_scd_vs_ad": {"include": {"CN", "SCD", "AD"}, "labels": {"CN": 0, "SCD": 0, "AD": 1}},
     "cn_scd_vs_mci_ad": {"include": {"CN", "SCD", "MCI", "AD"}, "labels": {"CN": 0, "SCD": 0, "MCI": 1, "AD": 1}},
+    "cn_scd_mci_vs_ad": {"include": {"CN", "SCD", "MCI", "AD"}, "labels": {"CN": 0, "SCD": 0, "MCI": 0, "AD": 1}},
 }
 
 

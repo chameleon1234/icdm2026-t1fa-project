@@ -86,6 +86,47 @@ def test_run_classification_cv_reports_subject_level_metrics():
     assert set(["subject_id", "y_true", "y_pred"]).issubset(predictions.columns)
 
 
+def test_additional_binary_ad_staging_tasks_use_expected_subject_subsets():
+    from src.eval.downstream_utility import run_classification_cv
+
+    rows = []
+    for class_id, group_name in enumerate(["CN", "SCD", "MCI", "AD"], start=1):
+        for idx in range(4):
+            rows.append(
+                {
+                    "method": "toy",
+                    "subject_id": f"sub-{class_id}{idx:02d}",
+                    "group_id": class_id,
+                    "group_name": group_name,
+                    "n_slices": 3,
+                    "f0": float(class_id) + idx * 0.01,
+                    "f1": float(class_id * 2) + idx * 0.01,
+                }
+            )
+    features = pd.DataFrame(rows)
+
+    expected_subjects = {
+        "cn_vs_scd": 8,
+        "cn_vs_mci": 8,
+        "scd_vs_mci": 8,
+        "mci_vs_ad": 8,
+        "cn_scd_vs_ad": 12,
+        "cn_scd_mci_vs_ad": 16,
+    }
+    for task, n_subjects in expected_subjects.items():
+        summary, predictions = run_classification_cv(
+            features,
+            method="toy",
+            task=task,
+            n_splits=4,
+            random_state=7,
+            max_features=1,
+        )
+        assert summary["task"] == task
+        assert summary["n_subjects"] == n_subjects
+        assert set(predictions["y_true"].unique().tolist()) == {0, 1}
+
+
 def test_load_method_specs_accepts_named_directories(tmp_path):
     from src.eval.downstream_utility import parse_method_specs
 

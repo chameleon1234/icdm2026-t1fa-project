@@ -26,9 +26,15 @@ evaluation:
     - WM_Hist_Wasserstein
   classification_tasks:
     - four_class
+    - cn_vs_scd
+    - cn_vs_mci
     - cn_vs_ad
+    - scd_vs_mci
+    - mci_vs_ad
     - cn_vs_mci_ad
+    - cn_scd_vs_ad
     - cn_scd_vs_mci_ad
+    - cn_scd_mci_vs_ad
 
 outputs:
   root: outputs/icdm2026
@@ -37,4 +43,3 @@ outputs:
   predictions_root: outputs/icdm2026/predictions
   tables_root: outputs/icdm2026/tables
   figures_root: outputs/icdm2026/figures
-

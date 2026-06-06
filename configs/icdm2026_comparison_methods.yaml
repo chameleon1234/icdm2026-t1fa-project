@@ -1,0 +1,64 @@
+methods:
+  - name: DIRF_V5_3SLICE_K6
+    display_name: DIRF V5 (K6)
+    prediction_dir: outputs/icdm2026/predictions/DIRF_V5_3SLICE_K6
+    table_group: sota
+    notes: High-PSNR DIRF baseline.
+  - name: PM_STAGE1
+    display_name: PM Stage1
+    prediction_dir: outputs/icdm2026/predictions/PM_STAGE1
+    table_group: main
+    notes: Posterior-mean coarse predictor.
+  - name: Stage1_Baseline
+    metric_name: PM_STAGE1_WMROI_DETAIL_5SLICE
+    display_name: Stage1 Baseline (Detail+WM+ROI)
+    prediction_dir: outputs/icdm2026/predictions/PM_STAGE1_WMROI_DETAIL_5SLICE
+    table_groups: [main, ablation]
+  - name: PM_DIRF_DETAILSTAGE1_K10
+    display_name: Detail Stage1 + PM-DIRF K10
+    prediction_dir: outputs/icdm2026/predictions/PM_DIRF_DETAILSTAGE1_K10
+    table_group: main
+  - name: PM_DIRF_WM_3SLICE
+    display_name: PM-DIRF WM 3-slice
+    prediction_dir: outputs/icdm2026/predictions/PM_DIRF_WM_3SLICE
+    table_group: main
+  - name: Stage1_LPIPS_GAN
+    metric_name: PM_STAGE1_LPIPS_GAN_5SLICE_FINAL
+    display_name: Stage1 LPIPS+GAN
+    prediction_dir: outputs/icdm2026/predictions/PM_STAGE1_LPIPS_GAN_5SLICE_FINAL
+    table_groups: [main, ablation]
+    is_ours: true
+  - name: Fidelity_Flow
+    metric_name: PM_DIRF_FIDELITY_FLOW_FULL
+    display_name: Fidelity Flow (Ours)
+    prediction_dir: outputs/icdm2026/predictions/PM_DIRF_FIDELITY_FLOW_FULL
+    table_group: main
+    is_ours: true
+  - name: Fidelity_Direct
+    metric_name: PM_DIRF_FIDELITY_DIRECT_FULL
+    display_name: Fidelity Direct
+    prediction_dir: outputs/icdm2026/predictions/PM_DIRF_FIDELITY_DIRECT_FULL
+    table_group: ablation
+  - name: Stage1_LPIPS_ONLY
+    metric_name: PM_STAGE1_LPIPS_ONLY_5SLICE
+    display_name: Stage1 + LPIPS only
+    prediction_dir: outputs/icdm2026/predictions/PM_STAGE1_LPIPS_ONLY_5SLICE
+    table_group: ablation
+  - name: Stage1_GAN_ONLY
+    metric_name: PM_STAGE1_GAN_ONLY_5SLICE
+    display_name: Stage1 + GAN only
+    prediction_dir: outputs/icdm2026/predictions/PM_STAGE1_GAN_ONLY_5SLICE
+    table_group: ablation
+
+baselines:
+  include_t1: true
+  include_fa_gt: true
+
+downstream:
+  tasks: cn_scd_vs_mci_ad
+  repeat_seeds: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
+  n_splits: 5
+  max_features: 12
+  output_root: outputs/icdm2026/downstream_comparison
+  fusions:
+    - T1_PLUS_FIDELITY_FLOW=T1_ONLY+Fidelity_Flow

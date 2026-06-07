@@ -60,6 +60,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reset_visualize_manifest", action="store_true", help="Recreate visualization manifest from the current evaluated slice set.")
     parser.add_argument("--test_t1_dir", default="", help="Override test T1 slice directory from config.")
     parser.add_argument("--test_fa_dir", default="", help="Override test FA slice directory from config.")
+    parser.add_argument("--adni_slice_manifest", default="", help="Optional ADNI slice manifest CSV produced by preprocess_adni_slices.py.")
     parser.add_argument("--limit", type=int, default=0, help="Evaluate only the first N target slices for smoke tests.")
     parser.add_argument("--allow_missing", action="store_true", help="Skip missing predictions instead of failing.")
     parser.add_argument("--brain_t1_threshold", type=float, default=0.05)
@@ -132,6 +133,24 @@ def _subject_metadata_lookup(subject_index: pd.DataFrame) -> dict[str, dict[str,
         normalize_subject_id(row["subject_id"]): row
         for row in subject_index.to_dict(orient="records")
     }
+
+
+def _load_adni_subject_index(slice_manifest_csv: str | Path) -> pd.DataFrame:
+    frame = pd.read_csv(slice_manifest_csv)
+    required = {"subject", "split", "normalized_group"}
+    missing = required - set(frame.columns)
+    if missing:
+        raise ValueError(f"ADNI slice manifest is missing columns: {sorted(missing)}")
+    subjects = frame[["subject", "split", "normalized_group"]].drop_duplicates("subject").copy()
+    subjects = subjects.rename(columns={"normalized_group": "group_name"})
+    group_ids = {"UNLABELED": 0, "CN": 1, "MCI_spectrum": 2, "AD": 3, "EXCLUDE": 99}
+    subjects["subject_id"] = subjects["subject"].map(normalize_subject_id)
+    subjects["group_id"] = subjects["group_name"].map(group_ids).fillna(99).astype(int)
+    subjects["gender"] = 0
+    for column in ["age", "edu", "MMSE"]:
+        subjects[column] = np.nan
+    columns = ["subject_id", "group_id", "group_name", "gender", "age", "edu", "MMSE", "split"]
+    return subjects[columns].sort_values("subject_id").reset_index(drop=True)
 
 
 def _write_png(path: str | Path, image: np.ndarray) -> None:
@@ -237,11 +256,14 @@ def evaluate_folder(args: argparse.Namespace) -> dict[str, Any]:
     metrics_root.mkdir(parents=True, exist_ok=True)
     figures_root.mkdir(parents=True, exist_ok=True)
 
-    subject_index = load_subject_index(
-        excel_path=config["data"]["excel_path"],
-        split_json=config["data"]["split_json"],
-        sheet_name=config["data"].get("excel_sheet", "re_order"),
-    )
+    if args.adni_slice_manifest:
+        subject_index = _load_adni_subject_index(args.adni_slice_manifest)
+    else:
+        subject_index = load_subject_index(
+            excel_path=config["data"]["excel_path"],
+            split_json=config["data"]["split_json"],
+            sheet_name=config["data"].get("excel_sheet", "re_order"),
+        )
     metadata_lookup = _subject_metadata_lookup(subject_index)
 
     target_files = sorted(test_fa_dir.glob("*.png"))

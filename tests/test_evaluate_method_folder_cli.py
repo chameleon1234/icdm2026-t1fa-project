@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import cv2
+import numpy as np
 import pandas as pd
 
 
@@ -84,3 +86,70 @@ def test_evaluate_method_folder_cli_writes_slice_subject_and_summary_outputs(tmp
         f"{selected_files[0].stem}_UNIT_GT.png",
         f"{selected_files[2].stem}_UNIT_GT.png",
     ]
+
+
+def _write_png(path: Path, image: np.ndarray) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    ok, encoded = cv2.imencode(".png", image.astype(np.uint8))
+    assert ok
+    encoded.tofile(str(path))
+
+
+def test_evaluate_method_folder_cli_accepts_adni_slice_manifest(tmp_path):
+    t1_dir = tmp_path / "test" / "t1_slices"
+    fa_dir = tmp_path / "test" / "fa_slices"
+    pred_dir = tmp_path / "pred"
+    manifest_rows = []
+    for subject, group_name, value in [("002_S_0413", "CN", 80), ("003_S_0907", "MCI_spectrum", 140)]:
+        for z in [20, 21]:
+            filename = f"sub-{subject}_z{z:03d}.png"
+            image = np.full((16, 16), value + z % 2, dtype=np.uint8)
+            _write_png(t1_dir / filename, image // 2)
+            _write_png(fa_dir / filename, image)
+            _write_png(pred_dir / filename, image)
+            manifest_rows.append(
+                {
+                    "subject": subject,
+                    "split": "test",
+                    "filename": filename,
+                    "normalized_group": group_name,
+                    "raw_group": group_name,
+                }
+            )
+    adni_manifest = tmp_path / "adni_slice_manifest.csv"
+    pd.DataFrame(manifest_rows).to_csv(adni_manifest, index=False)
+    metrics_root = tmp_path / "metrics"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/evaluate_method_folder.py",
+            "--pred_dir",
+            str(pred_dir),
+            "--method",
+            "ADNI_GT",
+            "--adni_slice_manifest",
+            str(adni_manifest),
+            "--test_t1_dir",
+            str(t1_dir),
+            "--test_fa_dir",
+            str(fa_dir),
+            "--metrics_root",
+            str(metrics_root),
+            "--figures_root",
+            str(tmp_path / "figures"),
+            "--visualize_count",
+            "0",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    slice_df = pd.read_csv(metrics_root / "ADNI_GT_slice_metrics.csv")
+    summary = json.loads((metrics_root / "ADNI_GT_summary.json").read_text(encoding="utf-8"))
+    assert set(slice_df["subject_id"]) == {"sub-002_S_0413", "sub-003_S_0907"}
+    assert set(slice_df["group_name"]) == {"CN", "MCI_spectrum"}
+    assert summary["n_subjects"] == 2
+    assert summary["MSE_mean"] == 0.0

@@ -18,7 +18,7 @@ The results that must be removed from pure comparison tables are:
 
 - `UNet_E99`: PSNR=36.99, suspicious legacy/unverified result.
 - `Pix2Pix_E100`: legacy/unverified split.
-- `CycleGAN_E100`: legacy CycleGAN; replace with `CycleGAN_CurrentSplit_E100` when finished.
+- `CycleGAN_E100`: legacy CycleGAN; replaced by fair current-split `CycleGAN_CurrentSplit_E100`.
 - `DDIM_E100_K50`: legacy or unverified split; retrain before pure comparison.
 - `FREQ_FLOWBASE_PMLOW_B035`: our method, not a pure baseline.
 - `PM_STAGE1`, `PM_STAGE1_LPIPS_GAN`, `PM_DIRF_FIDELITY_FLOW`: our ablations, not external baselines.
@@ -47,7 +47,7 @@ python scripts/build_pure_comparison_tables.py `
 |---|---:|---:|---:|---:|---:|---:|---:|
 | U-Net current split | 28.236 | 0.897 | 0.001606 | 0.017834 | 0.456 | 0.057 | 0.836 |
 | Pix2Pix current split | 28.114 | 0.904 | 0.001641 | 0.017847 | 0.641 | 0.058 | 0.871 |
-| CycleGAN current split | pending | pending | pending | pending | pending | pending | pending |
+| CycleGAN current split | 26.166 | 0.871 | 0.002556 | 0.022473 | 0.864 | 0.068 | 0.811 |
 | DIRF_V5 K6 | 28.399 | 0.909 | 0.001531 | 0.017188 | 0.455 | 0.054 | 0.884 |
 
 ## Current Pure Baseline Downstream
@@ -58,7 +58,7 @@ Task: `CN+SCD vs MCI+AD`
 |---|---:|---:|---:|
 | U-Net current split | 0.532 | 0.536 | 0.568 |
 | Pix2Pix current split | 0.568 | 0.571 | 0.562 |
-| CycleGAN current split | pending | pending | pending |
+| CycleGAN current split | 0.627 | 0.638 | 0.594 |
 | DIRF_V5 K6 | 0.460 | 0.461 | 0.374 |
 
 ## With Our Method

@@ -27,7 +27,7 @@ PURE_BASELINE_METHODS = {
     "CycleGAN_CurrentSplit_E100": {
         "family": "GAN",
         "role": "pure_comparison",
-        "status": "fair_retrain_running",
+        "status": "fair_retrained_current_split",
         "summary_name": "CycleGAN_CurrentSplit_E100",
     },
     "DIRF_V5_3SLICE_K6": {
@@ -56,7 +56,7 @@ OURS_METHODS = {
 EXCLUDED_METHODS = {
     "UNet_E99": "legacy/unverified split; suspiciously high PSNR, exclude from pure comparison",
     "Pix2Pix_E100": "legacy/unverified split, exclude from pure comparison",
-    "CycleGAN_E100": "legacy CycleGAN; replace with CycleGAN_CurrentSplit_E100 when finished",
+    "CycleGAN_E100": "legacy CycleGAN; replaced by CycleGAN_CurrentSplit_E100 in pure comparison",
     "DDIM_E100_K50": "legacy or unverified split; retrain before pure comparison",
     "FREQ_FLOWBASE_PMLOW_B035": "ours/fusion method, not a pure baseline",
     "PM_STAGE1": "ours/PMRF ablation, not a pure external baseline",
@@ -80,6 +80,7 @@ def list_default_downstream_roots() -> list[str]:
     return [
         "outputs/icdm2026/downstream_pix2pix_current_e100/classification_summary.csv",
         "outputs/icdm2026/downstream_unet_current_split/classification_summary.csv",
+        "outputs/icdm2026/downstream_cyclegan_current_e100/classification_summary.csv",
         "outputs/icdm2026/downstream_robustness_core/classification_summary.csv",
         "outputs/icdm2026/downstream_freq_flowbase_b035_full/classification_summary.csv",
     ]

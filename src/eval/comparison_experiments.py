@@ -278,7 +278,7 @@ def build_table_rows(
             {
                 "method": method.name,
                 "display_name": method.label,
-                "table_group": method.table_group,
+                "table_group": method.groups[0] if method.groups else method.table_group,
                 "table_groups": list(method.groups),
                 "is_ours": method.is_ours,
                 "PSNR": _safe_float(summary.get("PSNR_mean")),

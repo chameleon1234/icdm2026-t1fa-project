@@ -7,6 +7,7 @@ methods:
   - name: UNet_E99
     display_name: U-Net (CNN, leaked checkpoint)
     prediction_dir: outputs/icdm2026/predictions/UNet_E99
+    table_group: leakage_audit
     table_groups: [leakage_audit]
     notes: Legacy U-Net checkpoint was trained with an old split; 34/38 current test subjects were in its training subjects, so it is leakage-contaminated and should not be used as a fair comparison without retraining.
   - name: Pix2Pix_E100
@@ -49,6 +50,7 @@ methods:
     table_group: main
   - name: Stage1_LPIPS_GAN
     metric_name: PM_STAGE1_LPIPS_GAN_5SLICE_FINAL
+    downstream_name: LPIPS_GAN
     display_name: Stage1 LPIPS+GAN
     prediction_dir: outputs/icdm2026/predictions/PM_STAGE1_LPIPS_GAN_5SLICE_FINAL
     table_groups: [main, ablation]
@@ -74,6 +76,8 @@ methods:
     table_group: frequency
     is_ours: true
   - name: FREQ_FLOWBASE_PMLOW_B035
+    metric_name: FREQ_FLOWBASE_B035
+    downstream_name: FREQ_FLOWBASE_B035
     display_name: Flow base + PM low residual
     prediction_dir: outputs/icdm2026/predictions/FREQ_FLOWBASE_PMLOW_B035
     table_group: frequency

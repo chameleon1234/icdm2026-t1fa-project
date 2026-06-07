@@ -27,6 +27,15 @@ SUBJECT_INDEX_COLUMNS = [
 
 def normalize_subject_id(value: object) -> str:
     text = str(value).strip()
+    adni_spaced = re.match(r"^sub-(\d{3})_S_(\d+)$", text)
+    if adni_spaced:
+        return f"sub-{adni_spaced.group(1)}_S_{adni_spaced.group(2)}"
+    adni_raw = re.match(r"^(\d{3})_S_(\d+)$", text)
+    if adni_raw:
+        return f"sub-{adni_raw.group(1)}_S_{adni_raw.group(2)}"
+    adni_compact = re.match(r"^sub-(\d{3})S(\d+)$", text)
+    if adni_compact:
+        return f"sub-{adni_compact.group(1)}_S_{adni_compact.group(2)}"
     match = re.search(r"(\d+)", text)
     if not match:
         raise ValueError(f"Cannot parse subject id from {value!r}")
@@ -95,4 +104,3 @@ def save_subject_index(df: pd.DataFrame, output_path: str | Path) -> None:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=False, encoding="utf-8")
-

@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data.subject_index import load_subject_index
+from src.data.subject_index import load_subject_index, normalize_subject_id
 from src.eval.downstream_utility import (
     build_fused_feature_table,
     confusion_matrix_frame,
@@ -29,6 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate subject-level downstream disease utility from image folders.")
     parser.add_argument("--config", default="configs/icdm2026.yaml")
     parser.add_argument("--subject_index_csv", default="", help="Optional prebuilt subject index CSV for tests or custom splits.")
+    parser.add_argument("--adni_slice_manifest", default="", help="Optional ADNI slice manifest CSV produced by preprocess_adni_slices.py.")
     parser.add_argument("--split", default="test", help="Subject split to evaluate with stratified CV.")
     parser.add_argument("--method", action="append", default=[], help="Method spec in NAME=DIR format. Can be repeated.")
     parser.add_argument("--fusion", action="append", default=[], help="Fusion spec in NAME=LEFT+RIGHT format using selected method names.")
@@ -72,12 +73,31 @@ def _json_ready(value: Any) -> Any:
 def _load_subject_index(args: argparse.Namespace, config: dict[str, Any]) -> pd.DataFrame:
     if args.subject_index_csv:
         return pd.read_csv(args.subject_index_csv)
+    if args.adni_slice_manifest:
+        return _load_adni_subject_index(args.adni_slice_manifest)
     data_config = config["data"]
     return load_subject_index(
         excel_path=data_config["excel_path"],
         split_json=data_config["split_json"],
         sheet_name=data_config.get("excel_sheet", "re_order"),
     )
+
+
+def _load_adni_subject_index(slice_manifest_csv: str | Path) -> pd.DataFrame:
+    frame = pd.read_csv(slice_manifest_csv)
+    required = {"subject", "split", "normalized_group"}
+    missing = required - set(frame.columns)
+    if missing:
+        raise ValueError(f"ADNI slice manifest is missing columns: {sorted(missing)}")
+    subjects = frame[["subject", "split", "normalized_group"]].drop_duplicates("subject").copy()
+    subjects = subjects.rename(columns={"normalized_group": "group_name"})
+    group_ids = {"UNLABELED": 0, "CN": 1, "MCI_spectrum": 2, "AD": 3, "EXCLUDE": 99}
+    subjects["subject_id"] = subjects["subject"].map(normalize_subject_id)
+    subjects["group_id"] = subjects["group_name"].map(group_ids).fillna(99).astype(int)
+    for column in ["gender", "age", "edu", "MMSE"]:
+        subjects[column] = np.nan
+    columns = ["subject_id", "group_id", "group_name", "gender", "age", "edu", "MMSE", "split"]
+    return subjects[columns].sort_values("subject_id").reset_index(drop=True)
 
 
 def _default_split_dir(config: dict[str, Any], split: str, modality: str) -> Path:

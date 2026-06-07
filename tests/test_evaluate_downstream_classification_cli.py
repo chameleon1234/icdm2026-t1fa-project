@@ -93,3 +93,70 @@ def test_evaluate_downstream_classification_cli_writes_summary_outputs(tmp_path)
     assert "ToySelf" in set(summary["method"])
     repeated = pd.read_csv(output_root / "classification_repeated_summary.csv")
     assert int(repeated.loc[0, "n_repeats"]) == 2
+
+
+def test_evaluate_downstream_classification_cli_accepts_adni_slice_manifest(tmp_path):
+    image_dir = tmp_path / "adni_method"
+    manifest_rows = []
+    subjects = [
+        ("002_S_0413", "CN", 40),
+        ("002_S_1155", "CN", 55),
+        ("003_S_0907", "MCI_spectrum", 120),
+        ("003_S_1122", "MCI_spectrum", 135),
+        ("005_S_0221", "AD", 190),
+        ("005_S_0814", "AD", 205),
+    ]
+    for subject, group_name, base_intensity in subjects:
+        for z in [20, 21, 22]:
+            filename = f"sub-{subject}_z{z:03d}.png"
+            image = np.full((16, 16), base_intensity + z % 3, dtype=np.uint8)
+            _write_png(image_dir / filename, image)
+            manifest_rows.append(
+                {
+                    "subject": subject,
+                    "split": "test",
+                    "filename": filename,
+                    "normalized_group": group_name,
+                    "raw_group": group_name,
+                }
+            )
+    adni_manifest = tmp_path / "adni_slice_manifest.csv"
+    pd.DataFrame(manifest_rows).to_csv(adni_manifest, index=False)
+
+    config_path = tmp_path / "config.yaml"
+    config = {
+        "data": {"processed_root": str(tmp_path / "processed")},
+        "evaluation": {"classification_tasks": ["cn_vs_mci_spectrum_ad"]},
+        "outputs": {"root": str(tmp_path / "outputs")},
+    }
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    output_root = tmp_path / "downstream_adni"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/evaluate_downstream_classification.py",
+            "--config",
+            str(config_path),
+            "--adni_slice_manifest",
+            str(adni_manifest),
+            "--method",
+            f"ADNI_Toy={image_dir}",
+            "--tasks",
+            "cn_vs_mci_spectrum_ad",
+            "--n_splits",
+            "2",
+            "--output_root",
+            str(output_root),
+        ],
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+    features = pd.read_csv(output_root / "subject_features.csv")
+    summary = pd.read_csv(output_root / "classification_summary.csv")
+    assert "Saved classification summary" in result.stdout
+    assert set(features["subject_id"]) == {f"sub-{subject}" for subject, _, _ in subjects}
+    assert int(summary.loc[0, "n_subjects"]) == 6
+    assert summary.loc[0, "task"] == "cn_vs_mci_spectrum_ad"

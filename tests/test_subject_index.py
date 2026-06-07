@@ -3,6 +3,15 @@ from pathlib import Path
 import pandas as pd
 
 
+def test_normalize_subject_id_preserves_adni_site_and_subject_code():
+    from src.data.subject_index import normalize_subject_id
+
+    assert normalize_subject_id("002_S_0413") == "sub-002_S_0413"
+    assert normalize_subject_id("sub-002_S_0413") == "sub-002_S_0413"
+    assert normalize_subject_id("sub-002S0413") == "sub-002_S_0413"
+    assert normalize_subject_id(1) == "sub-001"
+
+
 def test_load_subject_index_uses_excel_mapping_and_subject_splits():
     from src.data.subject_index import load_subject_index
 
@@ -51,4 +60,3 @@ def test_save_subject_index_roundtrip(tmp_path):
     assert output_path.exists()
     assert reloaded.shape == (248, 8)
     assert reloaded.loc[0, "subject_id"].startswith("sub-")
-

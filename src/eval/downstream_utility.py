@@ -53,6 +53,10 @@ TASK_DEFINITIONS = {
     "cn_scd_vs_ad": {"include": {"CN", "SCD", "AD"}, "labels": {"CN": 0, "SCD": 0, "AD": 1}},
     "cn_scd_vs_mci_ad": {"include": {"CN", "SCD", "MCI", "AD"}, "labels": {"CN": 0, "SCD": 0, "MCI": 1, "AD": 1}},
     "cn_scd_mci_vs_ad": {"include": {"CN", "SCD", "MCI", "AD"}, "labels": {"CN": 0, "SCD": 0, "MCI": 0, "AD": 1}},
+    "cn_vs_mci_spectrum": {"include": {"CN", "MCI_spectrum"}, "labels": {"CN": 0, "MCI_spectrum": 1}},
+    "cn_vs_mci_spectrum_ad": {"include": {"CN", "MCI_spectrum", "AD"}, "labels": {"CN": 0, "MCI_spectrum": 1, "AD": 1}},
+    "mci_spectrum_vs_ad": {"include": {"MCI_spectrum", "AD"}, "labels": {"MCI_spectrum": 0, "AD": 1}},
+    "adni_three_class": {"include": {"CN", "MCI_spectrum", "AD"}, "labels": {"CN": 0, "MCI_spectrum": 1, "AD": 2}},
 }
 
 

@@ -90,6 +90,37 @@ Incremental information tests:
 - real FA only
 - T1 + real FA
 
+## Preprocessing Commands
+
+Build the subject manifest first:
+
+```powershell
+D:\Anaconda3\python.exe scripts/build_adni_manifest.py `
+  --archive data/ADNI_data.7z `
+  --labels data/subject_group_cleaned_filtered.csv `
+  --output_root outputs/icdm2026 `
+  --seed 42 `
+  --train_ratio 0.7 `
+  --val_ratio 0.1
+```
+
+Preprocess paired NIfTI volumes into the same PNG folder layout used by the private dataset:
+
+```powershell
+D:\Anaconda3\python.exe scripts/preprocess_adni_slices.py `
+  --archive data/ADNI_data.7z `
+  --manifest outputs/icdm2026/adni_subject_manifest.csv `
+  --output_root data/adni_processed `
+  --extract_root data/adni_raw_extracted `
+  --splits train,val,test `
+  --slice_start 20 `
+  --slice_end 72 `
+  --target_size 224 `
+  --min_brain_fraction 0.01
+```
+
+Use `D:\Anaconda3\python.exe` for archive scanning/extraction because the current `dinov3test` environment has `nibabel` but not `libarchive`. Training and model export should still use `conda activate dinov3test`.
+
 ## Main Paper Framing
 
 The private dataset remains the method-development dataset. ADNI becomes the public validation dataset. A method is considered strong only if it is balanced across:

@@ -90,6 +90,37 @@ ADNI 公开数据集用于放大和稳定模型差异，避免只在私有 38 �
 - real FA only
 - T1 + real FA
 
+## 预处理命令
+
+先生成 subject 级 manifest 和 train/val/test 划分：
+
+```powershell
+D:\Anaconda3\python.exe scripts/build_adni_manifest.py `
+  --archive data/ADNI_data.7z `
+  --labels data/subject_group_cleaned_filtered.csv `
+  --output_root outputs/icdm2026 `
+  --seed 42 `
+  --train_ratio 0.7 `
+  --val_ratio 0.1
+```
+
+再把配对的 NIfTI 体数据切成和私有数据集一致的 PNG 目录结构：
+
+```powershell
+D:\Anaconda3\python.exe scripts/preprocess_adni_slices.py `
+  --archive data/ADNI_data.7z `
+  --manifest outputs/icdm2026/adni_subject_manifest.csv `
+  --output_root data/adni_processed `
+  --extract_root data/adni_raw_extracted `
+  --splits train,val,test `
+  --slice_start 20 `
+  --slice_end 72 `
+  --target_size 224 `
+  --min_brain_fraction 0.01
+```
+
+这里预处理建议用 `D:\Anaconda3\python.exe`，因为当前 `dinov3test` 环境有 `nibabel` 但没有 `libarchive`，不能直接读取 `.7z`。后续训练、导出、评估仍然进入 `conda activate dinov3test` 使用 GPU。
+
 ## 论文主线
 
 私有数据集作为方法开发集，ADNI 作为公开验证集。一个方法只有同时在以下方面平衡，才适合作为主方法：

@@ -120,8 +120,8 @@ Example:
 python scripts/evaluate_downstream_classification.py `
   --adni_slice_manifest data/adni_processed/adni_slice_manifest.csv `
   --split test `
-  --include_t1 `
-  --include_fa_gt `
+  --method T1_ONLY=data/adni_processed/test/t1_slices `
+  --method FA_GT=data/adni_processed/test/fa_slices `
   --method ADNI_UNET_E50=outputs/icdm2026/predictions/ADNI_UNET_E50 `
   --tasks cn_vs_mci_spectrum_ad,cn_vs_mci_spectrum,cn_vs_ad,mci_spectrum_vs_ad,adni_three_class `
   --n_splits 5 `

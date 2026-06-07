@@ -96,7 +96,9 @@ def test_evaluate_downstream_classification_cli_writes_summary_outputs(tmp_path)
 
 
 def test_evaluate_downstream_classification_cli_accepts_adni_slice_manifest(tmp_path):
-    image_dir = tmp_path / "adni_method"
+    adni_root = tmp_path / "adni"
+    image_dir = adni_root / "test" / "fa_slices"
+    t1_dir = adni_root / "test" / "t1_slices"
     manifest_rows = []
     subjects = [
         ("002_S_0413", "CN", 40),
@@ -111,6 +113,7 @@ def test_evaluate_downstream_classification_cli_accepts_adni_slice_manifest(tmp_
             filename = f"sub-{subject}_z{z:03d}.png"
             image = np.full((16, 16), base_intensity + z % 3, dtype=np.uint8)
             _write_png(image_dir / filename, image)
+            _write_png(t1_dir / filename, image // 2)
             manifest_rows.append(
                 {
                     "subject": subject,
@@ -120,7 +123,7 @@ def test_evaluate_downstream_classification_cli_accepts_adni_slice_manifest(tmp_
                     "raw_group": group_name,
                 }
             )
-    adni_manifest = tmp_path / "adni_slice_manifest.csv"
+    adni_manifest = adni_root / "adni_slice_manifest.csv"
     pd.DataFrame(manifest_rows).to_csv(adni_manifest, index=False)
 
     config_path = tmp_path / "config.yaml"
@@ -140,8 +143,8 @@ def test_evaluate_downstream_classification_cli_accepts_adni_slice_manifest(tmp_
             str(config_path),
             "--adni_slice_manifest",
             str(adni_manifest),
-            "--method",
-            f"ADNI_Toy={image_dir}",
+            "--include_t1",
+            "--include_fa_gt",
             "--tasks",
             "cn_vs_mci_spectrum_ad",
             "--n_splits",
@@ -158,5 +161,6 @@ def test_evaluate_downstream_classification_cli_accepts_adni_slice_manifest(tmp_
     summary = pd.read_csv(output_root / "classification_summary.csv")
     assert "Saved classification summary" in result.stdout
     assert set(features["subject_id"]) == {f"sub-{subject}" for subject, _, _ in subjects}
-    assert int(summary.loc[0, "n_subjects"]) == 6
-    assert summary.loc[0, "task"] == "cn_vs_mci_spectrum_ad"
+    assert set(summary["method"]) == {"T1_ONLY", "FA_GT"}
+    assert set(summary["n_subjects"]) == {6}
+    assert set(summary["task"]) == {"cn_vs_mci_spectrum_ad"}

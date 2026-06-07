@@ -100,7 +100,9 @@ def _load_adni_subject_index(slice_manifest_csv: str | Path) -> pd.DataFrame:
     return subjects[columns].sort_values("subject_id").reset_index(drop=True)
 
 
-def _default_split_dir(config: dict[str, Any], split: str, modality: str) -> Path:
+def _default_split_dir(config: dict[str, Any], split: str, modality: str, adni_slice_manifest: str = "") -> Path:
+    if adni_slice_manifest:
+        return Path(adni_slice_manifest).parent / split / f"{modality}_slices"
     processed_root = Path(config["data"]["processed_root"])
     return processed_root / split / f"{modality}_slices"
 
@@ -160,9 +162,9 @@ def main() -> None:
 
     method_specs = list(parse_method_specs(args.method)) if args.method else []
     if args.include_t1:
-        method_specs.insert(0, parse_method_specs([f"T1_ONLY={_default_split_dir(config, args.split, 't1')}"])[0])
+        method_specs.insert(0, parse_method_specs([f"T1_ONLY={_default_split_dir(config, args.split, 't1', args.adni_slice_manifest)}"])[0])
     if args.include_fa_gt:
-        method_specs.append(parse_method_specs([f"FA_GT={_default_split_dir(config, args.split, 'fa')}"])[0])
+        method_specs.append(parse_method_specs([f"FA_GT={_default_split_dir(config, args.split, 'fa', args.adni_slice_manifest)}"])[0])
     if not method_specs:
         raise ValueError("No methods selected. Use --method NAME=DIR and/or --include_t1/--include_fa_gt.")
 

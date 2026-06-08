@@ -153,3 +153,55 @@ def test_evaluate_method_folder_cli_accepts_adni_slice_manifest(tmp_path):
     assert set(slice_df["group_name"]) == {"CN", "MCI_spectrum"}
     assert summary["n_subjects"] == 2
     assert summary["MSE_mean"] == 0.0
+
+
+def test_evaluate_method_folder_cli_uses_adni_manifest_parent_dirs_by_default(tmp_path):
+    t1_dir = tmp_path / "test" / "t1_slices"
+    fa_dir = tmp_path / "test" / "fa_slices"
+    pred_dir = tmp_path / "pred"
+    filename = "sub-002_S_0413_z020.png"
+    image = np.full((16, 16), 120, dtype=np.uint8)
+    _write_png(t1_dir / filename, image // 2)
+    _write_png(fa_dir / filename, image)
+    _write_png(pred_dir / filename, image)
+    adni_manifest = tmp_path / "adni_slice_manifest.csv"
+    pd.DataFrame(
+        [
+            {
+                "subject": "002_S_0413",
+                "split": "test",
+                "filename": filename,
+                "normalized_group": "CN",
+                "raw_group": "CN",
+            }
+        ]
+    ).to_csv(adni_manifest, index=False)
+    metrics_root = tmp_path / "metrics"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/evaluate_method_folder.py",
+            "--pred_dir",
+            str(pred_dir),
+            "--method",
+            "ADNI_DEFAULT_DIRS",
+            "--adni_slice_manifest",
+            str(adni_manifest),
+            "--metrics_root",
+            str(metrics_root),
+            "--figures_root",
+            str(tmp_path / "figures"),
+            "--visualize_count",
+            "0",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    summary = json.loads((metrics_root / "ADNI_DEFAULT_DIRS_summary.json").read_text(encoding="utf-8"))
+    assert summary["test_t1_dir"] == str(t1_dir)
+    assert summary["test_fa_dir"] == str(fa_dir)
+    assert summary["n_slices"] == 1

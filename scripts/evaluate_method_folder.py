@@ -248,8 +248,15 @@ def evaluate_folder(args: argparse.Namespace) -> dict[str, Any]:
     config = _read_yaml(args.config)
     processed_root = Path(config["data"]["processed_root"])
     pred_dir = Path(args.pred_dir)
-    test_t1_dir = Path(args.test_t1_dir) if args.test_t1_dir else processed_root / "test" / "t1_slices"
-    test_fa_dir = Path(args.test_fa_dir) if args.test_fa_dir else processed_root / "test" / "fa_slices"
+    if args.adni_slice_manifest:
+        adni_root = Path(args.adni_slice_manifest).parent
+        default_t1_dir = adni_root / "test" / "t1_slices"
+        default_fa_dir = adni_root / "test" / "fa_slices"
+    else:
+        default_t1_dir = processed_root / "test" / "t1_slices"
+        default_fa_dir = processed_root / "test" / "fa_slices"
+    test_t1_dir = Path(args.test_t1_dir) if args.test_t1_dir else default_t1_dir
+    test_fa_dir = Path(args.test_fa_dir) if args.test_fa_dir else default_fa_dir
     metrics_root = Path(args.metrics_root) if args.metrics_root else Path(config["outputs"]["metrics_root"])
     figures_root = Path(args.figures_root) if args.figures_root else Path(config["outputs"]["figures_root"])
     visualize_manifest = Path(args.visualize_manifest) if args.visualize_manifest else figures_root / "visualization_manifest.csv"

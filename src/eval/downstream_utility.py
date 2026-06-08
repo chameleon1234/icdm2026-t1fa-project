@@ -275,7 +275,7 @@ def feature_columns(features: pd.DataFrame, feature_set: str = "full") -> list[s
             continue
         if feature_set == "roi_mean" and "__roi_mean_" not in column and not column.startswith("roi_mean_"):
             continue
-        if pd.api.types.is_numeric_dtype(features[column]):
+        if pd.api.types.is_numeric_dtype(features[column]) and not features[column].isna().all():
             columns.append(column)
     if feature_set == "roi_mean" and not columns:
         raise ValueError("No ROI-mean feature columns found")

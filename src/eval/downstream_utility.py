@@ -24,6 +24,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import make_pipeline
 from sklearn.feature_selection import SelectKBest, f_classif, f_regression
 from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 
 from src.data.subject_index import normalize_subject_id
 
@@ -155,6 +156,17 @@ def extract_slice_features(image_01: np.ndarray, brain_threshold: float = 0.02, 
     for prefix, values in [("intensity", brain_values), ("wm", wm_values)]:
         for key, value in _safe_stats(values).items():
             features[f"{prefix}_{key}"] = value
+    height, width = image.shape
+    for row_idx in range(2):
+        y0 = int(round(row_idx * height / 2))
+        y1 = int(round((row_idx + 1) * height / 2))
+        for col_idx in range(3):
+            x0 = int(round(col_idx * width / 3))
+            x1 = int(round((col_idx + 1) * width / 3))
+            roi_mask = brain_mask[y0:y1, x0:x1]
+            roi_values = image[y0:y1, x0:x1][roi_mask]
+            value = float(np.mean(roi_values)) if roi_values.size else 0.0
+            features[f"roi_mean_r{row_idx}_c{col_idx}"] = value
     return features
 
 
@@ -256,13 +268,19 @@ def _prepare_task(features: pd.DataFrame, task: str) -> tuple[pd.DataFrame, np.n
     return subset.reset_index(drop=True), labels, classes
 
 
-def feature_columns(features: pd.DataFrame) -> list[str]:
+def feature_columns(features: pd.DataFrame, feature_set: str = "full") -> list[str]:
     columns = []
     for column in features.columns:
         if column in METADATA_COLUMNS:
             continue
+        if feature_set == "roi_mean" and "__roi_mean_" not in column and not column.startswith("roi_mean_"):
+            continue
         if pd.api.types.is_numeric_dtype(features[column]):
             columns.append(column)
+    if feature_set == "roi_mean" and not columns:
+        raise ValueError("No ROI-mean feature columns found")
+    if feature_set != "full" and feature_set != "roi_mean":
+        raise ValueError("feature_set must be one of: full, roi_mean")
     if not columns:
         raise ValueError("No numeric feature columns found")
     return columns
@@ -315,9 +333,11 @@ def run_classification_cv(
     n_splits: int = 5,
     random_state: int = 42,
     max_features: int = 0,
+    classifier: str = "logistic",
+    feature_set: str = "full",
 ) -> tuple[dict[str, float | int | str], pd.DataFrame]:
     subset, y, classes = _prepare_task(features, task)
-    columns = feature_columns(subset)
+    columns = feature_columns(subset, feature_set=feature_set)
     x = subset[columns].to_numpy(dtype=np.float32)
     min_class_count = int(pd.Series(y).value_counts().min())
     actual_splits = min(max(2, n_splits), min_class_count)
@@ -328,30 +348,46 @@ def run_classification_cv(
     steps = []
     if selected_count < len(columns):
         steps.append(SelectKBest(score_func=f_classif, k=selected_count))
-    steps.extend(
-        [
-            StandardScaler(),
+    steps.append(StandardScaler())
+    if classifier == "logistic":
+        steps.append(
             LogisticRegression(
                 max_iter=2000,
                 class_weight="balanced",
                 solver="lbfgs",
                 random_state=random_state,
-            ),
-        ]
-    )
-    classifier = make_pipeline(*steps)
+            )
+        )
+    elif classifier == "linear_svm":
+        steps.append(SVC(kernel="linear", class_weight="balanced", random_state=random_state))
+    else:
+        raise ValueError("classifier must be one of: logistic, linear_svm")
+    estimator = make_pipeline(*steps)
     cv = StratifiedKFold(n_splits=actual_splits, shuffle=True, random_state=random_state)
     y_pred = np.zeros_like(y)
     y_prob = np.zeros((len(y), len(classes)), dtype=np.float32)
     class_to_col = {label: idx for idx, label in enumerate(classes)}
 
     for train_idx, test_idx in cv.split(x, y):
-        classifier.fit(x[train_idx], y[train_idx])
-        fold_pred = classifier.predict(x[test_idx])
-        fold_prob = classifier.predict_proba(x[test_idx])
+        estimator.fit(x[train_idx], y[train_idx])
+        fold_pred = estimator.predict(x[test_idx])
         y_pred[test_idx] = fold_pred
-        for local_col, class_label in enumerate(classifier.classes_):
-            y_prob[test_idx, class_to_col[int(class_label)]] = fold_prob[:, local_col]
+        final_estimator = estimator.steps[-1][1]
+        if hasattr(estimator, "predict_proba"):
+            fold_score = estimator.predict_proba(x[test_idx])
+            for local_col, class_label in enumerate(final_estimator.classes_):
+                y_prob[test_idx, class_to_col[int(class_label)]] = fold_score[:, local_col]
+        else:
+            raw_score = estimator.decision_function(x[test_idx])
+            if len(classes) == 2:
+                raw_score = np.asarray(raw_score, dtype=np.float32).reshape(-1)
+                neg_label, pos_label = [int(item) for item in final_estimator.classes_]
+                y_prob[test_idx, class_to_col[pos_label]] = raw_score
+                y_prob[test_idx, class_to_col[neg_label]] = -raw_score
+            else:
+                raw_score = np.asarray(raw_score, dtype=np.float32)
+                for local_col, class_label in enumerate(final_estimator.classes_):
+                    y_prob[test_idx, class_to_col[int(class_label)]] = raw_score[:, local_col]
 
     macro_auc = float("nan")
     try:
@@ -369,6 +405,8 @@ def run_classification_cv(
         "n_features": int(len(columns)),
         "n_selected_features": int(selected_count),
         "n_splits": int(actual_splits),
+        "classifier": classifier,
+        "feature_set": feature_set,
         "accuracy": float(accuracy_score(y, y_pred)),
         "balanced_accuracy": float(balanced_accuracy_score(y, y_pred)),
         "macro_f1": float(f1_score(y, y_pred, average="macro", zero_division=0)),
@@ -404,6 +442,8 @@ def run_repeated_classification_cv(
     n_splits: int = 5,
     seeds: Iterable[int] = (42,),
     max_features: int = 0,
+    classifier: str = "logistic",
+    feature_set: str = "full",
 ) -> dict[str, float | int | str]:
     seed_list = [int(seed) for seed in seeds]
     if not seed_list:
@@ -417,6 +457,8 @@ def run_repeated_classification_cv(
             n_splits=n_splits,
             random_state=seed,
             max_features=max_features,
+            classifier=classifier,
+            feature_set=feature_set,
         )[0]
         for seed in seed_list
     ]

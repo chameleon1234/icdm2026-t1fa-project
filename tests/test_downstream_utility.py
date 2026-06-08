@@ -42,9 +42,49 @@ def test_extract_subject_features_aggregates_slices_without_slice_leakage(tmp_pa
     assert features["n_slices"].tolist() == [3, 3]
     assert "intensity_mean_mean" in features.columns
     assert "highpass_energy_mean" in features.columns
+    assert "roi_mean_r0_c0_mean" in features.columns
+    assert "roi_mean_r1_c2_mean" in features.columns
     assert features.loc[features["subject_id"] == "sub-002", "intensity_mean_mean"].item() > features.loc[
         features["subject_id"] == "sub-001", "intensity_mean_mean"
     ].item()
+
+
+def test_linear_svm_roi_mean_classification_matches_final_pdf_downstream_protocol():
+    from src.eval.downstream_utility import run_classification_cv
+
+    rows = []
+    for class_id, group_name in enumerate(["CN", "MCI"], start=0):
+        for idx in range(6):
+            rows.append(
+                {
+                    "method": "T1_PLUS_FA",
+                    "subject_id": f"sub-{class_id}{idx:02d}",
+                    "group_id": class_id,
+                    "group_name": group_name,
+                    "n_slices": 3,
+                    "roi_mean_r0_c0_mean": class_id + idx * 0.01,
+                    "roi_mean_r0_c1_mean": class_id + idx * 0.01,
+                    "intensity_mean_mean": 100.0 - class_id,
+                }
+            )
+    features = pd.DataFrame(rows)
+
+    summary, predictions = run_classification_cv(
+        features,
+        method="T1_PLUS_FA",
+        task="cn_vs_mci",
+        n_splits=3,
+        random_state=7,
+        classifier="linear_svm",
+        feature_set="roi_mean",
+    )
+
+    assert summary["classifier"] == "linear_svm"
+    assert summary["feature_set"] == "roi_mean"
+    assert summary["n_features"] == 2
+    assert summary["accuracy"] == 1.0
+    assert summary["macro_auc_ovr"] == 1.0
+    assert set(["prob_class_0", "prob_class_1"]).issubset(predictions.columns)
 
 
 def test_extract_subject_features_supports_frequency_views(tmp_path):

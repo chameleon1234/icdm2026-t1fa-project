@@ -48,6 +48,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--wm_quantile", type=float, default=0.65)
     parser.add_argument("--feature_view", choices=["full", "lowpass", "highpass"], default="full")
     parser.add_argument("--frequency_sigma", type=float, default=1.5)
+    parser.add_argument("--feature_set", choices=["full", "roi_mean"], default="full")
+    parser.add_argument("--classifier", choices=["logistic", "linear_svm"], default="logistic")
     return parser.parse_args()
 
 
@@ -219,6 +221,8 @@ def main() -> None:
                 n_splits=args.n_splits,
                 random_state=args.random_state,
                 max_features=args.max_features,
+                classifier=args.classifier,
+                feature_set=args.feature_set,
             )
             all_summaries.append(summary)
             all_predictions.append(predictions)
@@ -231,6 +235,8 @@ def main() -> None:
                         n_splits=args.n_splits,
                         seeds=repeat_seeds,
                         max_features=args.max_features,
+                        classifier=args.classifier,
+                        feature_set=args.feature_set,
                     )
                 )
             matrix_df = confusion_matrix_frame(predictions)

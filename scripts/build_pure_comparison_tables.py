@@ -45,11 +45,11 @@ REFERENCE_METHODS = {
 }
 
 OURS_METHODS = {
-    "FREQ_FLOWBASE_B035": {
+    "PM_DIRF_FIDELITY_FLOW_FULL": {
         "family": "Ours",
-        "role": "main_candidate",
-        "summary_name": "FREQ_FLOWBASE_PMLOW_B035",
-        "downstream_aliases": ["FREQ_FLOWBASE_PMLOW_B035"],
+        "role": "final_two_stage",
+        "summary_name": "PM_DIRF_FIDELITY_FLOW_FULL",
+        "downstream_aliases": ["Fidelity_Flow", "PM_DIRF_FIDELITY_FLOW_FULL"],
     }
 }
 
@@ -58,10 +58,9 @@ EXCLUDED_METHODS = {
     "Pix2Pix_E100": "legacy/unverified split, exclude from pure comparison",
     "CycleGAN_E100": "legacy CycleGAN; replaced by CycleGAN_CurrentSplit_E100 in pure comparison",
     "DDIM_E100_K50": "legacy or unverified split; retrain before pure comparison",
-    "FREQ_FLOWBASE_PMLOW_B035": "ours/fusion method, not a pure baseline",
     "PM_STAGE1": "ours/PMRF ablation, not a pure external baseline",
     "PM_STAGE1_LPIPS_GAN_5SLICE_FINAL": "ours/stage1 ablation, not a pure external baseline",
-    "PM_DIRF_FIDELITY_FLOW_FULL": "ours/stage2 ablation, not a pure external baseline",
+    "PM_DIRF_FIDELITY_FLOW_FULL": "ours/final two-stage method, not a pure external baseline",
 }
 
 
@@ -82,7 +81,6 @@ def list_default_downstream_roots() -> list[str]:
         "outputs/icdm2026/downstream_unet_current_split/classification_summary.csv",
         "outputs/icdm2026/downstream_cyclegan_current_e100/classification_summary.csv",
         "outputs/icdm2026/downstream_robustness_core/classification_summary.csv",
-        "outputs/icdm2026/downstream_freq_flowbase_b035_full/classification_summary.csv",
     ]
 
 

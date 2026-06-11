@@ -39,10 +39,11 @@ ADNI_METHODS = {
         "role": "pure_comparison",
         "status": "planned",
     },
-    "ADNI_FREQ_FLOWBASE_B035": {
+    "ADNI_PM_DIRF_FIDELITY_FLOW_FULL": {
         "family": "Ours",
-        "role": "main_candidate",
-        "status": "planned",
+        "role": "final_two_stage",
+        "status": "available",
+        "downstream_aliases": ["ADNI_PM_DIRF_FIDELITY_FLOW_FULL", "Fidelity_Flow"],
     },
 }
 
@@ -62,7 +63,7 @@ def list_default_downstream_roots() -> list[str]:
         "outputs/icdm2026/adni_downstream_unet_e50/classification_summary.csv",
         "outputs/icdm2026/adni_downstream_pix2pix_e50/classification_summary.csv",
         "outputs/icdm2026/adni_downstream_cyclegan_e50/classification_summary.csv",
-        "outputs/icdm2026/adni_downstream_freq_flowbase_b035/classification_summary.csv",
+        "outputs/icdm2026/downstream_adni_two_stage_full/classification_summary.csv",
     ]
 
 

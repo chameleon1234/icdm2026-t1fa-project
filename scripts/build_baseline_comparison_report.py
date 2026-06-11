@@ -14,8 +14,7 @@ DEFAULT_METHODS = [
     ("DIRF_V5_3SLICE_K6", "Flow", "DIRF V5", "Legacy flow baseline"),
     ("PM_STAGE1", "PMRF", "PM Stage1", "Posterior-mean predictor"),
     ("PM_STAGE1_LPIPS_GAN_5SLICE_FINAL", "Ours/Ablation", "Stage1 LPIPS+GAN", "Sharp Stage1"),
-    ("PM_DIRF_FIDELITY_FLOW_FULL", "Ours/Ablation", "Fidelity Flow", "Medical correction flow"),
-    ("FREQ_FLOWBASE_B035", "Ours", "FREQ_FLOWBASE_B035", "Balanced frequency-preserving method"),
+    ("PM_DIRF_FIDELITY_FLOW_FULL", "Ours", "Fidelity Flow", "Final two-stage medical correction flow"),
 ]
 
 
@@ -119,7 +118,6 @@ def build_report(args: argparse.Namespace) -> dict[str, Path]:
         downstream_key = {
             "PM_STAGE1_LPIPS_GAN_5SLICE_FINAL": "LPIPS_GAN",
             "PM_DIRF_FIDELITY_FLOW_FULL": "Fidelity_Flow",
-            "FREQ_FLOWBASE_B035": "FREQ_FLOWBASE_B035",
         }.get(method_key, method_key)
         downstream_row = main_downstream.get(downstream_key, {})
         rows.append(

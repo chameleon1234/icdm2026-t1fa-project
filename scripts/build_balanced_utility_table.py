@@ -30,7 +30,7 @@ def parse_args() -> argparse.Namespace:
         "--method",
         action="append",
         default=[],
-        help="Format DISPLAY=METRIC_SUMMARY_NAME=DOWNSTREAM_METHOD, e.g. Ours=FREQ_FLOWBASE_PMLOW_B035=T1_PLUS_Ours",
+        help="Format DISPLAY=METRIC_SUMMARY_NAME=DOWNSTREAM_METHOD, e.g. Ours=PM_DIRF_FIDELITY_FLOW_FULL=Fidelity_Flow",
     )
     parser.add_argument("--metrics_root", default="outputs/icdm2026/metrics")
     parser.add_argument("--downstream_csv", required=True)

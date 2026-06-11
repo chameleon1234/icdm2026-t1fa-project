@@ -1,0 +1,48 @@
+methods:
+  - name: ADNI_UNet_E50
+    display_name: U-Net 2D
+    prediction_dir: outputs/icdm2026/predictions/ADNI_UNet_E50
+    table_groups: [adni_full, cnn, baseline]
+    notes: Fair 2D U-Net trained on ADNI train split.
+  - name: ADNI_StackUNet5_E12
+    display_name: Stack U-Net 5-slice
+    prediction_dir: outputs/icdm2026/predictions/ADNI_StackUNet5_E12
+    table_groups: [adni_full, cnn, baseline]
+    notes: 2.5D U-Net baseline with five adjacent T1 slices.
+  - name: ADNI_StackUNet7_E50
+    display_name: Stack U-Net 7-slice
+    prediction_dir: outputs/icdm2026/predictions/ADNI_StackUNet7_E50
+    table_groups: [adni_full, cnn, modern_context]
+    notes: New stronger 2.5D context baseline with seven adjacent T1 slices.
+  - name: ADNI_Pix2Pix_E50
+    display_name: Pix2Pix
+    prediction_dir: outputs/icdm2026/predictions/ADNI_Pix2Pix_E50
+    table_groups: [adni_full, gan, baseline]
+    notes: Paired adversarial image-to-image translation baseline.
+  - name: ADNI_CycleGAN_E50
+    display_name: CycleGAN
+    prediction_dir: outputs/icdm2026/predictions/ADNI_CycleGAN_E50
+    table_groups: [adni_full, gan, baseline]
+    notes: Unpaired adversarial image-to-image translation baseline.
+  - name: ADNI_PM_STAGE1_LPIPS_GAN_FULL
+    display_name: Sharp Stage1 LPIPS+GAN
+    prediction_dir: outputs/icdm2026/predictions/ADNI_PM_STAGE1_LPIPS_GAN_FULL
+    table_groups: [adni_full, ours_ablation]
+    notes: High-frequency-preserving Stage1.
+  - name: ADNI_PM_DIRF_FIDELITY_FLOW_FULL
+    display_name: Ours: Stage1 + Fidelity Flow
+    prediction_dir: outputs/icdm2026/predictions/ADNI_PM_DIRF_FIDELITY_FLOW_FULL
+    table_groups: [adni_full, ours, flow]
+    is_ours: true
+    notes: Final two-stage model: sharp Stage1 followed by a flow-based medical-fidelity corrector.
+
+baselines:
+  include_t1: true
+  include_fa_gt: true
+
+downstream:
+  tasks: cn_vs_mci_spectrum,cn_vs_ad,mci_spectrum_vs_ad
+  repeat_seeds: 0,1,2,3,4,5,6,7,8,9
+  n_splits: 5
+  max_features: 12
+  output_root: outputs/icdm2026/downstream_adni_full_comparison

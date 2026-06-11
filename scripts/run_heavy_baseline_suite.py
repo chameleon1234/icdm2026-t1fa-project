@@ -231,8 +231,8 @@ def parse_args() -> argparse.Namespace:
         "--include_method",
         action="append",
         default=[
-            "ADNI_FREQ_STACKLOW_OURSHIGH_B035_FULL=outputs/icdm2026/predictions/ADNI_FREQ_STACKLOW_OURSHIGH_B035_FULL",
-            "ADNI_FREQ_FLOWBASE_PMLOW_B035_FULL=outputs/icdm2026/predictions/ADNI_FREQ_FLOWBASE_PMLOW_B035_FULL",
+            "ADNI_PM_STAGE1_LPIPS_GAN_FULL=outputs/icdm2026/predictions/ADNI_PM_STAGE1_LPIPS_GAN_FULL",
+            "ADNI_PM_DIRF_FIDELITY_FLOW_FULL=outputs/icdm2026/predictions/ADNI_PM_DIRF_FIDELITY_FLOW_FULL",
         ],
         help="Extra NAME=DIR downstream method specs, repeatable.",
     )

@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 from tqdm import tqdm
+import pandas as pd
 
 from pmrf_t1fa.models.pmrf_t1fa import center_channel, prepare_stage1_input, reduce_rgb_to_single_channel
 from pmrf_t1fa.train_pmrf_t1fa_stage2 import (
@@ -23,6 +24,7 @@ from pmrf_t1fa.train_pmrf_t1fa_stage2 import (
     predict_stage1_batch,
     roi_consistency_loss,
 )
+from src.eval.disease_sensitive_roi import roi_weight_tensor_from_frame, weighted_grid_roi_l1
 
 
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -66,6 +68,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--final_ssim_weight", type=float, default=0.10)
     parser.add_argument("--wm_l1_weight", type=float, default=1.0)
     parser.add_argument("--roi_weight", type=float, default=0.30)
+    parser.add_argument("--disease_roi_csv", default="", help="CSV of disease-sensitive ROI weights built from train FA features.")
+    parser.add_argument("--disease_roi_weight", type=float, default=0.0)
     parser.add_argument("--residual_magnitude_weight", type=float, default=0.05)
     parser.add_argument("--hf_preserve_weight", type=float, default=2.0)
     parser.add_argument("--background_weight", type=float, default=0.20)
@@ -73,8 +77,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--brain_fa_threshold", type=float, default=0.02)
     parser.add_argument("--wm_quantile", type=float, default=0.65)
     parser.add_argument("--wm_min_threshold", type=float, default=0.20)
-    parser.add_argument("--roi_rows", type=int, default=4)
-    parser.add_argument("--roi_cols", type=int, default=4)
+    parser.add_argument("--roi_rows", type=int, default=2)
+    parser.add_argument("--roi_cols", type=int, default=3)
     parser.add_argument("--roi_min_pixels", type=int, default=16)
     parser.add_argument("--best_min_sharp_retention", type=float, default=0.97)
     parser.add_argument("--best_min_delta_wm_l1", type=float, default=0.0)
@@ -107,6 +111,8 @@ def resume_required_keys() -> tuple[str, ...]:
         "final_ssim_weight",
         "wm_l1_weight",
         "roi_weight",
+        "disease_roi_csv",
+        "disease_roi_weight",
         "residual_magnitude_weight",
         "hf_preserve_weight",
         "background_weight",
@@ -150,6 +156,14 @@ def ensure_dirs(run_name: str) -> tuple[Path, Path, Path]:
     ckpt.mkdir(parents=True, exist_ok=True)
     preview.mkdir(parents=True, exist_ok=True)
     return root, ckpt, preview
+
+
+def load_disease_roi_weights(path: str, roi_rows: int, roi_cols: int, device: torch.device) -> torch.Tensor | None:
+    if not path:
+        return None
+    frame = pd.read_csv(path)
+    weights = roi_weight_tensor_from_frame(frame, roi_rows=roi_rows, roi_cols=roi_cols)
+    return weights.to(device=device, dtype=torch.float32)
 
 
 def frequency_lowpass_mask(
@@ -345,6 +359,8 @@ def build_fidelity_corrector_loss(
     velocity_pred: torch.Tensor | None = None,
     velocity_target: torch.Tensor | None = None,
     velocity_weight: float = 0.0,
+    disease_roi_weight: float = 0.0,
+    disease_roi_weights: torch.Tensor | None = None,
 ) -> Dict[str, torch.Tensor]:
     target_correction = frequency_lowpass(target - coarse, cutoff, transition)
     correction = frequency_lowpass(raw_correction, cutoff, transition)
@@ -355,6 +371,9 @@ def build_fidelity_corrector_loss(
     final_ssim = ssim_loss_fn(refined, target)
     wm_l1 = masked_l1_loss(refined, target, wm_mask)
     roi = roi_consistency_loss(refined, target, wm_mask, roi_rows, roi_cols, roi_min_pixels)
+    disease_roi = refined.new_tensor(0.0)
+    if disease_roi_weight > 0.0 and disease_roi_weights is not None:
+        disease_roi = weighted_grid_roi_l1(refined, target, wm_mask, disease_roi_weights, roi_min_pixels)
     residual_magnitude = correction.abs().mean()
     hf_preserve = F.l1_loss(
         frequency_highpass(refined, cutoff, transition),
@@ -372,6 +391,7 @@ def build_fidelity_corrector_loss(
         + final_ssim_weight * final_ssim
         + wm_l1_weight * wm_l1
         + roi_weight * roi
+        + disease_roi_weight * disease_roi
         + residual_magnitude_weight * residual_magnitude
         + hf_preserve_weight * hf_preserve
         + background_weight * background
@@ -385,6 +405,7 @@ def build_fidelity_corrector_loss(
         "final_ssim": final_ssim,
         "wm_l1": wm_l1,
         "roi": roi,
+        "disease_roi": disease_roi,
         "residual_magnitude": residual_magnitude,
         "hf_preserve": hf_preserve,
         "background": background,
@@ -548,6 +569,7 @@ def main() -> None:
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda" and args.mixed_precision == "fp16")
     ssim_loss_fn = SSIMLoss().to(device)
+    disease_roi_weights = load_disease_roi_weights(args.disease_roi_csv, args.roi_rows, args.roi_cols, device)
     start_epoch = 0
     best_score = float("-inf")
     if args.resume:
@@ -564,7 +586,8 @@ def main() -> None:
         f"Fidelity corrector training on {len(train_dataset)} train / {len(val_dataset)} val slices | "
         f"mode={args.corrector_mode} stage1_channels={stage1_channels} device={device} "
         f"width={args.width} blocks={args.num_blocks} frequency={args.frequency_cutoff}+{args.frequency_transition} "
-        f"eval_steps={args.eval_steps}"
+        f"eval_steps={args.eval_steps} disease_roi_weight={args.disease_roi_weight} "
+        f"disease_roi_csv={args.disease_roi_csv or 'none'}"
     )
     for epoch in range(start_epoch, args.epochs):
         model.train()
@@ -641,6 +664,8 @@ def main() -> None:
                     velocity_pred,
                     velocity_target,
                     args.velocity_weight if args.corrector_mode == "flow" else 0.0,
+                    args.disease_roi_weight,
+                    disease_roi_weights,
                 )
             if scaler.is_enabled():
                 scaler.scale(losses["total"]).backward()

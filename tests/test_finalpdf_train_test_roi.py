@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from scripts.evaluate_finalpdf_train_test_roi import (
     MethodPair,
@@ -6,6 +7,7 @@ from scripts.evaluate_finalpdf_train_test_roi import (
     evaluate_train_test_classifier,
     parse_method_pair,
 )
+from scripts.make_atlas_slice_masks import resize_and_pad_mask
 
 
 def test_parse_method_pair_accepts_train_and_test_dirs():
@@ -86,3 +88,13 @@ def test_fusion_keeps_atlas_roi_label_mean_features():
     assert fused.loc[0, "method"] == "T1_PLUS_FA"
     assert fused.loc[0, "T1__roi_label_1_mean"] == 0.1
     assert fused.loc[0, "FA__roi_label_1_mean"] == 0.2
+
+
+def test_resize_and_pad_mask_preserves_discrete_labels():
+    mask = np.zeros((2, 4), dtype=np.int32)
+    mask[:, 1:3] = 7
+
+    out = resize_and_pad_mask(mask, target_size=8)
+
+    assert out.shape == (8, 8)
+    assert set(np.unique(out).tolist()) == {0, 7}

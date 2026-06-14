@@ -134,15 +134,56 @@ def build_subject_bags(
     return bags
 
 
+def select_shared_disease_roi_columns(
+    features: pd.DataFrame,
+    feature_set: str,
+    tasks: list[str],
+    top_k: int,
+) -> list[str]:
+    columns = _roi_feature_columns(features, feature_set)
+    if top_k <= 0 or top_k >= len(columns):
+        return columns
+
+    score_sum = pd.Series(0.0, index=columns, dtype=np.float64)
+    used_tasks = 0
+    for task in tasks:
+        if task not in TASK_DEFINITIONS:
+            raise ValueError(f"Unknown task {task!r}")
+        definition = TASK_DEFINITIONS[task]
+        subset = features.loc[features["group_name"].isin(definition["include"])].copy()
+        if subset.empty:
+            continue
+        y = subset["group_name"].map(definition["labels"]).astype(int).to_numpy()
+        if len(np.unique(y)) != 2:
+            continue
+        x = subset[columns].fillna(0.0).to_numpy(dtype=np.float32)
+        scores, _ = f_classif(x, y)
+        scores = np.nan_to_num(scores, nan=0.0, posinf=0.0, neginf=0.0)
+        max_score = float(np.max(scores)) if scores.size else 0.0
+        if max_score > 0:
+            scores = scores / max_score
+        score_sum += pd.Series(scores, index=columns)
+        used_tasks += 1
+
+    if used_tasks == 0:
+        return columns[: int(top_k)]
+    selected = score_sum.sort_values(ascending=False).head(int(top_k)).index.tolist()
+    return selected
+
+
 def _select_and_scale(
     train_subset: pd.DataFrame,
     test_subset: pd.DataFrame,
     feature_set: str,
     max_features: int,
+    preset_columns: list[str] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
-    train_columns = _roi_feature_columns(train_subset, feature_set)
-    test_columns = _roi_feature_columns(test_subset, feature_set)
-    columns = [column for column in train_columns if column in set(test_columns)]
+    if preset_columns is None:
+        train_columns = _roi_feature_columns(train_subset, feature_set)
+        test_columns = _roi_feature_columns(test_subset, feature_set)
+        columns = [column for column in train_columns if column in set(test_columns)]
+    else:
+        columns = [column for column in preset_columns if column in train_subset.columns and column in test_subset.columns]
     if not columns:
         raise ValueError("No shared feature columns for MIL/voting")
     x_train = train_subset[columns].fillna(0.0).to_numpy(dtype=np.float32)
@@ -150,7 +191,7 @@ def _select_and_scale(
     x_test = test_subset[columns].fillna(0.0).to_numpy(dtype=np.float32)
 
     selected_columns = columns
-    if max_features > 0 and max_features < len(columns):
+    if preset_columns is None and max_features > 0 and max_features < len(columns):
         selector = SelectKBest(score_func=f_classif, k=int(max_features))
         x_train = selector.fit_transform(x_train, y_train)
         x_test = selector.transform(x_test)
@@ -186,10 +227,11 @@ def evaluate_slice_svm_vote(
     classifier: str,
     feature_set: str,
     max_features: int,
+    preset_columns: list[str] | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame]:
     train_subset = _task_slice_subset(train_features, task)
     test_subset = _task_slice_subset(test_features, task)
-    train_scaled, test_scaled, columns = _select_and_scale(train_subset, test_subset, feature_set, max_features)
+    train_scaled, test_scaled, columns = _select_and_scale(train_subset, test_subset, feature_set, max_features, preset_columns)
     estimator = _build_estimator(classifier, n_features=len(columns), max_features=0)
     x_train = train_scaled[columns].to_numpy(dtype=np.float32)
     y_train = train_scaled["y_label"].to_numpy(dtype=np.int64)
@@ -273,10 +315,11 @@ def evaluate_attention_mil(
     width: int,
     seed: int,
     device: str,
+    preset_columns: list[str] | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame]:
     train_subset = _task_slice_subset(train_features, task)
     test_subset = _task_slice_subset(test_features, task)
-    train_scaled, test_scaled, columns = _select_and_scale(train_subset, test_subset, feature_set, max_features)
+    train_scaled, test_scaled, columns = _select_and_scale(train_subset, test_subset, feature_set, max_features, preset_columns)
     labels = TASK_DEFINITIONS[task]["labels"]
     train_bags = build_subject_bags(train_scaled, columns, labels)
     test_bags = build_subject_bags(test_scaled, columns, labels)
@@ -370,6 +413,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--classifier", choices=["linear_svm", "rbf_svm"], default="rbf_svm")
     parser.add_argument("--feature_set", choices=["roi_mean", "full"], default="roi_mean")
     parser.add_argument("--max_features", type=int, default=24)
+    parser.add_argument("--shared_roi_top_k", type=int, default=0, help="Select one train-only disease-sensitive ROI subset shared by all tasks for each method.")
+    parser.add_argument("--shared_roi_tasks", default="", help="Comma-separated tasks used to choose the shared ROI subset. Defaults to --tasks.")
     parser.add_argument("--mil_epochs", type=int, default=160)
     parser.add_argument("--mil_lr", type=float, default=1e-3)
     parser.add_argument("--mil_weight_decay", type=float, default=1e-4)
@@ -413,6 +458,24 @@ def main() -> None:
 
     tasks = [item.strip() for item in args.tasks.split(",") if item.strip()]
     protocols = [item.strip() for item in args.protocols.split(",") if item.strip()]
+    shared_roi_tasks = [item.strip() for item in (args.shared_roi_tasks or args.tasks).split(",") if item.strip()]
+    shared_columns_by_method: dict[str, list[str] | None] = {}
+    if args.shared_roi_top_k > 0:
+        selected_rows: list[dict[str, Any]] = []
+        for method, table in sorted(train_tables.items()):
+            selected = select_shared_disease_roi_columns(
+                table,
+                feature_set=args.feature_set,
+                tasks=shared_roi_tasks,
+                top_k=args.shared_roi_top_k,
+            )
+            shared_columns_by_method[method] = selected
+            for rank, column in enumerate(selected, start=1):
+                selected_rows.append({"method": method, "rank": rank, "feature": column})
+        pd.DataFrame(selected_rows).to_csv(output_root / "shared_disease_roi_columns.csv", index=False, encoding="utf-8")
+    else:
+        shared_columns_by_method = {method: None for method in train_tables}
+
     summaries: list[dict[str, Any]] = []
     predictions: list[pd.DataFrame] = []
     for method in sorted(train_tables):
@@ -426,7 +489,9 @@ def main() -> None:
                     classifier=args.classifier,
                     feature_set=args.feature_set,
                     max_features=args.max_features,
+                    preset_columns=shared_columns_by_method.get(method),
                 )
+                summary["shared_roi_top_k"] = int(args.shared_roi_top_k)
                 summaries.append(summary)
                 predictions.append(pred)
             if "attention_mil" in protocols:
@@ -443,7 +508,9 @@ def main() -> None:
                     width=args.mil_width,
                     seed=args.seed,
                     device=args.device,
+                    preset_columns=shared_columns_by_method.get(method),
                 )
+                summary["shared_roi_top_k"] = int(args.shared_roi_top_k)
                 summaries.append(summary)
                 predictions.append(pred)
 

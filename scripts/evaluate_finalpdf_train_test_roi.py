@@ -185,6 +185,58 @@ def extract_subject_features_with_atlas(
     return pd.DataFrame(rows).sort_values("subject_id").reset_index(drop=True)
 
 
+def extract_slice_features_with_atlas(
+    image_dir: str | Path,
+    atlas_dir: str | Path,
+    method: str,
+    subject_index: pd.DataFrame,
+    split: str,
+    min_pixels: int = 8,
+) -> pd.DataFrame:
+    image_dir = Path(image_dir)
+    atlas_dir = Path(atlas_dir)
+    split_subjects = subject_index.loc[subject_index["split"].eq(split)].copy()
+    metadata = {
+        normalize_subject_id(row["subject_id"]): row
+        for row in split_subjects.to_dict(orient="records")
+    }
+
+    rows: list[dict[str, Any]] = []
+    for image_path in sorted(image_dir.glob("*.png")):
+        subject_id, slice_idx = parse_subject_and_slice(image_path.name)
+        if subject_id not in metadata:
+            continue
+        image = _read_grayscale(image_path)
+        mask = _read_label_mask(_atlas_path_for_image(atlas_dir, image_path))
+        if mask.shape != image.shape:
+            mask = cv2.resize(mask.astype(np.float32), image.shape[::-1], interpolation=cv2.INTER_NEAREST).astype(np.int32)
+
+        meta = metadata[subject_id]
+        row: dict[str, Any] = {
+            "method": method,
+            "sample_id": f"{subject_id}_z{slice_idx:03d}",
+            "subject_id": subject_id,
+            "slice_idx": int(slice_idx),
+            "group_id": int(meta["group_id"]),
+            "group_name": str(meta["group_name"]),
+            "split": str(meta["split"]),
+        }
+        for optional in ["gender", "age", "edu", "MMSE"]:
+            if optional in meta:
+                row[optional] = meta[optional]
+        for label in sorted(int(item) for item in np.unique(mask) if int(item) > 0):
+            label_mask = mask == label
+            if int(label_mask.sum()) < min_pixels:
+                continue
+            values = image[label_mask]
+            row[f"roi_label_{label}_mean"] = float(np.mean(values))
+            row[f"roi_label_{label}_std"] = float(np.std(values))
+        rows.append(row)
+    if not rows:
+        raise ValueError(f"No slice atlas ROI features extracted from {image_dir} for split {split!r}")
+    return pd.DataFrame(rows).sort_values(["subject_id", "slice_idx"]).reset_index(drop=True)
+
+
 def _prepare_task(features: pd.DataFrame, task: str) -> tuple[pd.DataFrame, np.ndarray, list[int]]:
     if task not in TASK_DEFINITIONS:
         raise ValueError(f"Unknown task {task!r}; available tasks: {sorted(TASK_DEFINITIONS)}")
@@ -288,8 +340,10 @@ def evaluate_train_test_classifier(
         "task": task,
         "classifier": classifier,
         "feature_set": feature_set,
-        "n_train_subjects": int(len(y_train)),
-        "n_test_subjects": int(len(y_test)),
+        "n_train_subjects": int(train_subset["subject_id"].nunique()) if "subject_id" in train_subset else int(len(y_train)),
+        "n_test_subjects": int(test_subset["subject_id"].nunique()) if "subject_id" in test_subset else int(len(y_test)),
+        "n_train_samples": int(len(y_train)),
+        "n_test_samples": int(len(y_test)),
         "n_features": int(len(columns)),
         "n_selected_features": int(selected),
         "accuracy": float(accuracy_score(y_test, y_pred)),
@@ -297,7 +351,7 @@ def evaluate_train_test_classifier(
         "macro_f1": float(f1_score(y_test, y_pred, average="macro", zero_division=0)),
         "macro_auc_ovr": auc,
     }
-    prediction_columns = ["method", "subject_id", "group_id", "group_name", "split"]
+    prediction_columns = ["method", "sample_id", "subject_id", "slice_idx", "group_id", "group_name", "split"]
     predictions = pd.DataFrame(index=test_subset.index)
     for column in prediction_columns:
         if column in test_subset.columns:
@@ -359,6 +413,44 @@ def build_fused_feature_table_local(
     return fused.sort_values("subject_id").reset_index(drop=True)
 
 
+def build_fused_slice_feature_table_local(
+    features: pd.DataFrame,
+    fused_name: str,
+    left_method: str,
+    right_method: str,
+    feature_set: str = "full",
+) -> pd.DataFrame:
+    left = features.loc[features["method"] == left_method].copy()
+    right = features.loc[features["method"] == right_method].copy()
+    if left.empty:
+        raise ValueError(f"Missing left method for fusion: {left_method}")
+    if right.empty:
+        raise ValueError(f"Missing right method for fusion: {right_method}")
+    for column in ["sample_id", "subject_id", "slice_idx"]:
+        if column not in left.columns or column not in right.columns:
+            raise ValueError(f"Slice-level fusion requires {column!r} in both feature tables")
+
+    join_columns = [
+        column
+        for column in ["sample_id", "subject_id", "slice_idx", "group_id", "group_name", "split", "gender", "age", "edu", "MMSE"]
+        if column in left.columns and column in right.columns
+    ]
+    left_features = _roi_feature_columns(left, feature_set=feature_set)
+    right_features = _roi_feature_columns(right, feature_set=feature_set)
+
+    left_prefixed = left[join_columns + left_features].rename(
+        columns={column: f"{left_method}__{column}" for column in left_features}
+    )
+    right_prefixed = right[["sample_id"] + right_features].rename(
+        columns={column: f"{right_method}__{column}" for column in right_features}
+    )
+    fused = left_prefixed.merge(right_prefixed, on="sample_id", how="inner", validate="one_to_one")
+    if fused.empty:
+        raise ValueError(f"No overlapping slices for fusion {left_method}+{right_method}")
+    fused.insert(0, "method", fused_name)
+    return fused.sort_values(["subject_id", "slice_idx"]).reset_index(drop=True)
+
+
 def _extract_features(
     image_dir: str,
     atlas_dir: str,
@@ -368,8 +460,17 @@ def _extract_features(
     split: str,
     brain_threshold: float,
     wm_quantile: float,
+    sample_level: str = "subject",
 ) -> pd.DataFrame:
     if roi_mode == "atlas":
+        if sample_level == "slice":
+            return extract_slice_features_with_atlas(
+                image_dir=image_dir,
+                atlas_dir=atlas_dir,
+                method=method,
+                subject_index=subject_index,
+                split=split,
+            )
         return extract_subject_features_with_atlas(
             image_dir=image_dir,
             atlas_dir=atlas_dir,
@@ -378,6 +479,8 @@ def _extract_features(
             split=split,
         )
     if roi_mode == "grid":
+        if sample_level == "slice":
+            raise ValueError("--sample_level slice currently requires --roi_mode atlas")
         return extract_subject_features_from_folder(
             image_dir=image_dir,
             method=method,
@@ -406,6 +509,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--feature_set", choices=["roi_mean", "full"], default="roi_mean")
     parser.add_argument("--max_features", type=int, default=0)
     parser.add_argument("--roi_mode", choices=["grid", "atlas"], default="grid")
+    parser.add_argument("--sample_level", choices=["subject", "slice"], default="subject")
     parser.add_argument("--atlas_dir", default="", help="Directory of atlas label PNG masks. Required for --roi_mode atlas.")
     parser.add_argument("--brain_threshold", type=float, default=0.02)
     parser.add_argument("--wm_quantile", type=float, default=0.65)
@@ -455,6 +559,7 @@ def main() -> None:
             args.train_split,
             args.brain_threshold,
             args.wm_quantile,
+            args.sample_level,
         )
         test_tables[pair.name] = _extract_features(
             pair.test_dir,
@@ -465,6 +570,7 @@ def main() -> None:
             args.test_split,
             args.brain_threshold,
             args.wm_quantile,
+            args.sample_level,
         )
 
     if args.fusion:
@@ -472,8 +578,12 @@ def main() -> None:
         test_base = pd.concat(test_tables.values(), ignore_index=True)
         for spec in args.fusion:
             name, left, right = _parse_fusion(spec)
-            train_tables[name] = build_fused_feature_table_local(train_base, name, left, right, args.feature_set)
-            test_tables[name] = build_fused_feature_table_local(test_base, name, left, right, args.feature_set)
+            if args.sample_level == "slice":
+                train_tables[name] = build_fused_slice_feature_table_local(train_base, name, left, right, args.feature_set)
+                test_tables[name] = build_fused_slice_feature_table_local(test_base, name, left, right, args.feature_set)
+            else:
+                train_tables[name] = build_fused_feature_table_local(train_base, name, left, right, args.feature_set)
+                test_tables[name] = build_fused_feature_table_local(test_base, name, left, right, args.feature_set)
 
     tasks = [item.strip() for item in args.tasks.split(",") if item.strip()]
     summaries: list[dict[str, Any]] = []
@@ -490,6 +600,7 @@ def main() -> None:
                 max_features=args.max_features,
             )
             summary["roi_mode"] = args.roi_mode
+            summary["sample_level"] = args.sample_level
             summaries.append(summary)
             predictions.append(pred)
 
@@ -505,7 +616,7 @@ def main() -> None:
         json.dump(_json_ready(summaries), handle, indent=2, ensure_ascii=False)
 
     print(f"Saved final.pdf-style train/test ROI summary to: {output_root / 'classification_train_test_summary.csv'}")
-    print(summary_df[["method", "task", "n_train_subjects", "n_test_subjects", "accuracy", "macro_auc_ovr", "macro_f1"]].to_string(index=False))
+    print(summary_df[["method", "task", "n_train_samples", "n_test_samples", "n_train_subjects", "n_test_subjects", "accuracy", "macro_auc_ovr", "macro_f1"]].to_string(index=False))
 
 
 if __name__ == "__main__":

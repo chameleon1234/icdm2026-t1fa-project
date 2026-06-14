@@ -4,7 +4,9 @@ import numpy as np
 from scripts.evaluate_finalpdf_train_test_roi import (
     MethodPair,
     build_fused_feature_table_local,
+    build_fused_slice_feature_table_local,
     evaluate_train_test_classifier,
+    extract_slice_features_with_atlas,
     parse_method_pair,
 )
 from scripts.make_atlas_slice_masks import resize_and_pad_mask
@@ -88,6 +90,53 @@ def test_fusion_keeps_atlas_roi_label_mean_features():
     assert fused.loc[0, "method"] == "T1_PLUS_FA"
     assert fused.loc[0, "T1__roi_label_1_mean"] == 0.1
     assert fused.loc[0, "FA__roi_label_1_mean"] == 0.2
+
+
+def test_slice_atlas_features_keep_each_slice_as_one_sample(tmp_path):
+    import cv2
+
+    image_dir = tmp_path / "images"
+    atlas_dir = tmp_path / "atlas"
+    image_dir.mkdir()
+    atlas_dir.mkdir()
+    for z, value in [(20, 51), (21, 153)]:
+        image = np.full((4, 4), value, dtype=np.uint8)
+        mask = np.ones((4, 4), dtype=np.uint8)
+        cv2.imwrite(str(image_dir / f"sub-001_z{z:03d}.png"), image)
+        cv2.imwrite(str(atlas_dir / f"atlas_z{z:03d}.png"), mask)
+
+    subject_index = pd.DataFrame(
+        [{"subject_id": "sub-001", "group_id": 1, "group_name": "CN", "split": "train"}]
+    )
+
+    features = extract_slice_features_with_atlas(
+        image_dir=image_dir,
+        atlas_dir=atlas_dir,
+        method="FA",
+        subject_index=subject_index,
+        split="train",
+        min_pixels=1,
+    )
+
+    assert features["sample_id"].tolist() == ["sub-001_z020", "sub-001_z021"]
+    assert features["slice_idx"].tolist() == [20, 21]
+    assert features["roi_label_1_mean"].round(3).tolist() == [0.2, 0.6]
+
+
+def test_slice_fusion_aligns_on_subject_and_slice():
+    features = pd.DataFrame(
+        [
+            {"method": "T1", "sample_id": "sub-001_z020", "subject_id": "sub-001", "slice_idx": 20, "group_name": "CN", "split": "train", "roi_label_1_mean": 0.1},
+            {"method": "T1", "sample_id": "sub-001_z021", "subject_id": "sub-001", "slice_idx": 21, "group_name": "CN", "split": "train", "roi_label_1_mean": 0.2},
+            {"method": "FA", "sample_id": "sub-001_z020", "subject_id": "sub-001", "slice_idx": 20, "group_name": "CN", "split": "train", "roi_label_1_mean": 0.3},
+        ]
+    )
+
+    fused = build_fused_slice_feature_table_local(features, "T1_PLUS_FA", "T1", "FA", feature_set="roi_mean")
+
+    assert fused["sample_id"].tolist() == ["sub-001_z020"]
+    assert fused.loc[0, "T1__roi_label_1_mean"] == 0.1
+    assert fused.loc[0, "FA__roi_label_1_mean"] == 0.3
 
 
 def test_resize_and_pad_mask_preserves_discrete_labels():

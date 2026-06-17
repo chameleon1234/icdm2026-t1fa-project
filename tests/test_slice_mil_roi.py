@@ -5,6 +5,7 @@ from scripts.evaluate_slice_mil_roi import (
     _select_and_scale,
     aggregate_slice_scores_by_subject,
     build_subject_bags,
+    build_multitask_subject_bags,
     select_shared_disease_roi_columns,
     split_late_fusion_columns,
 )
@@ -103,3 +104,22 @@ def test_select_and_scale_can_preserve_late_fusion_prefixes():
     _, _, columns = _select_and_scale(train, test, "roi_mean", 0, preserve_column_names=True)
 
     assert columns == ["T1__roi_label_1_mean", "FA__roi_label_1_mean"]
+
+
+def test_build_multitask_subject_bags_uses_task_specific_labels():
+    features = pd.DataFrame(
+        [
+            {"subject_id": "sub-cn", "slice_idx": 20, "group_name": "CN", "feature_000": 0.1},
+            {"subject_id": "sub-mci", "slice_idx": 20, "group_name": "MCI", "feature_000": 0.5},
+            {"subject_id": "sub-ad", "slice_idx": 20, "group_name": "AD", "feature_000": 0.9},
+        ]
+    )
+
+    task_bags = build_multitask_subject_bags(features, ["feature_000"], ["cn_vs_mci", "mci_vs_ad"])
+
+    labels = {(task, bag.subject_id): bag.y for task, bag in task_bags}
+    assert labels[("cn_vs_mci", "sub-cn")] == 0
+    assert labels[("cn_vs_mci", "sub-mci")] == 1
+    assert ("cn_vs_mci", "sub-ad") not in labels
+    assert labels[("mci_vs_ad", "sub-mci")] == 0
+    assert labels[("mci_vs_ad", "sub-ad")] == 1

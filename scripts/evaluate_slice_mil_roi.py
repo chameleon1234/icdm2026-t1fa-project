@@ -86,6 +86,17 @@ class LateFusionAttentionMIL(torch.nn.Module):
         return self.classifier(torch.cat([left_pooled, right_pooled], dim=0)).squeeze(0)
 
 
+class MultiTaskAttentionMIL(torch.nn.Module):
+    def __init__(self, input_dim: int, tasks: list[str], width: int = 64, dropout: float = 0.1):
+        super().__init__()
+        self.branch = AttentionBranch(input_dim, width, dropout)
+        self.heads = torch.nn.ModuleDict({task: torch.nn.Linear(width, 1) for task in tasks})
+
+    def forward(self, x: torch.Tensor, task: str) -> torch.Tensor:
+        pooled = self.branch(x)
+        return self.heads[task](pooled).squeeze(0)
+
+
 class AttentionBranch(torch.nn.Module):
     def __init__(self, input_dim: int, width: int = 64, dropout: float = 0.1):
         super().__init__()
@@ -174,6 +185,25 @@ def build_subject_bags(
     return bags
 
 
+def build_multitask_subject_bags(
+    features: pd.DataFrame,
+    columns: list[str],
+    tasks: list[str],
+) -> list[tuple[str, SubjectBag]]:
+    task_bags: list[tuple[str, SubjectBag]] = []
+    for task in tasks:
+        if task not in TASK_DEFINITIONS:
+            raise ValueError(f"Unknown task {task!r}")
+        labels = TASK_DEFINITIONS[task]["labels"]
+        included = TASK_DEFINITIONS[task]["include"]
+        subset = features.loc[features["group_name"].isin(included)].copy()
+        for bag in build_subject_bags(subset, columns, labels):
+            task_bags.append((task, bag))
+    if not task_bags:
+        raise ValueError("No multi-task subject bags were built")
+    return task_bags
+
+
 def split_late_fusion_columns(columns: list[str]) -> tuple[list[str], list[str]]:
     prefixed = [column for column in columns if "__" in column]
     prefixes = []
@@ -258,10 +288,10 @@ def _select_and_scale(
     x_test = scaler.transform(x_test).astype(np.float32)
 
     out_columns = selected_columns if preserve_column_names else [f"feature_{idx:03d}" for idx in range(x_train.shape[1])]
-    train_out = train_subset[["method", "sample_id", "subject_id", "slice_idx", "group_name", "y_label"]].copy()
-    test_out = test_subset[["method", "sample_id", "subject_id", "slice_idx", "group_name", "y_label"]].copy()
-    train_out[out_columns] = x_train
-    test_out[out_columns] = x_test
+    train_meta = train_subset[["method", "sample_id", "subject_id", "slice_idx", "group_name", "y_label"]].reset_index(drop=True)
+    test_meta = test_subset[["method", "sample_id", "subject_id", "slice_idx", "group_name", "y_label"]].reset_index(drop=True)
+    train_out = pd.concat([train_meta, pd.DataFrame(x_train, columns=out_columns)], axis=1)
+    test_out = pd.concat([test_meta, pd.DataFrame(x_test, columns=out_columns)], axis=1)
     return train_out, test_out, out_columns
 
 
@@ -407,6 +437,101 @@ def _train_late_fusion_mil(
     return np.asarray(labels, dtype=np.int64), np.asarray(scores, dtype=np.float32)
 
 
+def _train_multitask_mil(
+    train_task_bags: list[tuple[str, SubjectBag]],
+    test_task_bags: list[tuple[str, SubjectBag]],
+    tasks: list[str],
+    input_dim: int,
+    epochs: int,
+    lr: float,
+    weight_decay: float,
+    width: int,
+    seed: int,
+    device: str,
+) -> dict[str, tuple[np.ndarray, np.ndarray, list[SubjectBag]]]:
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    resolved_device = torch.device(device if device == "cuda" and torch.cuda.is_available() else "cpu")
+    model = MultiTaskAttentionMIL(input_dim=input_dim, tasks=tasks, width=width).to(resolved_device)
+    pos_weights: dict[str, torch.Tensor] = {}
+    for task in tasks:
+        task_train = [bag for item_task, bag in train_task_bags if item_task == task]
+        positives = sum(bag.y for bag in task_train)
+        negatives = len(task_train) - positives
+        pos_weights[task] = torch.tensor([max(1.0, negatives / max(1, positives))], device=resolved_device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+    for _ in range(int(epochs)):
+        model.train()
+        order = np.random.permutation(len(train_task_bags))
+        for idx in order:
+            task, bag = train_task_bags[int(idx)]
+            x = torch.from_numpy(bag.x).to(resolved_device)
+            y = torch.tensor(float(bag.y), device=resolved_device)
+            criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weights[task])
+            optimizer.zero_grad(set_to_none=True)
+            logit = model(x, task)
+            loss = criterion(logit.view(1), y.view(1))
+            loss.backward()
+            optimizer.step()
+
+    outputs: dict[str, tuple[np.ndarray, np.ndarray, list[SubjectBag]]] = {}
+    model.eval()
+    with torch.no_grad():
+        for task in tasks:
+            labels: list[int] = []
+            scores: list[float] = []
+            bags: list[SubjectBag] = []
+            for item_task, bag in test_task_bags:
+                if item_task != task:
+                    continue
+                x = torch.from_numpy(bag.x).to(resolved_device)
+                scores.append(float(model(x, task).detach().cpu()))
+                labels.append(int(bag.y))
+                bags.append(bag)
+            outputs[task] = (np.asarray(labels, dtype=np.int64), np.asarray(scores, dtype=np.float32), bags)
+    return outputs
+
+
+def _prepare_multitask_scaled(
+    train_features: pd.DataFrame,
+    test_features: pd.DataFrame,
+    feature_set: str,
+    max_features: int,
+    tasks: list[str],
+    preset_columns: list[str] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
+    if preset_columns is not None:
+        base_columns = [column for column in preset_columns if column in train_features.columns and column in test_features.columns]
+    else:
+        train_columns = _roi_feature_columns(train_features, feature_set)
+        test_columns = _roi_feature_columns(test_features, feature_set)
+        common = [column for column in train_columns if column in set(test_columns)]
+        if max_features > 0 and max_features < len(common):
+            selected = select_shared_disease_roi_columns(train_features, feature_set, tasks, max_features)
+            base_columns = [column for column in selected if column in common]
+        else:
+            base_columns = common
+    if not base_columns:
+        raise ValueError("No shared multi-task feature columns")
+
+    included_groups = set()
+    for task in tasks:
+        included_groups.update(TASK_DEFINITIONS[task]["include"])
+    train_subset = train_features.loc[train_features["group_name"].isin(included_groups)].copy()
+    test_subset = test_features.loc[test_features["group_name"].isin(included_groups)].copy()
+    scaler = StandardScaler()
+    x_train = scaler.fit_transform(train_subset[base_columns].fillna(0.0).to_numpy(dtype=np.float32)).astype(np.float32)
+    x_test = scaler.transform(test_subset[base_columns].fillna(0.0).to_numpy(dtype=np.float32)).astype(np.float32)
+    columns = [f"feature_{idx:03d}" for idx in range(x_train.shape[1])]
+    keep = ["method", "sample_id", "subject_id", "slice_idx", "group_name"]
+    train_meta = train_subset[keep].reset_index(drop=True)
+    test_meta = test_subset[keep].reset_index(drop=True)
+    train_out = pd.concat([train_meta, pd.DataFrame(x_train, columns=columns)], axis=1)
+    test_out = pd.concat([test_meta, pd.DataFrame(x_test, columns=columns)], axis=1)
+    return train_out, test_out, columns
+
+
 def evaluate_attention_mil(
     train_features: pd.DataFrame,
     test_features: pd.DataFrame,
@@ -476,6 +601,89 @@ def evaluate_attention_mil(
         "seed": int(seed),
     }
     return summary, predictions
+
+
+def evaluate_multi_task_mil(
+    train_features: pd.DataFrame,
+    test_features: pd.DataFrame,
+    method: str,
+    tasks: list[str],
+    feature_set: str,
+    max_features: int,
+    epochs: int,
+    lr: float,
+    weight_decay: float,
+    width: int,
+    seed: int,
+    device: str,
+    preset_columns: list[str] | None = None,
+) -> tuple[list[dict[str, Any]], pd.DataFrame]:
+    train_scaled, test_scaled, columns = _prepare_multitask_scaled(
+        train_features,
+        test_features,
+        feature_set,
+        max_features,
+        tasks,
+        preset_columns,
+    )
+    train_task_bags = build_multitask_subject_bags(train_scaled, columns, tasks)
+    test_task_bags = build_multitask_subject_bags(test_scaled, columns, tasks)
+    outputs = _train_multitask_mil(
+        train_task_bags,
+        test_task_bags,
+        tasks=tasks,
+        input_dim=len(columns),
+        epochs=epochs,
+        lr=lr,
+        weight_decay=weight_decay,
+        width=width,
+        seed=seed,
+        device=device,
+    )
+    summaries: list[dict[str, Any]] = []
+    prediction_tables: list[pd.DataFrame] = []
+    for task in tasks:
+        y_true, scores, bags = outputs[task]
+        y_pred = (scores >= 0.0).astype(np.int64)
+        try:
+            auc = float(roc_auc_score(y_true, scores))
+        except ValueError:
+            auc = float("nan")
+        predictions = pd.DataFrame(
+            {
+                "method": method,
+                "task": task,
+                "subject_id": [bag.subject_id for bag in bags],
+                "group_name": [bag.group_name for bag in bags],
+                "y_true": y_true,
+                "y_pred": y_pred,
+                "subject_score": scores,
+                "n_slices": [int(bag.x.shape[0]) for bag in bags],
+            }
+        )
+        summaries.append(
+            {
+                "method": method,
+                "task": task,
+                "protocol": "multi_task_mil",
+                "classifier": "multi_task_mil",
+                "feature_set": feature_set,
+                "n_train_subjects": int(len({bag.subject_id for _, bag in train_task_bags})),
+                "n_test_subjects": int(len(bags)),
+                "n_train_slices": int(train_scaled.shape[0]),
+                "n_test_slices": int(test_scaled.shape[0]),
+                "n_features": int(len(columns)),
+                "n_selected_features": int(len(columns)),
+                "accuracy": float(accuracy_score(y_true, y_pred)),
+                "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
+                "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
+                "macro_auc_ovr": auc,
+                "epochs": int(epochs),
+                "seed": int(seed),
+            }
+        )
+        prediction_tables.append(predictions)
+    return summaries, pd.concat(prediction_tables, ignore_index=True)
 
 
 def evaluate_late_fusion_mil(
@@ -683,6 +891,26 @@ def main() -> None:
     summaries: list[dict[str, Any]] = []
     predictions: list[pd.DataFrame] = []
     for method in sorted(train_tables):
+        if "multi_task_mil" in protocols:
+            multi_summaries, multi_pred = evaluate_multi_task_mil(
+                train_tables[method],
+                test_tables[method],
+                method,
+                tasks=tasks,
+                feature_set=args.feature_set,
+                max_features=args.max_features,
+                epochs=args.mil_epochs,
+                lr=args.mil_lr,
+                weight_decay=args.mil_weight_decay,
+                width=args.mil_width,
+                seed=args.seed,
+                device=args.device,
+                preset_columns=shared_columns_by_method.get(method),
+            )
+            for summary in multi_summaries:
+                summary["shared_roi_top_k"] = int(args.shared_roi_top_k)
+            summaries.extend(multi_summaries)
+            predictions.append(multi_pred)
         for task in tasks:
             if "slice_svm_vote" in protocols:
                 summary, pred = evaluate_slice_svm_vote(

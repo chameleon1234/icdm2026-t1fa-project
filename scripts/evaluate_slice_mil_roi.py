@@ -68,6 +68,46 @@ class AttentionMIL(torch.nn.Module):
         return self.classifier(pooled).squeeze(0)
 
 
+class LateFusionAttentionMIL(torch.nn.Module):
+    def __init__(self, left_dim: int, right_dim: int, width: int = 64, dropout: float = 0.1):
+        super().__init__()
+        self.left = AttentionBranch(left_dim, width, dropout)
+        self.right = AttentionBranch(right_dim, width, dropout)
+        self.classifier = torch.nn.Sequential(
+            torch.nn.Linear(width * 2, width),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.Dropout(dropout),
+            torch.nn.Linear(width, 1),
+        )
+
+    def forward(self, left_x: torch.Tensor, right_x: torch.Tensor) -> torch.Tensor:
+        left_pooled = self.left(left_x)
+        right_pooled = self.right(right_x)
+        return self.classifier(torch.cat([left_pooled, right_pooled], dim=0)).squeeze(0)
+
+
+class AttentionBranch(torch.nn.Module):
+    def __init__(self, input_dim: int, width: int = 64, dropout: float = 0.1):
+        super().__init__()
+        self.encoder = torch.nn.Sequential(
+            torch.nn.Linear(input_dim, width),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.Dropout(dropout),
+            torch.nn.Linear(width, width),
+            torch.nn.ReLU(inplace=True),
+        )
+        self.attention = torch.nn.Sequential(
+            torch.nn.Linear(width, width // 2),
+            torch.nn.Tanh(),
+            torch.nn.Linear(width // 2, 1),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h = self.encoder(x)
+        weights = torch.softmax(self.attention(h).squeeze(-1), dim=0)
+        return torch.sum(h * weights.unsqueeze(-1), dim=0)
+
+
 def aggregate_slice_scores_by_subject(
     slice_predictions: pd.DataFrame,
     method: str,
@@ -134,6 +174,22 @@ def build_subject_bags(
     return bags
 
 
+def split_late_fusion_columns(columns: list[str]) -> tuple[list[str], list[str]]:
+    prefixed = [column for column in columns if "__" in column]
+    prefixes = []
+    for column in prefixed:
+        prefix = column.split("__", 1)[0]
+        if prefix not in prefixes:
+            prefixes.append(prefix)
+    if len(prefixes) != 2:
+        raise ValueError(f"Late fusion requires exactly two feature prefixes, got {prefixes}")
+    left = [column for column in columns if column.startswith(prefixes[0] + "__")]
+    right = [column for column in columns if column.startswith(prefixes[1] + "__")]
+    if not left or not right:
+        raise ValueError("Late fusion branch columns cannot be empty")
+    return left, right
+
+
 def select_shared_disease_roi_columns(
     features: pd.DataFrame,
     feature_set: str,
@@ -177,6 +233,7 @@ def _select_and_scale(
     feature_set: str,
     max_features: int,
     preset_columns: list[str] | None = None,
+    preserve_column_names: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
     if preset_columns is None:
         train_columns = _roi_feature_columns(train_subset, feature_set)
@@ -200,7 +257,7 @@ def _select_and_scale(
     x_train = scaler.fit_transform(x_train).astype(np.float32)
     x_test = scaler.transform(x_test).astype(np.float32)
 
-    out_columns = [f"feature_{idx:03d}" for idx in range(x_train.shape[1])]
+    out_columns = selected_columns if preserve_column_names else [f"feature_{idx:03d}" for idx in range(x_train.shape[1])]
     train_out = train_subset[["method", "sample_id", "subject_id", "slice_idx", "group_name", "y_label"]].copy()
     test_out = test_subset[["method", "sample_id", "subject_id", "slice_idx", "group_name", "y_label"]].copy()
     train_out[out_columns] = x_train
@@ -302,6 +359,54 @@ def _train_attention_mil(
     return np.asarray(labels, dtype=np.int64), np.asarray(scores, dtype=np.float32)
 
 
+def _train_late_fusion_mil(
+    train_bags: list[tuple[SubjectBag, SubjectBag]],
+    test_bags: list[tuple[SubjectBag, SubjectBag]],
+    left_dim: int,
+    right_dim: int,
+    epochs: int,
+    lr: float,
+    weight_decay: float,
+    width: int,
+    seed: int,
+    device: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    resolved_device = torch.device(device if device == "cuda" and torch.cuda.is_available() else "cpu")
+    model = LateFusionAttentionMIL(left_dim=left_dim, right_dim=right_dim, width=width).to(resolved_device)
+    positives = sum(left_bag.y for left_bag, _ in train_bags)
+    negatives = len(train_bags) - positives
+    pos_weight = torch.tensor([max(1.0, negatives / max(1, positives))], device=resolved_device)
+    criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+    for _ in range(int(epochs)):
+        model.train()
+        order = np.random.permutation(len(train_bags))
+        for idx in order:
+            left_bag, right_bag = train_bags[int(idx)]
+            left_x = torch.from_numpy(left_bag.x).to(resolved_device)
+            right_x = torch.from_numpy(right_bag.x).to(resolved_device)
+            y = torch.tensor(float(left_bag.y), device=resolved_device)
+            optimizer.zero_grad(set_to_none=True)
+            logit = model(left_x, right_x)
+            loss = criterion(logit.view(1), y.view(1))
+            loss.backward()
+            optimizer.step()
+
+    model.eval()
+    scores: list[float] = []
+    labels: list[int] = []
+    with torch.no_grad():
+        for left_bag, right_bag in test_bags:
+            left_x = torch.from_numpy(left_bag.x).to(resolved_device)
+            right_x = torch.from_numpy(right_bag.x).to(resolved_device)
+            scores.append(float(model(left_x, right_x).detach().cpu()))
+            labels.append(int(left_bag.y))
+    return np.asarray(labels, dtype=np.int64), np.asarray(scores, dtype=np.float32)
+
+
 def evaluate_attention_mil(
     train_features: pd.DataFrame,
     test_features: pd.DataFrame,
@@ -371,6 +476,105 @@ def evaluate_attention_mil(
         "seed": int(seed),
     }
     return summary, predictions
+
+
+def evaluate_late_fusion_mil(
+    train_features: pd.DataFrame,
+    test_features: pd.DataFrame,
+    method: str,
+    task: str,
+    feature_set: str,
+    max_features: int,
+    epochs: int,
+    lr: float,
+    weight_decay: float,
+    width: int,
+    seed: int,
+    device: str,
+    preset_columns: list[str] | None = None,
+) -> tuple[dict[str, Any], pd.DataFrame]:
+    train_subset = _task_slice_subset(train_features, task)
+    test_subset = _task_slice_subset(test_features, task)
+    train_scaled, test_scaled, columns = _select_and_scale(
+        train_subset,
+        test_subset,
+        feature_set,
+        max_features,
+        preset_columns,
+        preserve_column_names=True,
+    )
+    left_columns, right_columns = split_late_fusion_columns(columns)
+    labels = TASK_DEFINITIONS[task]["labels"]
+    train_left = build_subject_bags(train_scaled, left_columns, labels)
+    train_right = build_subject_bags(train_scaled, right_columns, labels)
+    test_left = build_subject_bags(test_scaled, left_columns, labels)
+    test_right = build_subject_bags(test_scaled, right_columns, labels)
+    train_bags = _pair_bags(train_left, train_right)
+    test_bags = _pair_bags(test_left, test_right)
+    y_true, scores = _train_late_fusion_mil(
+        train_bags,
+        test_bags,
+        left_dim=len(left_columns),
+        right_dim=len(right_columns),
+        epochs=epochs,
+        lr=lr,
+        weight_decay=weight_decay,
+        width=width,
+        seed=seed,
+        device=device,
+    )
+    y_pred = (scores >= 0.0).astype(np.int64)
+    try:
+        auc = float(roc_auc_score(y_true, scores))
+    except ValueError:
+        auc = float("nan")
+    predictions = pd.DataFrame(
+        {
+            "method": method,
+            "task": task,
+            "subject_id": [left_bag.subject_id for left_bag, _ in test_bags],
+            "group_name": [left_bag.group_name for left_bag, _ in test_bags],
+            "y_true": y_true,
+            "y_pred": y_pred,
+            "subject_score": scores,
+            "n_slices": [int(left_bag.x.shape[0]) for left_bag, _ in test_bags],
+        }
+    )
+    summary = {
+        "method": method,
+        "task": task,
+        "protocol": "late_fusion_mil",
+        "classifier": "late_fusion_mil",
+        "feature_set": feature_set,
+        "n_train_subjects": int(len(train_bags)),
+        "n_test_subjects": int(len(test_bags)),
+        "n_train_slices": int(train_scaled.shape[0]),
+        "n_test_slices": int(test_scaled.shape[0]),
+        "n_features": int(len(columns)),
+        "n_selected_features": int(len(columns)),
+        "accuracy": float(accuracy_score(y_true, y_pred)),
+        "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
+        "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
+        "macro_auc_ovr": auc,
+        "epochs": int(epochs),
+        "seed": int(seed),
+    }
+    return summary, predictions
+
+
+def _pair_bags(left: list[SubjectBag], right: list[SubjectBag]) -> list[tuple[SubjectBag, SubjectBag]]:
+    right_by_subject = {bag.subject_id: bag for bag in right}
+    paired: list[tuple[SubjectBag, SubjectBag]] = []
+    for left_bag in left:
+        right_bag = right_by_subject.get(left_bag.subject_id)
+        if right_bag is None:
+            continue
+        if left_bag.y != right_bag.y or left_bag.x.shape[0] != right_bag.x.shape[0]:
+            raise ValueError(f"Mismatched late-fusion bags for {left_bag.subject_id}")
+        paired.append((left_bag, right_bag))
+    if not paired:
+        raise ValueError("No paired bags for late fusion")
+    return paired
 
 
 def _extract_slice_features(
@@ -513,6 +717,29 @@ def main() -> None:
                 summary["shared_roi_top_k"] = int(args.shared_roi_top_k)
                 summaries.append(summary)
                 predictions.append(pred)
+            if "late_fusion_mil" in protocols:
+                try:
+                    summary, pred = evaluate_late_fusion_mil(
+                        train_tables[method],
+                        test_tables[method],
+                        method,
+                        task,
+                        feature_set=args.feature_set,
+                        max_features=args.max_features,
+                        epochs=args.mil_epochs,
+                        lr=args.mil_lr,
+                        weight_decay=args.mil_weight_decay,
+                        width=args.mil_width,
+                        seed=args.seed,
+                        device=args.device,
+                        preset_columns=shared_columns_by_method.get(method),
+                    )
+                except ValueError as exc:
+                    print(f"Skipping late_fusion_mil for {method}/{task}: {exc}")
+                else:
+                    summary["shared_roi_top_k"] = int(args.shared_roi_top_k)
+                    summaries.append(summary)
+                    predictions.append(pred)
 
     summary_df = pd.DataFrame(summaries).sort_values(
         ["task", "protocol", "accuracy", "macro_auc_ovr"],

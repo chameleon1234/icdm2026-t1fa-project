@@ -2,9 +2,11 @@ import numpy as np
 import pandas as pd
 
 from scripts.evaluate_slice_mil_roi import (
+    _select_and_scale,
     aggregate_slice_scores_by_subject,
     build_subject_bags,
     select_shared_disease_roi_columns,
+    split_late_fusion_columns,
 )
 
 
@@ -73,3 +75,31 @@ def test_shared_disease_roi_selection_averages_across_tasks():
 
     assert "roi_label_1_mean" in selected
     assert len(selected) == 2
+
+
+def test_split_late_fusion_columns_uses_two_modal_prefixes():
+    columns = [
+        "T1_ONLY__roi_label_1_mean",
+        "T1_ONLY__roi_label_2_mean",
+        "PM_DIRF_FIDELITY_FLOW__roi_label_1_mean",
+        "PM_DIRF_FIDELITY_FLOW__roi_label_2_mean",
+    ]
+
+    left, right = split_late_fusion_columns(columns)
+
+    assert left == columns[:2]
+    assert right == columns[2:]
+
+
+def test_select_and_scale_can_preserve_late_fusion_prefixes():
+    train = pd.DataFrame(
+        [
+            {"method": "Fused", "sample_id": "a_z020", "subject_id": "a", "slice_idx": 20, "group_name": "CN", "y_label": 0, "T1__roi_label_1_mean": 0.1, "FA__roi_label_1_mean": 0.2},
+            {"method": "Fused", "sample_id": "b_z020", "subject_id": "b", "slice_idx": 20, "group_name": "AD", "y_label": 1, "T1__roi_label_1_mean": 0.9, "FA__roi_label_1_mean": 0.8},
+        ]
+    )
+    test = train.copy()
+
+    _, _, columns = _select_and_scale(train, test, "roi_mean", 0, preserve_column_names=True)
+
+    assert columns == ["T1__roi_label_1_mean", "FA__roi_label_1_mean"]

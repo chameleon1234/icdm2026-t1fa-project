@@ -403,6 +403,29 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         writer.writerows(rows)
 
 
+def checkpoint_payload(
+    model: nn.Module,
+    args: argparse.Namespace,
+    stage1_channels: int,
+    prediction_mode: str,
+    detail_scale: float,
+    epoch: int,
+    score: float,
+    metrics: dict[str, float],
+) -> dict[str, Any]:
+    return {
+        "model": model.state_dict(),
+        "args": vars(args),
+        "stage1_ckpt": args.stage1_ckpt,
+        "stage1_channels": stage1_channels,
+        "stage1_prediction_mode": prediction_mode,
+        "stage1_detail_scale": detail_scale,
+        "epoch": epoch,
+        "score": score,
+        "metrics": metrics,
+    }
+
+
 def main() -> None:
     args = parse_args()
     root, ckpt_dir, preview_dir = ensure_dirs(args.run_name)
@@ -428,8 +451,10 @@ def main() -> None:
     ssim_loss = SSIMLoss().to(device)
     scaler = torch.cuda.amp.GradScaler(enabled=device.type == "cuda" and args.mixed_precision == "fp16")
     history: list[dict[str, Any]] = []
+    best_gated_score = -1e9
     best_score = -1e9
-    best_metrics: dict[str, float] = {}
+    best_gated_metrics: dict[str, float] = {}
+    best_score_metrics: dict[str, float] = {}
     print(
         f"DS Stage2 single-slice training | variant={args.variant} | train={len(train_ds)} val={len(val_ds)} "
         f"| stage1={args.stage1_ckpt} | roi_weights={'yes' if roi_weights is not None else 'no'} | device={device}"
@@ -512,31 +537,52 @@ def main() -> None:
         metrics["fid"] = float(fid_metric.compute().item()) if fid_metric is not None else float("inf")
         score = selection_score(metrics)
         gate = passes_gate(metrics, args)
-        is_best = gate and score > best_score
-        if is_best:
+        payload = checkpoint_payload(
+            model,
+            args,
+            stage1_channels,
+            prediction_mode,
+            detail_scale,
+            epoch + 1,
+            score,
+            metrics,
+        )
+        torch.save(payload, ckpt_dir / "latest_ds_corrector.pt")
+        is_score_best = score > best_score
+        if is_score_best:
             best_score = score
-            best_metrics = dict(metrics)
-            torch.save(
-                {
-                    "model": model.state_dict(),
-                    "args": vars(args),
-                    "stage1_ckpt": args.stage1_ckpt,
-                    "stage1_channels": stage1_channels,
-                    "stage1_prediction_mode": prediction_mode,
-                    "stage1_detail_scale": detail_scale,
-                    "epoch": epoch + 1,
-                    "score": score,
-                    "metrics": metrics,
-                },
-                ckpt_dir / "best_ds_corrector.pt",
-            )
+            best_score_metrics = dict(metrics)
+            torch.save(payload, ckpt_dir / "best_score_ds_corrector.pt")
+        is_gated_best = gate and score > best_gated_score
+        if is_gated_best:
+            best_gated_score = score
+            best_gated_metrics = dict(metrics)
+            torch.save(payload, ckpt_dir / "best_ds_corrector.pt")
         if (epoch + 1) % max(args.save_every, 1) == 0:
-            torch.save({"model": model.state_dict(), "args": vars(args), "epoch": epoch + 1, "metrics": metrics}, ckpt_dir / f"epoch_{epoch + 1:03d}.pt")
-        row = {"epoch": epoch + 1, "score": score, "gate": int(gate), "best": int(is_best), **metrics}
+            torch.save(payload, ckpt_dir / f"epoch_{epoch + 1:03d}.pt")
+        row = {
+            "epoch": epoch + 1,
+            "score": score,
+            "gate": int(gate),
+            "best": int(is_gated_best),
+            "best_gated": int(is_gated_best),
+            "best_score": int(is_score_best),
+            **metrics,
+        }
         history.append(row)
         write_csv(root / "training_history.csv", history)
         with open(root / "best_metrics.json", "w", encoding="utf-8") as handle:
-            json.dump({"best_score": best_score, "best_metrics": best_metrics}, handle, indent=2, ensure_ascii=False)
+            json.dump(
+                {
+                    "best_gated_score": best_gated_score,
+                    "best_gated_metrics": best_gated_metrics,
+                    "best_score": best_score,
+                    "best_score_metrics": best_score_metrics,
+                },
+                handle,
+                indent=2,
+                ensure_ascii=False,
+            )
         print(
             f"[DSCorrector][{args.variant}][Epoch {epoch + 1}] "
             f"PSNR={metrics['psnr']:.4f} SSIM={metrics['ssim']:.4f} "
@@ -544,7 +590,7 @@ def main() -> None:
             f"DeltaWM={metrics['delta_wm_l1']:.6f} DeltaROI={metrics['delta_roi']:.6f} "
             f"DeltaDiseaseROI={metrics['delta_disease_roi']:.6f} DeltaStripe={metrics['delta_stripe']:.6f} "
             f"SharpRetention={metrics['sharp_retention']:.4f} FID={metrics['fid']:.4f} "
-            f"Gate={int(gate)} Best={int(is_best)}"
+            f"Gate={int(gate)} BestGate={int(is_gated_best)} BestScore={int(is_score_best)}"
         )
 
 

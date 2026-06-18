@@ -155,3 +155,64 @@ def test_resume_validation_rejects_missing_or_changed_required_configuration():
         validate_resume_configuration(current, {"stage1_ckpt": "sharp.pt"}, tuple(current))
     with pytest.raises(ValueError, match="configuration mismatch"):
         validate_resume_configuration(current, {**current, "frequency_cutoff": 0.2}, tuple(current))
+
+
+def test_metric_restore_preset_raises_fidelity_weights_and_keeps_sharpness_gate():
+    import argparse
+
+    from pmrf_t1fa.train_pmrf_t1fa_stage2_fidelity_corrector import apply_training_preset
+
+    args = argparse.Namespace(
+        training_preset="metric_restore",
+        corrector_mode="flow",
+        frequency_cutoff=0.12,
+        frequency_transition=0.04,
+        correction_l1_weight=1.0,
+        final_l1_weight=0.4,
+        final_mse_weight=0.3,
+        final_ssim_weight=0.1,
+        wm_l1_weight=1.0,
+        roi_weight=0.3,
+        residual_magnitude_weight=0.05,
+        hf_preserve_weight=2.0,
+        best_min_sharp_retention=0.90,
+        best_min_delta_psnr=-0.03,
+        best_min_delta_ssim=-0.002,
+        eval_steps=4,
+    )
+
+    updated = apply_training_preset(args)
+
+    assert updated.frequency_cutoff >= 0.16
+    assert updated.frequency_transition >= 0.06
+    assert updated.correction_l1_weight >= 1.2
+    assert updated.final_l1_weight >= 0.8
+    assert updated.final_mse_weight >= 0.8
+    assert updated.final_ssim_weight >= 0.5
+    assert updated.residual_magnitude_weight <= 0.03
+    assert updated.hf_preserve_weight >= 2.5
+    assert updated.best_min_sharp_retention >= 0.97
+    assert updated.best_min_delta_psnr >= 0.0
+    assert updated.best_min_delta_ssim >= 0.0
+    assert updated.eval_steps >= 6
+
+
+def test_init_checkpoint_loads_model_weights_without_optimizer_or_arg_validation(tmp_path):
+    import torch
+
+    from pmrf_t1fa.train_pmrf_t1fa_stage2_fidelity_corrector import (
+        FidelityCorrector,
+        load_init_checkpoint,
+    )
+
+    source = FidelityCorrector(stage1_channels=5, mode="flow", width=8, num_blocks=1)
+    target = FidelityCorrector(stage1_channels=5, mode="flow", width=8, num_blocks=1)
+    for parameter in source.parameters():
+        torch.nn.init.constant_(parameter, 0.123)
+    ckpt_path = tmp_path / "init.pt"
+    torch.save({"model": source.state_dict(), "optimizer": {"ignored": True}, "args": {"old": 1}}, ckpt_path)
+
+    load_init_checkpoint(target, ckpt_path)
+
+    for source_param, target_param in zip(source.parameters(), target.parameters()):
+        assert torch.allclose(source_param, target_param)

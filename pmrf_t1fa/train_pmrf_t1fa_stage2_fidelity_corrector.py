@@ -46,6 +46,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--stage1_device", default="auto", choices=["auto", "cuda", "cpu"])
     parser.add_argument("--run_name", default="pmrf_t1fa_stage2_fidelity_flow_smoke")
+    parser.add_argument(
+        "--training_preset",
+        default="none",
+        choices=["none", "metric_restore"],
+        help="metric_restore raises paired-fidelity losses while keeping a sharpness-retention checkpoint gate.",
+    )
     parser.add_argument("--corrector_mode", default="flow", choices=["flow", "direct"])
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch_size", type=int, default=2)
@@ -88,12 +94,42 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--preview_every", type=int, default=250)
     parser.add_argument("--save_every", type=int, default=5)
     parser.add_argument("--grad_clip", type=float, default=1.0)
+    parser.add_argument(
+        "--init_ckpt",
+        default="",
+        help="Load model weights only before fine-tuning. Unlike --resume, this ignores optimizer state and args.",
+    )
     parser.add_argument("--resume", default="", help="Explicit latest/epoch checkpoint to resume.")
     return parser.parse_args()
 
 
+def apply_training_preset(args: argparse.Namespace) -> argparse.Namespace:
+    if getattr(args, "training_preset", "none") != "metric_restore":
+        return args
+
+    # Let Stage 2 repair low/mid-low frequency bias more aggressively while
+    # preserving Stage 1 high-frequency details through the existing frequency
+    # bypass and checkpoint sharpness gate.
+    args.frequency_cutoff = max(float(args.frequency_cutoff), 0.16)
+    args.frequency_transition = max(float(args.frequency_transition), 0.06)
+    args.correction_l1_weight = max(float(args.correction_l1_weight), 1.20)
+    args.final_l1_weight = max(float(args.final_l1_weight), 0.80)
+    args.final_mse_weight = max(float(args.final_mse_weight), 0.80)
+    args.final_ssim_weight = max(float(args.final_ssim_weight), 0.50)
+    args.wm_l1_weight = max(float(args.wm_l1_weight), 1.00)
+    args.roi_weight = max(float(args.roi_weight), 0.30)
+    args.residual_magnitude_weight = min(float(args.residual_magnitude_weight), 0.03)
+    args.hf_preserve_weight = max(float(args.hf_preserve_weight), 2.50)
+    args.best_min_sharp_retention = max(float(args.best_min_sharp_retention), 0.97)
+    args.best_min_delta_psnr = max(float(args.best_min_delta_psnr), 0.0)
+    args.best_min_delta_ssim = max(float(args.best_min_delta_ssim), 0.0)
+    args.eval_steps = max(int(args.eval_steps), 6)
+    return args
+
+
 def resume_required_keys() -> tuple[str, ...]:
     return (
+        "training_preset",
         "stage1_ckpt",
         "corrector_mode",
         "width",
@@ -147,6 +183,13 @@ def validate_resume_configuration(
                 f"Resume configuration mismatch for {key}: "
                 f"checkpoint={checkpoint_args[key]!r}, current={current_args[key]!r}"
             )
+
+
+def load_init_checkpoint(model: nn.Module, checkpoint_path: str | Path) -> dict:
+    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    state_dict = checkpoint["model"] if isinstance(checkpoint, dict) and "model" in checkpoint else checkpoint
+    model.load_state_dict(state_dict)
+    return checkpoint if isinstance(checkpoint, dict) else {"model": state_dict}
 
 
 def ensure_dirs(run_name: str) -> tuple[Path, Path, Path]:
@@ -556,7 +599,7 @@ def _make_checkpoint(
 
 
 def main() -> None:
-    args = parse_args()
+    args = apply_training_preset(parse_args())
     root_dir, ckpt_dir, preview_dir = ensure_dirs(args.run_name)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     stage1_device = device if args.stage1_device == "auto" else torch.device(args.stage1_device)
@@ -579,6 +622,8 @@ def main() -> None:
         optimizer.load_state_dict(checkpoint["optimizer"])
         start_epoch = int(checkpoint.get("epoch", -1)) + 1
         best_score = float(checkpoint.get("best_score", checkpoint.get("score", best_score)))
+    elif args.init_ckpt:
+        load_init_checkpoint(model, args.init_ckpt)
 
     log_path = root_dir / "train.log"
     global_step = 0

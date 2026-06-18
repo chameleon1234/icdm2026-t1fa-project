@@ -171,6 +171,15 @@ def parse_args():
     parser.add_argument("--lpips_max_weight", type=float, default=0.03)
     parser.add_argument("--disable_lpips", action="store_true")
     parser.add_argument("--adv_weight", type=float, default=0.0, help="Small conditional LSGAN weight for sharp Stage 1 training.")
+    parser.add_argument("--pm_teacher_ckpt", default="", help="Frozen PM_STAGE1 checkpoint for low-frequency distillation. Keeps disease-utility signal.")
+    parser.add_argument("--pm_lowpass_weight", type=float, default=0.0, help="Weight for PM teacher lowpass distillation loss.")
+    parser.add_argument("--fa_highpass_weight", type=float, default=0.0, help="Weight for FA ground-truth highpass supervision. Already handled by HF loss; use 0 unless explicitly testing.")
+    parser.add_argument(
+        "--stripe_weight",
+        type=float,
+        default=0.0,
+        help="Penalty for coherent row/column residual bias that appears as bright stripe artifacts.",
+    )
     parser.add_argument("--disc_lr", type=float, default=2e-5)
     parser.add_argument("--disc_width", type=int, default=32)
     parser.add_argument("--mse_weight", type=float, default=0.50)
@@ -507,6 +516,10 @@ def build_stage1_loss(
     stage1_prediction_mode: str,
     stage1_detail_scale: float,
     lpips_max_weight: float,
+    pm_lowpass_weight: float = 0.0,
+    pm_teacher_pred: torch.Tensor | None = None,
+    fa_highpass_weight: float = 0.0,
+    stripe_weight: float = 0.0,
 ) -> Dict[str, torch.Tensor]:
     # Keep loss evaluation in fp32 even when the model runs with mixed precision.
     pred_fp32 = pred.float()
@@ -545,6 +558,28 @@ def build_stage1_loss(
             target_fp32.repeat(1, 3, 1, 1),
         ).mean()
 
+    # Low-frequency distillation from PM_STAGE1 teacher (utility preservation)
+    loss_pm_lowpass = pred_fp32.new_tensor(0.0)
+    if pm_lowpass_weight > 0.0 and pm_teacher_pred is not None:
+        lp_kernel = 13
+        pad = lp_kernel // 2
+        pred_lp = F.avg_pool2d(pred_clamp, kernel_size=lp_kernel, stride=1, padding=pad)
+        teacher_lp = F.avg_pool2d(pm_teacher_pred.float(), kernel_size=lp_kernel, stride=1, padding=pad)
+        loss_pm_lowpass = F.l1_loss(pred_lp, teacher_lp)
+
+    # High-frequency supervision from FA_GT (texture preservation)
+    loss_fa_highpass = pred_fp32.new_tensor(0.0)
+    if fa_highpass_weight > 0.0:
+        hp_kernel = 5
+        pad = hp_kernel // 2
+        pred_hp = pred_clamp - F.avg_pool2d(pred_clamp, kernel_size=hp_kernel, stride=1, padding=pad)
+        target_hp = target_fp32 - F.avg_pool2d(target_fp32, kernel_size=hp_kernel, stride=1, padding=pad)
+        loss_fa_highpass = F.l1_loss(pred_hp, target_hp)
+
+    # Penalize coherent row/column residual bias while preserving local FA texture.
+    residual = (pred_clamp - target_fp32) * brain_mask.to(pred_clamp)
+    loss_stripe = residual.mean(dim=2, keepdim=True).abs().mean() + residual.mean(dim=3, keepdim=True).abs().mean()
+
     progress_ratio = float(epoch) / max(total_epochs - 1, 1)
     w_l1 = l1_start_weight + (l1_end_weight - l1_start_weight) * progress_ratio
     w_ssim = ssim_start_weight + (ssim_end_weight - ssim_start_weight) * progress_ratio
@@ -565,6 +600,9 @@ def build_stage1_loss(
         + wm_grad_weight * loss_wm_grad
         + roi_consistency_weight * loss_roi
         + w_lpips * loss_lpips
+        + pm_lowpass_weight * loss_pm_lowpass
+        + fa_highpass_weight * loss_fa_highpass
+        + stripe_weight * loss_stripe
     )
     return {
         "total": total,
@@ -577,6 +615,9 @@ def build_stage1_loss(
         "detail_lap": loss_detail_lap,
         "brain_l1": loss_brain_l1,
         "wm_l1": loss_wm_l1,
+        "pm_lowpass": loss_pm_lowpass,
+        "fa_highpass": loss_fa_highpass,
+        "stripe": loss_stripe,
         "wm_grad": loss_wm_grad,
         "roi": loss_roi,
         "lpips": loss_lpips,
@@ -634,6 +675,21 @@ def main():
     if args.adv_weight > 0.0:
         discriminator = Stage1PatchDiscriminator(in_channels=stage1_channels + 1, width=args.disc_width)
         disc_optimizer = torch.optim.AdamW(discriminator.parameters(), lr=args.disc_lr, betas=(0.5, 0.999))
+    # PM teacher for low-frequency distillation (utility preservation)
+    pm_teacher = None
+    if args.pm_teacher_ckpt:
+        pm_ckpt = torch.load(args.pm_teacher_ckpt, map_location="cpu")
+        pm_state = pm_ckpt["model"] if isinstance(pm_ckpt, dict) and "model" in pm_ckpt else pm_ckpt
+        # PM teacher was trained on single-slice T1.  We always feed it the
+        # center channel of the 5-slice stack (exactly what it was trained for).
+        pm_in_channels = pm_state["patch_embed.weight"].shape[1]
+        pm_teacher = Stage1Net(in_channels=pm_in_channels, out_channels=1)
+        pm_teacher.load_state_dict(pm_state)
+        pm_teacher.to(accelerator.device)
+        pm_teacher.eval()
+        for p in pm_teacher.parameters():
+            p.requires_grad = False
+        pm_teacher_single_channel = True  # flag for training loop
     ssim_loss_fn = SSIMLoss()
     grad_loss_fn = GradientLoss()
     if args.disable_lpips or args.lpips_max_weight <= 0.0:
@@ -765,6 +821,9 @@ def main():
             "wm_grad": 0.0,
             "roi": 0.0,
             "lpips": 0.0,
+            "stripe": 0.0,
+            "pm_lowpass": 0.0,
+            "fa_highpass": 0.0,
             "adv_g": 0.0,
             "adv_d": 0.0,
         }
@@ -825,6 +884,10 @@ def main():
                 args.stage1_prediction_mode,
                 args.stage1_detail_scale,
                 args.lpips_max_weight,
+                pm_lowpass_weight=args.pm_lowpass_weight,
+                pm_teacher_pred=pm_teacher(center_channel(t1_img)).detach() if pm_teacher is not None else None,
+                fa_highpass_weight=args.fa_highpass_weight,
+                stripe_weight=args.stripe_weight,
             )
             loss_adv_g = coarse_pred.new_tensor(0.0)
             loss_adv_d = coarse_pred.new_tensor(0.0)

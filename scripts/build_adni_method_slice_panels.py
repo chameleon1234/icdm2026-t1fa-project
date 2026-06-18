@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -20,6 +21,16 @@ DEFAULT_METHODS = [
     ("U-Net", "outputs/icdm2026/predictions/ADNI_UNet_E50"),
 ]
 
+COMPACT_ADNI_METHODS = [
+    ("T1", "data/adni_processed/test/t1_slices"),
+    ("FA_GT", "data/adni_processed/test/fa_slices"),
+    ("Fidelity Flow", "outputs/icdm2026/predictions/ADNI_PM_DIRF_FIDELITY_FLOW_FULL"),
+    ("Stage1 LPIPS+GAN", "outputs/icdm2026/predictions/ADNI_PM_STAGE1_LPIPS_GAN_FULL"),
+    ("DBM", "outputs/icdm2026/predictions/ADNI_DBM_E100_K40_PRETRAINED"),
+    ("Pix2Pix", "outputs/icdm2026/predictions/ADNI_Pix2Pix_E50"),
+    ("U-Net", "outputs/icdm2026/predictions/ADNI_UNet_E50"),
+]
+
 DEFAULT_SLICES = ["sub-006_S_6651_z042", "sub-019_S_6186_z034"]
 DEFAULT_ROIS = {
     # x0, y0, x1, y1 in image-relative coordinates.
@@ -31,14 +42,41 @@ DEFAULT_ROIS = {
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build horizontal ADNI method panels for selected slices.")
     parser.add_argument("--output_dir", default="outputs/icdm2026/figures/adni_method_slice_panels")
-    parser.add_argument("--slice_id", action="append", default=DEFAULT_SLICES)
+    parser.add_argument("--slice_id", action="append", default=[])
+    parser.add_argument(
+        "--method_preset",
+        default="full_adni",
+        choices=["full_adni", "adni_compact"],
+        help="full_adni includes all available comparison methods; adni_compact uses the requested 7-column paper review order.",
+    )
+    parser.add_argument(
+        "--all_slices",
+        action="store_true",
+        help="Build panels for every slice found in the FA_GT directory.",
+    )
+    parser.add_argument(
+        "--slice_source_dir",
+        default=None,
+        help="Directory of existing method-slice figures. Slice ids are inferred from PNG names, e.g. sub-006_S_6651_z042_*.png.",
+    )
+    parser.add_argument(
+        "--gt_dir",
+        default="data/adni_processed/test/fa_slices",
+        help="Directory used to enumerate slices when --all_slices is enabled.",
+    )
     parser.add_argument(
         "--roi",
         action="append",
         default=[],
         help="Override ROI as SLICE_ID:x0,y0,x1,y1 in relative coordinates, e.g. sub-006_S_6651_z042:0.35,0.3,0.65,0.6",
     )
+    parser.add_argument(
+        "--default_roi",
+        default="0.34,0.30,0.66,0.64",
+        help="Default red-box ROI for slices without an explicit --roi override.",
+    )
     parser.add_argument("--dpi", type=int, default=220)
+    parser.add_argument("--skip_roi", action="store_true", help="Only write the plain horizontal method panel.")
     return parser.parse_args()
 
 
@@ -59,6 +97,43 @@ def _roi_overrides(items: list[str]) -> dict[str, tuple[float, float, float, flo
             raise ValueError(f"ROI override needs four coordinates, got {item!r}")
         rois[slice_id] = values  # type: ignore[assignment]
     return rois
+
+
+def _parse_roi(value: str) -> tuple[float, float, float, float]:
+    parts = tuple(float(part) for part in value.split(","))
+    if len(parts) != 4:
+        raise ValueError(f"ROI needs four coordinates, got {value!r}")
+    return parts  # type: ignore[return-value]
+
+
+def _slice_ids_from_gt(gt_dir: str | Path) -> list[str]:
+    paths = sorted(Path(gt_dir).glob("*.png"))
+    if not paths:
+        raise FileNotFoundError(f"No PNG slices found in {gt_dir}")
+    return [path.stem for path in paths]
+
+
+def _slice_ids_from_source(source_dir: str | Path) -> list[str]:
+    paths = sorted(Path(source_dir).glob("*.png"))
+    if not paths:
+        raise FileNotFoundError(f"No PNG slices found in {source_dir}")
+    slice_ids: list[str] = []
+    seen: set[str] = set()
+    for path in paths:
+        match = re.search(r"(sub-\d+_S_\d+_z\d{3})", path.stem)
+        if match is None:
+            match = re.search(r"(.+_z\d{3})", path.stem)
+        if match is None:
+            raise ValueError(f"Could not infer slice id from {path.name}")
+        slice_id = match.group(1)
+        if slice_id not in seen:
+            seen.add(slice_id)
+            slice_ids.append(slice_id)
+    return slice_ids
+
+
+def _method_list(preset: str) -> list[tuple[str, str]]:
+    return COMPACT_ADNI_METHODS if preset == "adni_compact" else DEFAULT_METHODS
 
 
 def _draw_roi(image: Image.Image, roi: tuple[float, float, float, float]) -> Image.Image:
@@ -111,13 +186,28 @@ def main() -> None:
     args = parse_args()
     output_dir = Path(args.output_dir)
     rois = _roi_overrides(args.roi)
-    for slice_id in args.slice_id:
+    default_roi = _parse_roi(args.default_roi)
+    if args.slice_source_dir:
+        slice_ids = _slice_ids_from_source(args.slice_source_dir)
+    elif args.all_slices:
+        slice_ids = _slice_ids_from_gt(args.gt_dir)
+    elif args.slice_id:
+        slice_ids = args.slice_id
+    else:
+        slice_ids = DEFAULT_SLICES
+    methods = _method_list(args.method_preset)
+    print(f"Building {len(slice_ids)} slice panel(s) with method_preset={args.method_preset}")
+    saved = 0
+    for index, slice_id in enumerate(slice_ids, start=1):
         normal_path = output_dir / f"{slice_id}_adni_methods_panel.png"
         roi_path = output_dir / f"{slice_id}_adni_methods_panel_roi.png"
-        _make_panel(slice_id, DEFAULT_METHODS, normal_path, dpi=args.dpi)
-        _make_panel(slice_id, DEFAULT_METHODS, roi_path, roi=rois.get(slice_id), dpi=args.dpi)
-        print(f"Saved: {normal_path}")
-        print(f"Saved: {roi_path}")
+        _make_panel(slice_id, methods, normal_path, dpi=args.dpi)
+        saved += 1
+        if not args.skip_roi:
+            _make_panel(slice_id, methods, roi_path, roi=rois.get(slice_id, default_roi), dpi=args.dpi)
+            saved += 1
+        if not args.all_slices or index % 100 == 0 or index == len(slice_ids):
+            print(f"Saved {saved} panel(s), latest slice: {slice_id}")
 
 
 if __name__ == "__main__":

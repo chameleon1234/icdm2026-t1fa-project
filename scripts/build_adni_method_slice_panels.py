@@ -31,6 +31,13 @@ COMPACT_ADNI_METHODS = [
     ("U-Net", "outputs/icdm2026/predictions/ADNI_UNet_E50"),
 ]
 
+PRIVATE_SINGLE_STAGE2_METHODS = [
+    ("T1", "data/processed/test/t1_slices"),
+    ("FA_GT", "data/processed/test/fa_slices"),
+    ("Stage1 E030", "outputs/icdm2026/predictions/PRIVATE_STAGE1_SINGLE_SHARP_STRIPE_EPOCH030"),
+    ("DS Hybrid", "outputs/icdm2026/predictions/PRIVATE_DS_HYBRID_FROM_STAGE1_E030_FULL"),
+]
+
 DEFAULT_SLICES = ["sub-006_S_6651_z042", "sub-019_S_6186_z034"]
 DEFAULT_ROIS = {
     # x0, y0, x1, y1 in image-relative coordinates.
@@ -46,8 +53,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--method_preset",
         default="full_adni",
-        choices=["full_adni", "adni_compact"],
-        help="full_adni includes all available comparison methods; adni_compact uses the requested 7-column paper review order.",
+        choices=["full_adni", "adni_compact", "private_single_stage2"],
+        help=(
+            "full_adni includes all available ADNI comparison methods; adni_compact uses the requested "
+            "7-column paper review order; private_single_stage2 compares the private single-slice Stage1 "
+            "and disease-sensitive Stage2 outputs."
+        ),
     )
     parser.add_argument(
         "--all_slices",
@@ -133,7 +144,11 @@ def _slice_ids_from_source(source_dir: str | Path) -> list[str]:
 
 
 def _method_list(preset: str) -> list[tuple[str, str]]:
-    return COMPACT_ADNI_METHODS if preset == "adni_compact" else DEFAULT_METHODS
+    if preset == "adni_compact":
+        return COMPACT_ADNI_METHODS
+    if preset == "private_single_stage2":
+        return PRIVATE_SINGLE_STAGE2_METHODS
+    return DEFAULT_METHODS
 
 
 def _draw_roi(image: Image.Image, roi: tuple[float, float, float, float]) -> Image.Image:

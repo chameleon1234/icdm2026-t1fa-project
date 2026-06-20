@@ -55,6 +55,16 @@ ADNI_SINGLE_STAGE2_MULTIHEAD_METHODS = [
     ("Old Fidelity Flow", "outputs/icdm2026/predictions/ADNI_PM_DIRF_FIDELITY_FLOW_FULL"),
 ]
 
+ADNI_SINGLE_SHARP_STAGE2_METHODS = [
+    ("T1", "data/adni_processed/test/t1_slices"),
+    ("FA_GT", "data/adni_processed/test/fa_slices"),
+    ("Stage1 Single Sharp", "outputs/icdm2026/predictions/ADNI_STAGE1_SINGLE_SHARP_FULL_E30"),
+    ("Single Fidelity Flow", "outputs/icdm2026/predictions/ADNI_SINGLE_FIDELITY_FLOW_SHARP_STAGE1_PROBE_4096_E5"),
+    ("Single DS Multihead", "outputs/icdm2026/predictions/ADNI_SINGLE_DS_MULTIHEAD_SHARP_STAGE1_PROBE_4096_E5"),
+    ("DS Multihead Balanced", "outputs/icdm2026/predictions/ADNI_SINGLE_DS_MULTIHEAD_BALANCED_8192_E2"),
+    ("Old 5-slice Flow", "outputs/icdm2026/predictions/ADNI_PM_DIRF_FIDELITY_FLOW_FULL"),
+]
+
 DEFAULT_SLICES = ["sub-006_S_6651_z042", "sub-019_S_6186_z034"]
 DEFAULT_ROIS = {
     # x0, y0, x1, y1 in image-relative coordinates.
@@ -76,12 +86,14 @@ def parse_args() -> argparse.Namespace:
             "private_single_stage2",
             "adni_single_stage2_smoke",
             "adni_single_stage2_multihead",
+            "adni_single_sharp_stage2",
         ],
         help=(
             "full_adni includes all available ADNI comparison methods; adni_compact uses the requested "
             "7-column paper review order; private_single_stage2 compares the private single-slice Stage1 "
             "and disease-sensitive Stage2 outputs; adni_single_stage2_multihead compares the new multi-head "
-            "Stage2 probe against the prior single-slice Stage2 smoke output."
+            "Stage2 probe against the prior single-slice Stage2 smoke output; adni_single_sharp_stage2 "
+            "compares the stronger single-slice sharp Stage1 with its Flow and multi-head Stage2 probes."
         ),
     )
     parser.add_argument(
@@ -176,6 +188,8 @@ def _method_list(preset: str) -> list[tuple[str, str]]:
         return ADNI_SINGLE_STAGE2_SMOKE_METHODS
     if preset == "adni_single_stage2_multihead":
         return ADNI_SINGLE_STAGE2_MULTIHEAD_METHODS
+    if preset == "adni_single_sharp_stage2":
+        return ADNI_SINGLE_SHARP_STAGE2_METHODS
     return DEFAULT_METHODS
 
 

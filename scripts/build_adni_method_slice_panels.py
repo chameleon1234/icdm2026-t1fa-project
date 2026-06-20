@@ -38,6 +38,14 @@ PRIVATE_SINGLE_STAGE2_METHODS = [
     ("DS Hybrid", "outputs/icdm2026/predictions/PRIVATE_DS_HYBRID_FROM_STAGE1_E030_FULL"),
 ]
 
+ADNI_SINGLE_STAGE2_SMOKE_METHODS = [
+    ("T1", "data/adni_processed/test/t1_slices"),
+    ("FA_GT", "data/adni_processed/test/fa_slices"),
+    ("Stage1 Single", "outputs/icdm2026/predictions/ADNI_STAGE1_SINGLE_SHARP_STRIPE_SMOKE_4096_E5"),
+    ("DS Hybrid", "outputs/icdm2026/predictions/ADNI_DS_HYBRID_SINGLE_SMOKE_4096_E5"),
+    ("Old Fidelity Flow", "outputs/icdm2026/predictions/ADNI_PM_DIRF_FIDELITY_FLOW_FULL"),
+]
+
 DEFAULT_SLICES = ["sub-006_S_6651_z042", "sub-019_S_6186_z034"]
 DEFAULT_ROIS = {
     # x0, y0, x1, y1 in image-relative coordinates.
@@ -53,7 +61,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--method_preset",
         default="full_adni",
-        choices=["full_adni", "adni_compact", "private_single_stage2"],
+        choices=["full_adni", "adni_compact", "private_single_stage2", "adni_single_stage2_smoke"],
         help=(
             "full_adni includes all available ADNI comparison methods; adni_compact uses the requested "
             "7-column paper review order; private_single_stage2 compares the private single-slice Stage1 "
@@ -148,6 +156,8 @@ def _method_list(preset: str) -> list[tuple[str, str]]:
         return COMPACT_ADNI_METHODS
     if preset == "private_single_stage2":
         return PRIVATE_SINGLE_STAGE2_METHODS
+    if preset == "adni_single_stage2_smoke":
+        return ADNI_SINGLE_STAGE2_SMOKE_METHODS
     return DEFAULT_METHODS
 
 

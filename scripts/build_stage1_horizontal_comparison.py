@@ -29,6 +29,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--count", type=int, default=32)
     parser.add_argument("--panel_size", type=int, default=144)
+    parser.add_argument("--include_error", action="store_true", help="Append absolute-error heatmaps for each prediction.")
+    parser.add_argument("--error_scale", type=float, default=4.0, help="Multiplier for absolute-error heatmap brightness.")
     parser.add_argument("--output_dir", default="outputs/icdm2026/figures/method_slices/STAGE1_HORIZONTAL_COMPARISON")
     return parser.parse_args()
 
@@ -86,6 +88,22 @@ def label_panel(image: Image.Image, label: str, panel_size: int) -> Image.Image:
     return canvas
 
 
+def error_heatmap(pred: Image.Image, target: Image.Image, scale: float) -> Image.Image:
+    pred_l = pred.convert("L")
+    target_l = target.convert("L").resize(pred_l.size, Image.Resampling.BILINEAR)
+    width, height = pred_l.size
+    out = Image.new("RGB", (width, height), "black")
+    pred_px = pred_l.load()
+    target_px = target_l.load()
+    out_px = out.load()
+    factor = max(float(scale), 0.0)
+    for y in range(height):
+        for x in range(width):
+            diff = min(255, int(abs(pred_px[x, y] - target_px[x, y]) * factor))
+            out_px[x, y] = (diff, min(255, diff // 2), 0)
+    return out
+
+
 def save_panel(parts: list[tuple[str, Image.Image]], out_path: Path, title: str, panel_size: int) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     gap = 8
@@ -121,7 +139,10 @@ def main() -> None:
         fa = load_gray(fa_dir / name, t1.size)
         parts: list[tuple[str, Image.Image]] = [("T1", t1), ("FA_GT", fa)]
         for label, method_dir in methods:
-            parts.append((label, load_gray(method_dir / name, t1.size)))
+            pred = load_gray(method_dir / name, t1.size)
+            parts.append((label, pred))
+            if args.include_error:
+                parts.append((f"{label}_ERRx{args.error_scale:g}", error_heatmap(pred, fa, args.error_scale)))
         out_path = output_dir / f"{Path(name).stem}_stage1_horizontal.png"
         save_panel(parts, out_path, Path(name).stem, args.panel_size)
 

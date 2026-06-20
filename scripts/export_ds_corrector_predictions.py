@@ -77,6 +77,7 @@ def main() -> None:
         width=width,
         num_blocks=num_blocks,
         uncertainty=variant in {"uncertainty", "hybrid"},
+        variant=variant,
     ).to(device)
     model.load_state_dict(checkpoint["model"])
     model.eval()

@@ -45,7 +45,7 @@ torch.backends.cudnn.allow_tf32 = True
 torch.set_float32_matmul_precision("high")
 
 
-VARIANTS = ("metric", "ds_roi", "uncertainty", "atlas", "hybrid")
+VARIANTS = ("metric", "ds_roi", "uncertainty", "atlas", "hybrid", "multihead")
 
 
 def parse_args() -> argparse.Namespace:
@@ -161,10 +161,19 @@ def load_disease_roi_weights(path: str, rows: int, cols: int, device: torch.devi
 
 
 class SingleSliceCorrector(nn.Module):
-    def __init__(self, in_channels: int, width: int, num_blocks: int, uncertainty: bool = False):
+    def __init__(
+        self,
+        in_channels: int,
+        width: int,
+        num_blocks: int,
+        uncertainty: bool = False,
+        variant: str = "hybrid",
+    ):
         super().__init__()
-        out_channels = 2 if uncertainty else 1
-        self.uncertainty = bool(uncertainty)
+        self.variant = str(variant)
+        self.multihead = self.variant == "multihead"
+        self.uncertainty = bool(uncertainty) or self.multihead
+        out_channels = 4 if self.multihead else (2 if self.uncertainty else 1)
         self.net = nn.Sequential(
             nn.Conv2d(in_channels, width, 3, padding=1),
             *[NAFBlock(width) for _ in range(num_blocks)],
@@ -175,6 +184,8 @@ class SingleSliceCorrector(nn.Module):
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor | None]:
         y = self.net(x)
+        if self.multihead:
+            return y[:, :3], y[:, 3:4].clamp(-5.0, 5.0)
         if self.uncertainty:
             return y[:, :1], y[:, 1:2].clamp(-5.0, 5.0)
         return y, None
@@ -194,15 +205,15 @@ def build_condition(
     t1_edge = highpass_residual(center_channel(t1_img), kernel_size=hp_kernel)
     uncertainty_proxy = (t1_edge - coarse_high).abs().detach()
     channels = [center_channel(t1_img), coarse, coarse_low, coarse_high, t1_edge]
-    if variant in {"ds_roi", "hybrid", "atlas"}:
+    if variant in {"ds_roi", "hybrid", "atlas", "multihead"}:
         channels.append(roi_map)
     else:
         channels.append(torch.zeros_like(coarse))
-    if variant in {"uncertainty", "hybrid"}:
+    if variant in {"uncertainty", "hybrid", "multihead"}:
         channels.append(uncertainty_proxy)
     else:
         channels.append(torch.zeros_like(coarse))
-    if variant in {"atlas", "hybrid"}:
+    if variant in {"atlas", "hybrid", "multihead"}:
         channels.append(_coord_channels(coarse.shape[0], coarse.shape[-2], coarse.shape[-1], coarse.device, coarse.dtype))
     else:
         channels.append(torch.zeros(coarse.shape[0], 2, coarse.shape[-2], coarse.shape[-1], device=coarse.device, dtype=coarse.dtype))
@@ -211,11 +222,46 @@ def build_condition(
 
 def correction_gate(variant: str, brain_mask: torch.Tensor, wm_mask: torch.Tensor, roi_map: torch.Tensor) -> torch.Tensor:
     gate = brain_mask.to(wm_mask)
-    if variant in {"ds_roi", "hybrid"}:
+    if variant in {"ds_roi", "hybrid", "multihead"}:
         gate = gate * (0.35 + 0.65 * torch.clamp(wm_mask.to(gate) + roi_map, 0.0, 1.0))
     elif variant == "atlas":
         gate = gate * (0.55 + 0.45 * wm_mask.to(gate))
     return gate
+
+
+def compose_correction(
+    raw: torch.Tensor,
+    coarse: torch.Tensor,
+    gate: torch.Tensor,
+    brain_mask: torch.Tensor,
+    args: argparse.Namespace,
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    if str(args.variant) != "multihead":
+        correction = float(args.correction_scale) * torch.tanh(raw.float()) * gate.float()
+        return correction, {
+            "low_correction_l1": correction.new_tensor(0.0),
+            "high_correction_l1": correction.new_tensor(0.0),
+            "stripe_correction_l1": correction.new_tensor(0.0),
+        }
+
+    if raw.shape[1] != 3:
+        raise ValueError(f"multihead corrector expects 3 raw heads, got shape={tuple(raw.shape)}")
+    scale = float(args.correction_scale)
+    low_raw, high_raw, stripe_raw = raw[:, :1].float(), raw[:, 1:2].float(), raw[:, 2:3].float()
+    low_corr = scale * _avg_pool_same(torch.tanh(low_raw), int(args.lowpass_kernel)) * gate.float()
+    high_corr = (0.50 * scale) * frequency_highpass(torch.tanh(high_raw), 0.12, 0.04) * gate.float()
+
+    row_bias = stripe_raw.mean(dim=2, keepdim=True)
+    col_bias = stripe_raw.mean(dim=3, keepdim=True)
+    global_bias = stripe_raw.mean(dim=(2, 3), keepdim=True)
+    stripe_basis = torch.tanh(row_bias + col_bias - global_bias)
+    stripe_corr = (0.25 * scale) * stripe_basis * brain_mask.float()
+    correction = low_corr + high_corr + stripe_corr
+    return correction, {
+        "low_correction_l1": low_corr.abs().mean(),
+        "high_correction_l1": high_corr.abs().mean(),
+        "stripe_correction_l1": stripe_corr.abs().mean(),
+    }
 
 
 def build_loss(
@@ -231,7 +277,7 @@ def build_loss(
     args: argparse.Namespace,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor], torch.Tensor]:
     gate = correction_gate(args.variant, brain_mask, wm_mask, roi_map)
-    correction = float(args.correction_scale) * torch.tanh(raw.float()) * gate.float()
+    correction, head_losses = compose_correction(raw, coarse, gate, brain_mask, args)
     refined = torch.clamp(coarse.float() + correction, -1.0, 1.0)
     target_fp32 = target.float()
     target_correction = target_fp32 - coarse.float()
@@ -242,7 +288,7 @@ def build_loss(
     wm_l1 = masked_l1_loss(refined, target_fp32, wm_mask)
     roi = roi_consistency_loss(refined, target_fp32, wm_mask, args.roi_rows, args.roi_cols, args.roi_min_pixels)
     disease_roi = refined.new_tensor(0.0)
-    if roi_weights is not None and args.variant in {"ds_roi", "hybrid", "atlas"}:
+    if roi_weights is not None and args.variant in {"ds_roi", "hybrid", "atlas", "multihead"}:
         disease_roi = weighted_grid_roi_l1(refined, target_fp32, wm_mask, roi_weights, args.roi_min_pixels)
     correction_l1 = F.l1_loss(correction, target_correction * gate.float())
     bounded = correction.abs().mean()
@@ -256,7 +302,7 @@ def build_loss(
         uncertainty = (torch.exp(-log_sigma.float()) * (refined - target_fp32).abs() + 0.05 * log_sigma.float()).mean()
         uncertainty = uncertainty + 0.25 * F.l1_loss(torch.sigmoid(log_sigma.float()), torch.clamp(abs_error * 6.0, 0.0, 1.0))
     atlas_smooth = refined.new_tensor(0.0)
-    if args.variant in {"atlas", "hybrid"}:
+    if args.variant in {"atlas", "hybrid", "multihead"}:
         atlas_smooth = (correction[:, :, :, 1:] - correction[:, :, :, :-1]).abs().mean()
         atlas_smooth = atlas_smooth + (correction[:, :, 1:, :] - correction[:, :, :-1, :]).abs().mean()
 
@@ -290,6 +336,7 @@ def build_loss(
         "hf_preserve": hf_preserve,
         "uncertainty": uncertainty,
         "atlas_smooth": atlas_smooth,
+        **head_losses,
     }
     return total, losses, refined
 
@@ -446,6 +493,7 @@ def main() -> None:
         width=args.width,
         num_blocks=args.num_blocks,
         uncertainty=args.variant in {"uncertainty", "hybrid"},
+        variant=args.variant,
     ).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     ssim_loss = SSIMLoss().to(device)

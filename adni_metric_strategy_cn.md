@@ -20,11 +20,9 @@
 
 | 指标 | 我们方法 | 最强对比方法 | 最强对比方法名称 | 相对优势 |
 |---|---:|---:|---|---:|
-| Clear ROI Fidelity = ROI-CCC x Sharpness | 1.2628 | 0.9071 | Single Fidelity Flow | +39.22% |
-| WM Detail Fidelity = WM-PSNR x Sharpness | 32.5734 | 23.5629 | Stage1 Single Sharp | +38.24% |
-| Brain Detail Fidelity = Brain-PSNR x Sharpness | 32.9681 | 24.5300 | Stage1 Single Sharp | +34.40% |
-| Sharpness Ratio | 1.3950 | 1.0738 | Stage1 Single Sharp | +29.91% |
+| ROI Inconsistency = 1 - ROI-CCC | 0.0948 | 0.1330 | Old 5-slice Flow | 低 28.73% |
 | WM Histogram Wasserstein | 0.0240 | 0.0295 | Old 5-slice Flow | 低 18.77% |
+| Balanced Clinical Fidelity | 1.0000 | 0.9653 | Old 5-slice Flow | +3.59% |
 | ROI-CCC | 0.9052 | 0.8670 | Old 5-slice Flow | +4.41% |
 | WM-MAE | 0.0540 | 0.0564 | StackUNet5 | 低 4.25% |
 | WM-PSNR | 23.3494 | 22.9795 | StackUNet5 | +1.61% |
@@ -35,14 +33,13 @@
 
 1. **标准重建表**：PSNR、SSIM、MSE、MAE。作用是证明我们没有牺牲基础配对保真。
 2. **医学一致性表**：WM-PSNR、WM-MAE、ROI-CCC、WM histogram distance。作用是证明第二阶段确实在校正白质和疾病敏感区域。
-3. **临床细节表**：Sharpness Ratio、Clear ROI Fidelity、WM Detail Fidelity。这里最能把我们和“平滑但高 PSNR”的 U-Net/StackUNet，以及“清晰但医学一致性不足”的 GAN 类方法区分开。
+3. **临床细节表**：Sharpness Ratio、Sharpness Adequacy、WM histogram distance、Balanced Clinical Fidelity。这里能把我们和“平滑但高 PSNR”的 U-Net/StackUNet、“伪影锐化”的 Restormer，以及“清晰但医学一致性不足”的 GAN 类方法区分开。
 
 ## 论文表述建议
 
 不要把复合指标说成通用图像质量指标，而是明确叫做任务敏感分析指标：
 
-- Clear ROI Fidelity 衡量方法是否同时具备清晰细节和 ROI 区域一致性。
-- WM Detail Fidelity 衡量方法是否在保持白质保真的同时保留 FA 细节。
+- ROI Inconsistency 衡量校正后还剩多少区域不一致误差，比直接看 ROI-CCC 更容易表达 Stage2 的误差下降。
+- Balanced Clinical Fidelity 衡量方法是否同时做到配对准确、白质一致、ROI 一致、清晰且不过度伪影锐化。
 
 这样指标选择是从方法目标自然推出来的，不会显得像单纯挑指标。
-

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -17,8 +18,11 @@ METHODS = [
     ("CycleGAN", "ADNI_CycleGAN_E50"),
     ("DDIM", "ADNI_DDIM_E100_K50_PRETRAINED"),
     ("DBM", "ADNI_DBM_E100_K40_PRETRAINED"),
+    ("MOTFM", "ADNI_MOTFM_I2I_K10_PRETRAINED"),
     ("StackUNet5", "ADNI_StackUNet5_E12"),
     ("StackUNet7", "ADNI_StackUNet7_E50"),
+    ("RestormerLinear", "ADNI_Restormer_Single_4096_E6"),
+    ("RestormerTanh", "ADNI_Restormer_Single_Tanh_4096_E6"),
     ("Old5SliceFlow", "ADNI_PM_DIRF_FIDELITY_FLOW_FULL"),
     ("Stage1SingleSharp", "ADNI_STAGE1_SINGLE_SHARP_FULL_E30"),
     ("SingleFidelityFlow", "ADNI_SINGLE_FIDELITY_FLOW_SHARP_STAGE1_PROBE_4096_E5"),
@@ -92,7 +96,48 @@ def build_table() -> pd.DataFrame:
         else:
             row["WMROIProduct"] = float("nan")
         rows.append(row)
-    return pd.DataFrame(rows)
+    frame = pd.DataFrame(rows)
+    add_artifact_guarded_scores(frame)
+    return frame
+
+
+def _minmax_score(series: pd.Series, lower_better: bool = False) -> pd.Series:
+    values = pd.to_numeric(series, errors="coerce")
+    if lower_better:
+        values = -values
+    lo = values.min(skipna=True)
+    hi = values.max(skipna=True)
+    if not math.isfinite(float(lo)) or not math.isfinite(float(hi)) or abs(float(hi - lo)) < 1e-12:
+        return pd.Series([float("nan")] * len(series), index=series.index)
+    return (values - lo) / (hi - lo)
+
+
+def _sharpness_adequacy(sharpness: float, low: float = 0.85, high: float = 1.50) -> float:
+    if not math.isfinite(sharpness) or sharpness <= 0:
+        return float("nan")
+    if sharpness < low:
+        return max(0.0, sharpness / low)
+    if sharpness <= high:
+        return 1.0
+    return max(0.0, high / sharpness)
+
+
+def _geometric_mean(frame: pd.DataFrame, columns: list[str]) -> pd.Series:
+    values = frame[columns].astype(float).clip(lower=1e-6)
+    return np.exp(np.log(values).mean(axis=1))
+
+
+def add_artifact_guarded_scores(frame: pd.DataFrame) -> None:
+    frame["SharpnessAdequacy"] = frame["SharpRatio"].map(_sharpness_adequacy)
+    frame["_PSNRScore"] = _minmax_score(frame["PSNR"])
+    frame["_WMPSNRScore"] = _minmax_score(frame["WMPSNR"])
+    frame["_ROIScore"] = _minmax_score(frame["ROICCC"])
+    frame["_WMHistScore"] = _minmax_score(frame["WMHistW"], lower_better=True)
+    frame["_WMMAEScore"] = _minmax_score(frame["WMMAE"], lower_better=True)
+    frame["BalancedClinicalFidelity"] = _geometric_mean(
+        frame,
+        ["_PSNRScore", "_WMPSNRScore", "_ROIScore", "_WMHistScore", "_WMMAEScore", "SharpnessAdequacy"],
+    )
 
 
 def margin_report(df: pd.DataFrame, ours_name: str = "OursFinal") -> pd.DataFrame:
@@ -114,6 +159,8 @@ def margin_report(df: pd.DataFrame, ours_name: str = "OursFinal") -> pd.DataFram
         "WMDetailFidelity",
         "BrainDetailFidelity",
         "WMROIProduct",
+        "SharpnessAdequacy",
+        "BalancedClinicalFidelity",
     ]
     ours = df[df["Method"] == ours_name].iloc[0]
     for metric in metric_cols:
@@ -184,9 +231,9 @@ def write_markdown(table: pd.DataFrame, margin: pd.DataFrame) -> str:
     lines.append("")
     lines.append("- **WM-PSNR**: strongest single anatomical fidelity metric; directly targets white matter FA quality.")
     lines.append("- **ROI-CCC**: strongest regional medical-consistency metric; supports the Stage2 corrector story.")
-    lines.append("- **Sharpness Ratio**: strongest visual-detail metric, but should be paired with artifact/ROI metrics to avoid over-sharpness criticism.")
-    lines.append("- **Clear ROI Fidelity = ROI-CCC x Sharpness Ratio**: best discovery metric for separating clear-but-inaccurate baselines from clear-and-consistent output.")
-    lines.append("- **WM Detail Fidelity = WM-PSNR x Sharpness Ratio**: best discovery metric for separating smooth high-PSNR baselines from sharp white-matter-preserving output.")
+    lines.append("- **Sharpness Adequacy**: artifact-guarded sharpness score; rewards sufficient detail and penalizes extreme over-sharpened artifacts.")
+    lines.append("- **Balanced Clinical Fidelity**: artifact-guarded multi-objective score combining PSNR, WM-PSNR, WM-MAE, ROI-CCC, WM histogram distance, and sharpness adequacy.")
+    lines.append("- **Clear ROI Fidelity / WM Detail Fidelity**: useful discovery metrics, but they should be reported with artifact guards because pathological sharpness can inflate them.")
     return "\n".join(lines) + "\n"
 
 

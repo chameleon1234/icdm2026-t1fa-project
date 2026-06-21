@@ -7,15 +7,11 @@ from typing import Any
 import cv2
 import numpy as np
 import pandas as pd
-import torch
 from tqdm import tqdm
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.eval.image_metrics import build_brain_mask, build_wm_mask, compute_psnr, masked_psnr
-
 
 DEFAULT_METHODS = [
     ("U-Net", "ADNI_UNet_E50"),
@@ -23,8 +19,11 @@ DEFAULT_METHODS = [
     ("CycleGAN", "ADNI_CycleGAN_E50"),
     ("DDIM", "ADNI_DDIM_E100_K50_PRETRAINED"),
     ("DBM", "ADNI_DBM_E100_K40_PRETRAINED"),
+    ("MOTFM", "ADNI_MOTFM_I2I_K10_PRETRAINED"),
     ("StackUNet5", "ADNI_StackUNet5_E12"),
     ("StackUNet7", "ADNI_StackUNet7_E50"),
+    ("RestormerLinear", "ADNI_Restormer_Single_4096_E6"),
+    ("RestormerTanh", "ADNI_Restormer_Single_Tanh_4096_E6"),
     ("Old5SliceFlow", "ADNI_PM_DIRF_FIDELITY_FLOW_FULL"),
     ("Stage1SingleSharp", "ADNI_STAGE1_SINGLE_SHARP_FULL_E30"),
     ("SingleFidelityFlow", "ADNI_SINGLE_FIDELITY_FLOW_SHARP_STAGE1_PROBE_4096_E5"),
@@ -54,14 +53,44 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--brain_fa_threshold", type=float, default=0.02)
     parser.add_argument("--wm_quantile", type=float, default=0.65)
     parser.add_argument("--wm_min_threshold", type=float, default=0.20)
+    parser.add_argument("--resume", action="store_true", help="Keep completed rows from output_csv and evaluate only missing methods.")
     return parser.parse_args()
 
 
-def read_png01(path: str | Path) -> torch.Tensor:
+def read_png01(path: str | Path) -> np.ndarray:
     array = cv2.imdecode(np.fromfile(str(path), dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
     if array is None:
         raise FileNotFoundError(path)
-    return torch.from_numpy(array.astype(np.float32) / 255.0).view(1, 1, *array.shape)
+    return array.astype(np.float32) / 255.0
+
+
+def compute_psnr_np(pred: np.ndarray, target: np.ndarray) -> float:
+    mse = float(np.mean((pred - target) ** 2))
+    if mse <= 1e-12:
+        return 100.0
+    return float(20.0 * np.log10(1.0 / np.sqrt(mse)))
+
+
+def build_brain_mask_np(t1: np.ndarray, target: np.ndarray, t1_threshold: float, fa_threshold: float) -> np.ndarray:
+    return np.logical_or(t1 > t1_threshold, target > fa_threshold)
+
+
+def build_wm_mask_np(target: np.ndarray, brain: np.ndarray, quantile: float, min_threshold: float) -> np.ndarray:
+    values = target[brain]
+    if values.size == 0:
+        return brain
+    threshold = max(float(np.quantile(values, quantile)), min_threshold)
+    wm = np.logical_and(brain, target >= threshold)
+    return wm if np.any(wm) else brain
+
+
+def masked_psnr_np(pred: np.ndarray, target: np.ndarray, mask: np.ndarray) -> float:
+    if not np.any(mask):
+        return float("nan")
+    mse = float(np.mean((pred[mask] - target[mask]) ** 2))
+    if mse <= 1e-12:
+        return 100.0
+    return float(20.0 * np.log10(1.0 / np.sqrt(mse)))
 
 
 def _mean(values: list[float]) -> float:
@@ -91,12 +120,12 @@ def evaluate_method(method_name: str, folder_name: str, args: argparse.Namespace
         pred = read_png01(pred_path)
         target = read_png01(fa_path)
         t1 = read_png01(t1_path)
-        brain = build_brain_mask(t1, target, args.brain_t1_threshold, args.brain_fa_threshold)
-        wm = build_wm_mask(target, brain, args.wm_quantile, args.wm_min_threshold)
-        full_psnr.append(compute_psnr(pred, target))
-        brain_psnr.append(masked_psnr(pred, target, brain))
-        wm_psnr.append(masked_psnr(pred, target, wm))
-        brain_fracs.append(float(brain.float().mean().item()))
+        brain = build_brain_mask_np(t1, target, args.brain_t1_threshold, args.brain_fa_threshold)
+        wm = build_wm_mask_np(target, brain, args.wm_quantile, args.wm_min_threshold)
+        full_psnr.append(compute_psnr_np(pred, target))
+        brain_psnr.append(masked_psnr_np(pred, target, brain))
+        wm_psnr.append(masked_psnr_np(pred, target, wm))
+        brain_fracs.append(float(brain.mean()))
 
     return {
         "method": method_name,
@@ -116,7 +145,14 @@ def main() -> None:
     output_md = Path(args.output_md)
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     rows = []
+    done = set()
+    if args.resume and output_csv.exists():
+        existing = pd.read_csv(output_csv).to_dict("records")
+        rows.extend(existing)
+        done = {str(row["method"]) for row in existing}
     for name, folder in methods:
+        if name in done:
+            continue
         rows.append(evaluate_method(name, folder, args))
         pd.DataFrame(rows).to_csv(output_csv, index=False)
         write_markdown(rows, output_md)

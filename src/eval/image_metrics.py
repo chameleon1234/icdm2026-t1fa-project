@@ -43,6 +43,28 @@ def compute_psnr(pred_01: torch.Tensor, target_01: torch.Tensor, data_range: flo
     return float(10.0 * math.log10((data_range**2) / mse))
 
 
+def masked_mse(pred_01: torch.Tensor, target_01: torch.Tensor, mask: torch.Tensor) -> float:
+    pred = _single_channel(pred_01)
+    target = _single_channel(target_01).to(pred.device)
+    mask_tensor = _single_channel(mask).bool().to(pred.device)
+    vals = (pred - target)[mask_tensor]
+    return float("nan") if vals.numel() == 0 else float(torch.mean(vals * vals).item())
+
+
+def masked_psnr(
+    pred_01: torch.Tensor,
+    target_01: torch.Tensor,
+    mask: torch.Tensor,
+    data_range: float = 1.0,
+) -> float:
+    mse = masked_mse(pred_01, target_01, mask)
+    if math.isnan(mse):
+        return float("nan")
+    if mse <= 0.0:
+        return float("inf")
+    return float(10.0 * math.log10((data_range**2) / mse))
+
+
 def _gaussian_window(window_size: int, sigma: float, channels: int, device: torch.device) -> torch.Tensor:
     coords = torch.arange(window_size, device=device).float() - window_size // 2
     kernel_1d = torch.exp(-(coords**2) / (2.0 * sigma**2))
@@ -235,4 +257,3 @@ def collect_spatial_roi_means(
                 pred_means.append(float(pred_region.mean().item()))
                 target_means.append(float(target_region.mean().item()))
     return pred_means, target_means
-

@@ -27,8 +27,10 @@ from src.eval.image_metrics import (
     compute_ssim,
     gradient_error,
     histogram_wasserstein_distance,
+    masked_mse,
     masked_laplacian_variance,
     masked_mae,
+    masked_psnr,
     roi_ccc,
 )
 
@@ -38,7 +40,11 @@ METRIC_COLUMNS = [
     "SSIM",
     "MSE",
     "MAE",
+    "Brain_Masked_PSNR",
+    "Brain_Masked_MSE",
     "Brain_Masked_MAE",
+    "WM_Masked_PSNR",
+    "WM_Masked_MSE",
     "WM_Masked_MAE",
     "Gradient_Error",
     "Sharpness",
@@ -339,7 +345,11 @@ def evaluate_folder(args: argparse.Namespace) -> dict[str, Any]:
                 "SSIM": compute_ssim(pred, target),
                 "MSE": compute_mse(pred, target),
                 "MAE": compute_mae(pred, target),
+                "Brain_Masked_PSNR": masked_psnr(pred, target, brain_mask),
+                "Brain_Masked_MSE": masked_mse(pred, target, brain_mask),
                 "Brain_Masked_MAE": masked_mae(pred, target, brain_mask),
+                "WM_Masked_PSNR": masked_psnr(pred, target, wm_mask),
+                "WM_Masked_MSE": masked_mse(pred, target, wm_mask),
                 "WM_Masked_MAE": masked_mae(pred, target, wm_mask),
                 "Gradient_Error": gradient_error(pred, target, brain_mask),
                 "Sharpness": pred_sharp,
@@ -387,7 +397,18 @@ def evaluate_folder(args: argparse.Namespace) -> dict[str, Any]:
     summary["group_metrics"] = {
         group_name: {
             metric: _nanmean(group_df[metric].astype(float).tolist())
-            for metric in ["PSNR", "SSIM", "MSE", "MAE", "Brain_Masked_MAE", "WM_Masked_MAE"]
+            for metric in [
+                "PSNR",
+                "SSIM",
+                "MSE",
+                "MAE",
+                "Brain_Masked_PSNR",
+                "Brain_Masked_MSE",
+                "Brain_Masked_MAE",
+                "WM_Masked_PSNR",
+                "WM_Masked_MSE",
+                "WM_Masked_MAE",
+            ]
         }
         for group_name, group_df in slice_df.groupby("group_name")
     }

@@ -62,6 +62,7 @@ ADNI_SINGLE_SHARP_STAGE2_METHODS = [
     ("Single Fidelity Flow", "outputs/icdm2026/predictions/ADNI_SINGLE_FIDELITY_FLOW_SHARP_STAGE1_PROBE_4096_E5"),
     ("Single DS Multihead", "outputs/icdm2026/predictions/ADNI_SINGLE_DS_MULTIHEAD_SHARP_STAGE1_PROBE_4096_E5"),
     ("DS Multihead Balanced", "outputs/icdm2026/predictions/ADNI_SINGLE_DS_MULTIHEAD_BALANCED_8192_E2"),
+    ("DS Multihead Final", "outputs/icdm2026/predictions/ADNI_SINGLE_DS_MULTIHEAD_FINAL_12000_E8"),
     ("Old 5-slice Flow", "outputs/icdm2026/predictions/ADNI_PM_DIRF_FIDELITY_FLOW_FULL"),
 ]
 

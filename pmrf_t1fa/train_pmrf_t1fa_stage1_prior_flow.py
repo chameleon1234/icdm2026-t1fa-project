@@ -62,6 +62,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=0)
+    parser.add_argument(
+        "--pin_memory",
+        action="store_true",
+        help="Enable CUDA pinned host memory for DataLoader. Disabled by default to avoid RAM pressure on 32GB machines.",
+    )
     parser.add_argument("--train_limit", type=int, default=0)
     parser.add_argument("--val_limit", type=int, default=0)
     parser.add_argument("--lr", type=float, default=1e-4)
@@ -542,8 +547,9 @@ def main() -> None:
     preview_dir = Path(preview_dir_str)
     train_dataset = maybe_limit_dataset(make_slice_dataset(args.train_t1_dir, args.train_fa_dir, args.context_slices), args.train_limit)
     val_dataset = maybe_limit_dataset(make_slice_dataset(args.val_t1_dir, args.val_fa_dir, args.context_slices), args.val_limit)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=device.type == "cuda")
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=device.type == "cuda")
+    pin_memory = bool(args.pin_memory and device.type == "cuda")
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=pin_memory)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=pin_memory)
     template_by_slice, default_template = build_fa_slice_template(args.train_fa_dir)
     z_min = float(min(template_by_slice.keys()))
     z_max = float(max(template_by_slice.keys()))
@@ -556,7 +562,8 @@ def main() -> None:
     print(
         f"Prior-flow Stage1 training on {len(train_dataset)} train / {len(val_dataset)} val slices | "
         f"context={args.context_slices} source={args.flow_source} steps={args.flow_steps} "
-        f"source_name={args.flow_source_name or 'template'} width={args.width} blocks={args.num_blocks} device={device}"
+        f"source_name={args.flow_source_name or 'template'} width={args.width} blocks={args.num_blocks} "
+        f"device={device} num_workers={args.num_workers} pin_memory={pin_memory}"
     )
     for epoch in range(1, args.epochs + 1):
         model.train()

@@ -89,8 +89,23 @@ def _load_subject_index(config: dict[str, Any], subject_index_csv: str = "") -> 
     )
 
 
-def _default_split_dir(config: dict[str, Any], split: str, modality: str) -> str:
-    return str(Path(config["data"]["processed_root"]) / split / f"{modality}_slices")
+def _load_adni_subject_index(manifest_path: str | Path) -> pd.DataFrame:
+    frame = pd.read_csv(manifest_path)
+    required = {"subject", "split", "normalized_group"}
+    missing = required.difference(frame.columns)
+    if missing:
+        raise ValueError(f"ADNI manifest missing required columns: {sorted(missing)}")
+    subjects = frame[["subject", "split", "normalized_group"]].drop_duplicates("subject").copy()
+    subjects["subject_id"] = subjects["subject"].map(normalize_subject_id)
+    subjects["group_name"] = subjects["normalized_group"].astype(str)
+    group_ids = {"UNLABELED": 0, "CN": 1, "SCD": 2, "MCI": 3, "MCI_spectrum": 3, "AD": 4, "EXCLUDE": 99}
+    subjects["group_id"] = subjects["group_name"].map(group_ids).fillna(99).astype(int)
+    return subjects[["subject_id", "group_id", "group_name", "split"]].sort_values("subject_id").reset_index(drop=True)
+
+
+def _default_split_dir(config: dict[str, Any], split: str, modality: str, processed_root: str = "") -> str:
+    root = Path(processed_root) if processed_root else Path(config["data"]["processed_root"])
+    return str(root / split / f"{modality}_slices")
 
 
 def _read_grayscale(path: Path) -> np.ndarray:
@@ -153,16 +168,24 @@ def extract_subject_features_with_atlas(
         if not paths:
             continue
         roi_values: dict[int, list[float]] = {}
+        used_slices = 0
         for image_path in paths:
+            try:
+                atlas_path = _atlas_path_for_image(atlas_dir, image_path)
+            except FileNotFoundError:
+                continue
             image = _read_grayscale(image_path)
-            mask = _read_label_mask(_atlas_path_for_image(atlas_dir, image_path))
+            mask = _read_label_mask(atlas_path)
             if mask.shape != image.shape:
                 mask = cv2.resize(mask.astype(np.float32), image.shape[::-1], interpolation=cv2.INTER_NEAREST).astype(np.int32)
+            used_slices += 1
             for label in sorted(int(item) for item in np.unique(mask) if int(item) > 0):
                 label_mask = mask == label
                 if int(label_mask.sum()) < min_pixels:
                     continue
                 roi_values.setdefault(label, []).append(float(np.mean(image[label_mask])))
+        if not roi_values:
+            continue
         meta = metadata[subject_id]
         row: dict[str, Any] = {
             "method": method,
@@ -170,7 +193,7 @@ def extract_subject_features_with_atlas(
             "group_id": int(meta["group_id"]),
             "group_name": str(meta["group_name"]),
             "split": str(meta["split"]),
-            "n_slices": int(len(paths)),
+            "n_slices": int(used_slices),
         }
         for optional in ["gender", "age", "edu", "MMSE"]:
             if optional in meta:
@@ -206,8 +229,12 @@ def extract_slice_features_with_atlas(
         subject_id, slice_idx = parse_subject_and_slice(image_path.name)
         if subject_id not in metadata:
             continue
+        try:
+            atlas_path = _atlas_path_for_image(atlas_dir, image_path)
+        except FileNotFoundError:
+            continue
         image = _read_grayscale(image_path)
-        mask = _read_label_mask(_atlas_path_for_image(atlas_dir, image_path))
+        mask = _read_label_mask(atlas_path)
         if mask.shape != image.shape:
             mask = cv2.resize(mask.astype(np.float32), image.shape[::-1], interpolation=cv2.INTER_NEAREST).astype(np.int32)
 
@@ -498,6 +525,16 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--config", default="configs/icdm2026.yaml")
     parser.add_argument("--subject_index_csv", default="")
+    parser.add_argument(
+        "--adni_slice_manifest",
+        default="",
+        help="Optional ADNI slice manifest. When set, subject metadata is built from this manifest.",
+    )
+    parser.add_argument(
+        "--processed_root",
+        default="",
+        help="Override processed root for --include_t1/--include_fa_gt, e.g. data/adni_processed.",
+    )
     parser.add_argument("--train_split", default="train")
     parser.add_argument("--test_split", default="test")
     parser.add_argument("--method", action="append", default=[], help="NAME=TRAIN_DIR:TEST_DIR. Windows abs paths can use NAME=TRAIN_DIR|TEST_DIR.")
@@ -522,7 +559,7 @@ def main() -> None:
     if args.roi_mode == "atlas" and not args.atlas_dir:
         raise ValueError("--atlas_dir is required when --roi_mode atlas")
     config = _read_yaml(args.config)
-    subject_index = _load_subject_index(config, args.subject_index_csv)
+    subject_index = _load_adni_subject_index(args.adni_slice_manifest) if args.adni_slice_manifest else _load_subject_index(config, args.subject_index_csv)
     output_root = Path(args.output_root)
     output_root.mkdir(parents=True, exist_ok=True)
 
@@ -531,16 +568,16 @@ def main() -> None:
         pairs.append(
             MethodPair(
                 "T1_ONLY",
-                _default_split_dir(config, args.train_split, "t1"),
-                _default_split_dir(config, args.test_split, "t1"),
+                _default_split_dir(config, args.train_split, "t1", args.processed_root),
+                _default_split_dir(config, args.test_split, "t1", args.processed_root),
             )
         )
     if args.include_fa_gt:
         pairs.append(
             MethodPair(
                 "FA_GT",
-                _default_split_dir(config, args.train_split, "fa"),
-                _default_split_dir(config, args.test_split, "fa"),
+                _default_split_dir(config, args.train_split, "fa", args.processed_root),
+                _default_split_dir(config, args.test_split, "fa", args.processed_root),
             )
         )
     pairs.extend(parse_method_pair(spec) for spec in args.method)

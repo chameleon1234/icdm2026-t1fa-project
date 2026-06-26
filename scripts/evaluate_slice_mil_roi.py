@@ -813,6 +813,16 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Slice-level ROI features with subject-level vote/MIL evaluation.")
     parser.add_argument("--config", default="configs/icdm2026.yaml")
     parser.add_argument("--subject_index_csv", default="")
+    parser.add_argument(
+        "--adni_slice_manifest",
+        default="",
+        help="Optional ADNI slice manifest. When set, subject metadata is built from this manifest.",
+    )
+    parser.add_argument(
+        "--processed_root",
+        default="",
+        help="Override processed root for --include_t1/--include_fa_gt, e.g. data/adni_processed.",
+    )
     parser.add_argument("--train_split", default="train")
     parser.add_argument("--test_split", default="test")
     parser.add_argument("--method", action="append", default=[], help="NAME=TRAIN_DIR|TEST_DIR")
@@ -840,15 +850,32 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     config = _read_yaml(args.config)
-    subject_index = _load_subject_index(config, args.subject_index_csv)
+    if args.adni_slice_manifest:
+        from scripts.evaluate_finalpdf_train_test_roi import _load_adni_subject_index
+
+        subject_index = _load_adni_subject_index(args.adni_slice_manifest)
+    else:
+        subject_index = _load_subject_index(config, args.subject_index_csv)
     output_root = Path(args.output_root)
     output_root.mkdir(parents=True, exist_ok=True)
 
     pairs: list[MethodPair] = []
     if args.include_t1:
-        pairs.append(MethodPair("T1_ONLY", _default_split_dir(config, args.train_split, "t1"), _default_split_dir(config, args.test_split, "t1")))
+        pairs.append(
+            MethodPair(
+                "T1_ONLY",
+                _default_split_dir(config, args.train_split, "t1", args.processed_root),
+                _default_split_dir(config, args.test_split, "t1", args.processed_root),
+            )
+        )
     if args.include_fa_gt:
-        pairs.append(MethodPair("FA_GT", _default_split_dir(config, args.train_split, "fa"), _default_split_dir(config, args.test_split, "fa")))
+        pairs.append(
+            MethodPair(
+                "FA_GT",
+                _default_split_dir(config, args.train_split, "fa", args.processed_root),
+                _default_split_dir(config, args.test_split, "fa", args.processed_root),
+            )
+        )
     pairs.extend(parse_method_pair(spec) for spec in args.method)
     if not pairs:
         raise ValueError("No methods selected")

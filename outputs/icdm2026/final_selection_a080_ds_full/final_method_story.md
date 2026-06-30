@@ -85,3 +85,8 @@ A080+DS Full is selected as the final main method because it provides the best o
 - Private final main table: `outputs\icdm2026\final_selection_a080_ds_full\private_final_main_table.csv`
 - Ablation table: `outputs\icdm2026\final_selection_a080_ds_full\final_ablation_table.csv`
 - Final figures: `outputs\icdm2026\final_selection_a080_ds_full\figures`
+
+## Downstream audit update
+
+A080+DS Full provides downstream utility evidence and maintains competitive classification performance, while its main advantage lies in reconstruction fidelity, white-matter fidelity, and sharpness preservation. This audit confirms that the fair ADNI train/test MIL protocol only includes methods with both train and test prediction folders. U-Net, Pix2Pix, and CycleGAN lack train-full prediction folders and are therefore included only as subject-level test-CV supplements, not as fair MIL main conclusions.
+

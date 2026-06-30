@@ -87,3 +87,7 @@ Ablation table:
 - Private final main table: `outputs\icdm2026\final_selection_a080_ds_full\private_final_main_table.csv`
 - Ablation table: `outputs\icdm2026\final_selection_a080_ds_full\final_ablation_table.csv`
 - Final figures: `outputs\icdm2026\final_selection_a080_ds_full\figures`
+
+## Downstream audit update
+
+A080+DS Full 提供了下游可用性证据，并保持有竞争力的分类表现；其主要优势仍然体现在重建质量、白质误差和清晰度保持上。本次审计确认，ADNI 公平 train/test MIL 协议只纳入同时具有 train/test prediction folders 的方法。U-Net、Pix2Pix、CycleGAN 缺少 train-full 预测目录，因此只作为 subject-level test-CV 补充对比，不作为公平 MIL 主结论。

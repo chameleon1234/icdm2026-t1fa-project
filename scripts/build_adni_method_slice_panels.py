@@ -66,6 +66,35 @@ ADNI_SINGLE_SHARP_STAGE2_METHODS = [
     ("Old 5-slice Flow", "outputs/icdm2026/predictions/ADNI_PM_DIRF_FIDELITY_FLOW_FULL"),
 ]
 
+ADNI_TEXTURE_PROBE_METHODS = [
+    ("T1", "data/adni_processed/test/t1_slices"),
+    ("FA_GT", "data/adni_processed/test/fa_slices"),
+    ("LowGuard", "outputs/icdm2026/predictions/ADNI_FIDELITY_FLOW_ARTIFACT_LOWGUARD_TEMPLATE_STRONG"),
+    ("LightGuard", "outputs/icdm2026/predictions/ADNI_STAGE1_PRIOR_FLOW_LIGHTGUARD_4096_E8_BEST_K8"),
+    ("Old Fidelity", "outputs/icdm2026/predictions/ADNI_PM_DIRF_FIDELITY_FLOW_FULL"),
+    ("Low+Light HF", "outputs/icdm2026/predictions/ADNI_BLEND_LOWGUARD_LOW_LIGHTGUARD_HF_A035"),
+    ("Low+Light A060", "outputs/icdm2026/predictions/ADNI_BLEND_LOWGUARD_LOW_LIGHTGUARD_HF_A060"),
+    ("Low+Light A080", "outputs/icdm2026/predictions/ADNI_BLEND_LOWGUARD_LOW_LIGHTGUARD_HF_A080"),
+    ("A080+DS", "outputs/icdm2026/predictions/ADNI_A080_DS_CORRECTOR_FAIR_4096_E8"),
+    ("A080+DS ROIBoost", "outputs/icdm2026/predictions/ADNI_A080_DS_CORRECTOR_ROIBOOST_4096_E12"),
+    ("A080+DS DiseaseROI", "outputs/icdm2026/predictions/ADNI_A080_DS_CORRECTOR_DISEASEROI_4096_E8"),
+    ("A080+DS HFKeep", "outputs/icdm2026/predictions/ADNI_A080_DS_CORRECTOR_DISEASEROI_HFPRESERVE_4096_E6"),
+    ("Low+Old HF", "outputs/icdm2026/predictions/ADNI_BLEND_LOWGUARD_LOW_OLDFIDELITY_HF_A035"),
+    ("Gated MB", "outputs/icdm2026/predictions/ADNI_STAGE1_GATED_MB_FULLBASE_A025_CAP0065_SMOKE_K10"),
+]
+
+ADNI_FINAL_A080_DS_METHODS = [
+    ("T1", "data/adni_processed/test/t1_slices"),
+    ("FA_GT", "data/adni_processed/test/fa_slices"),
+    ("A080+DS Full", "outputs/icdm2026/predictions/ADNI_A080_DS_CORRECTOR_DISEASEROI_HFPRESERVE_FULL_E12_SCOREBEST"),
+    ("A080 Base", "outputs/icdm2026/predictions/ADNI_BLEND_LOWGUARD_LOW_LIGHTGUARD_HF_A080"),
+    ("Old Fidelity Flow", "outputs/icdm2026/predictions/ADNI_PM_DIRF_FIDELITY_FLOW_FULL"),
+    ("Pix2Pix", "outputs/icdm2026/predictions/ADNI_Pix2Pix_E50"),
+    ("U-Net", "outputs/icdm2026/predictions/ADNI_UNet_E50"),
+    ("DDIM", "outputs/icdm2026/predictions/ADNI_DDIM_E100_K50_PRETRAINED"),
+    ("DBM", "outputs/icdm2026/predictions/ADNI_DBM_E100_K40_PRETRAINED"),
+]
+
 DEFAULT_SLICES = ["sub-006_S_6651_z042", "sub-019_S_6186_z034"]
 DEFAULT_ROIS = {
     # x0, y0, x1, y1 in image-relative coordinates.
@@ -88,13 +117,16 @@ def parse_args() -> argparse.Namespace:
             "adni_single_stage2_smoke",
             "adni_single_stage2_multihead",
             "adni_single_sharp_stage2",
+            "adni_texture_probe",
+            "adni_final_a080_ds",
         ],
         help=(
             "full_adni includes all available ADNI comparison methods; adni_compact uses the requested "
             "7-column paper review order; private_single_stage2 compares the private single-slice Stage1 "
             "and disease-sensitive Stage2 outputs; adni_single_stage2_multihead compares the new multi-head "
             "Stage2 probe against the prior single-slice Stage2 smoke output; adni_single_sharp_stage2 "
-            "compares the stronger single-slice sharp Stage1 with its Flow and multi-head Stage2 probes."
+            "compares the stronger single-slice sharp Stage1 with its Flow and multi-head Stage2 probes; "
+            "adni_texture_probe compares texture-source and high-frequency teacher probes."
         ),
     )
     parser.add_argument(
@@ -181,6 +213,8 @@ def _slice_ids_from_source(source_dir: str | Path) -> list[str]:
 
 
 def _method_list(preset: str) -> list[tuple[str, str]]:
+    if preset == "adni_final_a080_ds":
+        return ADNI_FINAL_A080_DS_METHODS
     if preset == "adni_compact":
         return COMPACT_ADNI_METHODS
     if preset == "private_single_stage2":
@@ -191,6 +225,8 @@ def _method_list(preset: str) -> list[tuple[str, str]]:
         return ADNI_SINGLE_STAGE2_MULTIHEAD_METHODS
     if preset == "adni_single_sharp_stage2":
         return ADNI_SINGLE_SHARP_STAGE2_METHODS
+    if preset == "adni_texture_probe":
+        return ADNI_TEXTURE_PROBE_METHODS
     return DEFAULT_METHODS
 
 

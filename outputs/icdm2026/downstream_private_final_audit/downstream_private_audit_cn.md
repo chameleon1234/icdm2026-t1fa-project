@@ -1,59 +1,25 @@
-# 私有集最终下游审计
+# ?????????
 
-## 结论
+| method | test_prediction_folder | train_prediction_folder | checkpoint | test_prediction_folder_exists | train_prediction_folder_exists | checkpoint_exists | test_png_count | train_png_count | eligible_for_fair_train_test_MIL | eligible_for_test_CV_only | reason_if_not_eligible |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| T1_ONLY | data/processed/test/t1_slices | data/processed/train/t1_slices |  | True | True | False | 1900 | 8650 | True | False |  |
+| FA_GT | data/processed/test/fa_slices | data/processed/train/fa_slices |  | True | True | False | 1900 | 8650 | True | False |  |
+| FidelityFlow | outputs/icdm2026/predictions/PM_DIRF_FIDELITY_FLOW_FULL | outputs/icdm2026/predictions/PM_DIRF_FIDELITY_FLOW_FULL_TRAIN_FULL | outputs/pmrf_t1fa_stage2_fidelity_flow_full/checkpoints/best_fidelity_corrector.pt | True | True | True | 1900 | 8650 | True | False |  |
+| PRIVATE_DS_HYBRID_FROM_STAGE1_E030_FULL | outputs/icdm2026/predictions/PRIVATE_DS_HYBRID_FROM_STAGE1_E030_FULL | outputs/icdm2026/predictions/PRIVATE_DS_HYBRID_FROM_STAGE1_E030_FULL_TRAIN_FULL | outputs/pmrf_t1fa_stage2_single_ds_hybrid_from_stage1_e030_full/checkpoints/best_ds_corrector.pt | True | True | True | 1900 | 8650 | True | False |  |
+| UNet | outputs/icdm2026/predictions/UNet_CurrentSplit_E100 | outputs/icdm2026/predictions_finalpdf_train/UNet | outputs/unet_current_split_e100/checkpoints/best_unet.pt | True | True | True | 1900 | 8650 | True | False |  |
+| Pix2Pix | outputs/icdm2026/predictions/Pix2Pix_CurrentSplit_E100 | outputs/icdm2026/predictions_finalpdf_train/Pix2Pix | outputs/pix2pix_current_split_e100/checkpoints/best_pix2pix_generator.pt | True | True | True | 1900 | 8650 | True | False |  |
+| CycleGAN | outputs/icdm2026/predictions/CycleGAN_CurrentSplit_E100 | outputs/icdm2026/predictions_finalpdf_train/CycleGAN | outputs/cyclegan_current_split_e100/checkpoints/best_cyclegan_a2b_generator.pt | True | True | True | 1900 | 8650 | True | False |  |
+| PRIVATE_STAGE1_SINGLE_SHARP_STRIPE_EPOCH030 | outputs/icdm2026/predictions/PRIVATE_STAGE1_SINGLE_SHARP_STRIPE_EPOCH030 | outputs/icdm2026/predictions/PRIVATE_STAGE1_SINGLE_SHARP_STRIPE_EPOCH030_TRAIN_FULL | outputs/pmrf_t1fa_stage1_single_sharp_stripe_full/checkpoints/epoch_030.pt | True | False | True | 1900 | 0 | False | True | missing train prediction folder |
+| Stage1_LPIPS_GAN | outputs/icdm2026/predictions/PM_STAGE1_LPIPS_GAN_5SLICE_FINAL | outputs/icdm2026/predictions/Stage1_LPIPS_GAN_TRAIN_FULL | outputs/pmrf_t1fa_stage1_wmroi_detail_5slice_lpips01_gan001/checkpoints/best_stage1.pt | True | False | True | 1900 | 0 | False | True | missing train prediction folder |
 
-私有集最终候选为 `PRIVATE_DS_HYBRID_FROM_STAGE1_E030_FULL`。已有下游结果覆盖 train/test MIL 和 repeated subject-level CV，但这些结果来自历史评估文件，本次没有重新训练新模型。
+## ??????
 
-## 已有 train/test MIL
-
-来源：
-
-`outputs/icdm2026/downstream_private_slice_mil_finalpdf_train_test_seed2026/classification_subject_summary.csv`
-
-包含方法：
-
-- `T1_ONLY`
-- `FA_GT`
-- `FidelityFlow`
-- `Stage1`
-- `UNet`
-- `Pix2Pix`
-- `CycleGAN`
-- 以及 `T1_PLUS_*` 融合结果
-
-平均结果如下：
-
-| Method | Mean ACC | Mean AUC | Mean Macro-F1 | Rows |
-|---|---:|---:|---:|---:|
-| T1_PLUS_GT | 0.754 | 0.640 | 0.626 | 9 |
-| T1_PLUS_Stage1 | 0.721 | 0.586 | 0.609 | 9 |
-| T1_PLUS_Unet | 0.708 | 0.551 | 0.586 | 9 |
-| FA_GT | 0.681 | 0.560 | 0.557 | 9 |
-| T1_ONLY | 0.646 | 0.545 | 0.539 | 9 |
-| FidelityFlow | 0.646 | 0.540 | 0.538 | 9 |
-
-## 已有 repeated subject-level CV
-
-来源：
-
-`outputs/icdm2026/downstream_finalpdf_compatible_private/classification_repeated_summary.csv`
-
-该协议用于补充稳定性观察，不替代 train/test MIL。
-
-## 公平性说明
-
-当前可公平沿用的 private train/test MIL 结果来自已有文件。若要重新补跑 private train/test MIL，需要确保每个方法都有对应 train/test prediction folder，不能使用 test prediction folder 作为 train。
-
-当前检查到的 prediction folders 包括：
-
-- `PRIVATE_DS_HYBRID_FROM_STAGE1_E030_FULL`
-- `PM_DIRF_FIDELITY_FLOW_FULL`
-- `UNet_CurrentSplit_E100`
-- `Pix2Pix_CurrentSplit_E100`
-- `CycleGAN_CurrentSplit_E100`
-
-本次任务要求不训练新模型，因此只做审计和汇总。
-
-## 缺失项
-
-当前 private 审计没有生成新的 per-class F1；现有脚本主要输出 Accuracy、Macro-AUC 和 Macro-F1。
+| method | rows | mean_accuracy | mean_macro_auc | mean_macro_f1 | mean_n_train_subjects | mean_n_test_subjects |
+| --- | --- | --- | --- | --- | --- | --- |
+| T1_ONLY | 9 | 0.6659 | 0.7285 | 0.6267 | 129.6667 | 24.6667 |
+| Pix2Pix | 9 | 0.6483 | 0.7097 | 0.6049 | 129.6667 | 24.6667 |
+| UNet | 9 | 0.6730 | 0.7072 | 0.6229 | 129.6667 | 24.6667 |
+| CycleGAN | 9 | 0.6992 | 0.6864 | 0.6509 | 129.6667 | 24.6667 |
+| FIDELITY_FLOW | 9 | 0.7050 | 0.6815 | 0.6362 | 129.6667 | 24.6667 |
+| FA_GT | 9 | 0.6964 | 0.6639 | 0.6039 | 129.6667 | 24.6667 |
+| PRIVATE_DS_HYBRID | 9 | 0.6902 | 0.6493 | 0.6042 | 129.6667 | 24.6667 |

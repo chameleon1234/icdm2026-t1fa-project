@@ -90,3 +90,10 @@ A080+DS Full is selected as the final main method because it provides the best o
 
 A080+DS Full provides downstream utility evidence and maintains competitive classification performance, while its main advantage lies in reconstruction fidelity, white-matter fidelity, and sharpness preservation. This audit confirms that the fair ADNI train/test MIL protocol only includes methods with both train and test prediction folders. U-Net, Pix2Pix, and CycleGAN lack train-full prediction folders and are therefore included only as subject-level test-CV supplements, not as fair MIL main conclusions.
 
+## Final Downstream Audit Addendum (2026-06-30)
+
+The final downstream audit uses a strict subject-level train/test protocol. It does not use test-as-train and does not mix slice-level leakage protocols. ADNI uses `data/adni_processed/adni_slice_manifest.csv`; the private dataset uses subject-level aggregation from `data/processed/train` and `data/processed/test`.
+
+On ADNI, the final method `ADNI_A080_DS_CORRECTOR_DISEASEROI_HFPRESERVE_FULL_E12_SCOREBEST` is evaluated as `ADNI_A080_DS_FULL` and obtains the highest average Macro-AUC (0.7226) across 9 method/task/protocol rows. However, it is not first for all Accuracy or Macro-F1 summaries. On the private dataset, `PRIVATE_DS_HYBRID_FROM_STAGE1_E030_FULL` is included in the fair downstream table, but it is not first across all downstream metrics.
+
+Therefore, the final manuscript claim should remain conservative: A080+DS Full provides downstream utility evidence and maintains competitive classification performance, while its main advantage lies in reconstruction fidelity, white-matter fidelity, and sharpness preservation. Do not claim it is first on every downstream task.

@@ -1,0 +1,26 @@
+method,role,canonical_dir,alias_note
+T1_ONLY,test,data/adni_processed/test/t1_slices,existing folder used; no duplicate TEST_FULL exported
+T1_ONLY,train,data/adni_processed/train/t1_slices,train-full folder if present/exported
+FA_GT,test,data/adni_processed/test/fa_slices,existing folder used; no duplicate TEST_FULL exported
+FA_GT,train,data/adni_processed/train/fa_slices,train-full folder if present/exported
+ADNI_OLD_FIDELITY_FLOW,test,outputs/icdm2026/predictions/ADNI_PM_DIRF_FIDELITY_FLOW_FULL,existing folder used; no duplicate TEST_FULL exported
+ADNI_OLD_FIDELITY_FLOW,train,outputs/icdm2026/predictions/ADNI_PM_DIRF_FIDELITY_FLOW_FULL_TRAIN_FULL,train-full folder if present/exported
+ADNI_A080_BASE,test,outputs/icdm2026/predictions/ADNI_BLEND_LOWGUARD_LOW_LIGHTGUARD_HF_A080,existing folder used; no duplicate TEST_FULL exported
+ADNI_A080_BASE,train,outputs/icdm2026/predictions/ADNI_BLEND_LOWGUARD_LOW_LIGHTGUARD_HF_A080_TRAIN_FULL,train-full folder if present/exported
+ADNI_A080_DS_FULL,test,outputs/icdm2026/predictions/ADNI_A080_DS_CORRECTOR_DISEASEROI_HFPRESERVE_FULL_E12_SCOREBEST,existing folder used; no duplicate TEST_FULL exported
+ADNI_A080_DS_FULL,train,outputs/icdm2026/predictions/ADNI_A080_DS_CORRECTOR_DISEASEROI_HFPRESERVE_FULL_E12_SCOREBEST_TRAIN_FULL,train-full folder if present/exported
+ADNI_UNET,test,outputs/icdm2026/predictions/ADNI_UNet_E50,existing folder used; no duplicate TEST_FULL exported
+ADNI_UNET,train,outputs/icdm2026/predictions/ADNI_UNet_E50_TRAIN_FULL,train-full folder if present/exported
+ADNI_PIX2PIX,test,outputs/icdm2026/predictions/ADNI_Pix2Pix_E50,existing folder used; no duplicate TEST_FULL exported
+ADNI_PIX2PIX,train,outputs/icdm2026/predictions/ADNI_Pix2Pix_E50_TRAIN_FULL,train-full folder if present/exported
+ADNI_CYCLEGAN,test,outputs/icdm2026/predictions/ADNI_CycleGAN_E50,existing folder used; no duplicate TEST_FULL exported
+ADNI_CYCLEGAN,train,outputs/icdm2026/predictions/ADNI_CycleGAN_E50_TRAIN_FULL,train-full folder if present/exported
+ADNI_PRIOR_FLOW_SAFE_PROBE_FULL,test,outputs/icdm2026/predictions/ADNI_PRIOR_FLOW_SAFE_PROBE_FULL,existing folder used; no duplicate TEST_FULL exported
+ADNI_STAGE1_PRIOR_FLOW_LIGHTGUARD_4096_E8_BEST_K8,test,outputs/icdm2026/predictions/ADNI_STAGE1_PRIOR_FLOW_LIGHTGUARD_4096_E8_BEST_K8,existing folder used; no duplicate TEST_FULL exported
+ADNI_STAGE1_PRIOR_FLOW_LIGHTGUARD_4096_E8_BEST_K8,train,outputs/icdm2026/predictions/ADNI_STAGE1_PRIOR_FLOW_LIGHTGUARD_TRAIN_FULL_K8,train-full folder if present/exported
+ADNI_DDIM,test,outputs/icdm2026/predictions/ADNI_DDIM_E100_K50_PRETRAINED,existing folder used; no duplicate TEST_FULL exported
+ADNI_DDIM,train,outputs/icdm2026/predictions/ADNI_DDIM_E100_K50_PRETRAINED_TRAIN_FULL,train-full folder if present/exported
+ADNI_DBM,test,outputs/icdm2026/predictions/ADNI_DBM_E100_K40_PRETRAINED,existing folder used; no duplicate TEST_FULL exported
+ADNI_DBM,train,outputs/icdm2026/predictions/ADNI_DBM_E100_K40_PRETRAINED_TRAIN_FULL,train-full folder if present/exported
+ADNI_MOTFM,test,outputs/icdm2026/predictions/ADNI_MOTFM_I2I_K10_PRETRAINED,existing folder used; no duplicate TEST_FULL exported
+ADNI_MOTFM,train,outputs/icdm2026/predictions/ADNI_MOTFM_I2I_K10_PRETRAINED_TRAIN_FULL,train-full folder if present/exported

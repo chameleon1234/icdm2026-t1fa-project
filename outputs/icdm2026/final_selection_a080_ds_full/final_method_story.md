@@ -43,13 +43,13 @@ Private final main table:
 
 ## 4. Why A080+DS Full is selected
 
-A080+DS Full is selected as the final main method because it provides the best overall balance among reconstruction fidelity, white-matter fidelity, sharpness preservation, and downstream utility. Compared with A080 base, it improves PSNR/SSIM, reduces WM-MAE, substantially improves ROI-CCC, and keeps SharpRatio close to real FA instead of smoothing the texture away.
+A080+DS Full is selected as the final main method because it provides the best overall image-quality balance among reconstruction fidelity, white-matter fidelity, and sharpness preservation, while also providing competitive downstream utility evidence. Compared with A080 base, it improves PSNR/SSIM, reduces WM-MAE, substantially improves ROI-CCC, and keeps SharpRatio close to real FA instead of smoothing the texture away.
 
 This is not a claim that every single metric is the best. It is a best-overall-balance claim.
 
 ## 5. Comparison with Old Fidelity Flow
 
-Old Fidelity Flow remains a strong ROI-consistency baseline. Its ROI-CCC is higher than A080+DS Full. However, A080+DS Full provides a better overall trade-off across PSNR, SSIM, MAE, WM-MAE, SharpRatio, and downstream utility, making it more suitable as the final integrated method.
+Old Fidelity Flow remains a strong ROI-consistency baseline. Its ROI-CCC is higher than A080+DS Full. However, A080+DS Full provides a better image-quality trade-off across PSNR, SSIM, MAE, WM-MAE, and SharpRatio, while maintaining competitive downstream performance, making it more suitable as the final integrated method.
 
 ## 6. Ablation interpretation
 

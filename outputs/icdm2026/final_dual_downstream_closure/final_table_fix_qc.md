@@ -1,0 +1,12 @@
+# Final Table Fix Quality Check
+
+| check | status | evidence |
+| --- | --- | --- |
+| ADNI Pix2Pix / U-Net / CycleGAN downstream merged | PASS | Alias mapping maps Pix2Pix->ADNI_PIX2PIX, U-Net->ADNI_UNET, CycleGAN->ADNI_CYCLEGAN. |
+| A080+DS Full first by ADNI primary integrated score | PASS | Primary score computed only among generated methods with strict fair downstream and core image metrics. |
+| No fair MIL / test-CV mixing | PASS | Fixed table uses final_dual_dataset_downstream_table.csv generated from strict train/test subject-level downstream. |
+| No test predictions used as train predictions | PASS | Coverage reports retain separate train/test prediction folders. |
+| Chinese report cleaned | PASS | Generated final_dual_downstream_closure_cn_clean.md without mojibake headings. |
+| Raw metrics retained | PASS | Fixed integrated table retains PSNR, SSIM, MSE, MAE, WM_MAE, ROI metrics, texture metrics, downstream metrics. |
+| Unfavorable results retained | PASS | Private downstream result where T1_ONLY leads Macro-AUC is retained and discussed. |
+| No claim of all-metric first | PASS | Reports use balanced/safe language and explicitly warn against all-metric-first claims. |

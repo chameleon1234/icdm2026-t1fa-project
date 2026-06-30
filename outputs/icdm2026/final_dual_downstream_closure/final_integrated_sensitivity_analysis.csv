@@ -1,0 +1,9 @@
+dataset,score_view,top_method,score
+ADNI,balanced/primary,A080+DS Full (Ours),0.964174942062881
+ADNI,image-heavy,A080+DS Full (Ours),0.9780165243500856
+ADNI,medical-heavy,A080+DS Full (Ours),0.9648230035994428
+ADNI,downstream-heavy,A080+DS Full (Ours),0.9503393372284126
+Private,balanced/primary,PRIVATE_DS_HYBRID,0.7783751536362908
+Private,image-heavy,PRIVATE_DS_HYBRID,0.8817393834684119
+Private,medical-heavy,PRIVATE_DS_HYBRID,0.8561768597669965
+Private,downstream-heavy,FidelityFlow,0.7015670032121673

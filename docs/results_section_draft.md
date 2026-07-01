@@ -1,36 +1,29 @@
 # Results Section Draft
 
-## ADNI Image Quality
+## Dual-Dataset Fair Downstream Closure
 
-On ADNI, A080+DS Full achieves a strong balance between reconstruction fidelity and medical consistency. Compared with Old Fidelity Flow and A080 Base, it maintains competitive PSNR/SSIM while improving the balance among white-matter error, ROI consistency, and texture realism. Pix2Pix, U-Net, and CycleGAN remain competitive on some individual metrics, so the manuscript should not claim that A080+DS Full is the best on every single metric.
+Both ADNI and the private dataset have completed fair subject-level train/test downstream evaluation. Downstream classifiers are trained on the training split and evaluated on the held-out test split, using subject-level aggregation or MIL-level outputs. Test predictions are not used as training predictions, and test-CV results are not mixed into the main downstream conclusion.
 
-## ADNI Downstream Utility
+## ADNI Results
 
-Under strict subject-level train/test downstream evaluation, A080+DS Full achieves the highest average Macro-AUC (0.7226) among the ADNI fair downstream methods. A080 Base remains competitive for Accuracy and Macro-F1, suggesting a task-dependent trade-off between high-frequency texture and medical consistency.
+On ADNI, `A080+DS Full` achieves the highest average Macro-AUC (0.7226) in the latest fair all-method downstream evaluation. This supports the downstream utility of the final ADNI method.
 
-## Private Dataset Image Quality
+However, `A080+DS Full` is not the best method for every downstream metric: DDIM obtains higher Accuracy and MOTFM obtains higher Macro-F1. Therefore, the ADNI downstream conclusion should be stated as:
 
-On the private dataset, Private DS Hybrid provides stable image quality, white-matter fidelity, ROI consistency, and sharpness preservation. However, this does not mean it dominates all downstream tasks. The result supports synthetic FA as a complementary representation rather than a complete replacement for T1.
+`A080+DS Full achieves the highest Macro-AUC and competitive Accuracy/F1, supporting downstream utility, not universal downstream superiority.`
 
-## Private Dataset Downstream Utility
+From the image and medical-fidelity perspective, `A080+DS Full` provides the most stable integrated balance across reconstruction fidelity, white-matter/ROI consistency, and sharpness preservation. The Macro-AUC result complements, rather than replaces, this image-level evidence.
 
-The private fair downstream results show that T1_ONLY has the highest average Macro-AUC, while FidelityFlow is strong in average Accuracy. PRIVATE_DS_HYBRID remains competitive but is not universally best. This indicates that private-dataset downstream signal may rely strongly on original T1 structure or low-frequency statistics.
+## Private Dataset Results
 
-## Integrated Composite Result
+On the private dataset, `PRIVATE_DS_HYBRID_FROM_STAGE1_E030_FULL` is not the strongest standalone downstream classifier. Its average Macro-AUC is 0.5913, below UNet (0.7244), FA_GT (0.7046), Pix2Pix (0.6997), and Stage1_LPIPS_GAN (0.6950).
 
-The primary integrated composite score uses fixed weights: 25% reconstruction fidelity, 30% medical fidelity, 20% texture realism, and 25% downstream utility. A080+DS Full is selected as the final method because it achieves the best overall integrated balance across reconstruction fidelity, white-matter/ROI medical fidelity, texture realism, and downstream utility, rather than because it is the top method on every individual metric.
+The per-task sanity check shows that the weakest task for `PRIVATE_DS_HYBRID` is `CN vs MCI-spectrum`, with Accuracy = 0.4706, Macro-AUC = 0.4406, and Macro-F1 = 0.4112. `CN vs AD` and `MCI-spectrum vs AD` are valid and run normally, but they are also not uniformly leading.
 
-## Ablation Interpretation
+At the same time, `PRIVATE_DS_HYBRID_FROM_STAGE1_E030_FULL` ranks first by the integrated image/medical/texture/downstream score. Therefore, the private-dataset conclusion should emphasize integrated balance rather than downstream dominance.
 
-The ablation results suggest that simply increasing LPIPS or GAN pressure does not reliably recover realistic FA texture; aggressive sharpening can introduce false white-matter texture or local over-bright artifacts. A080+DS is valuable because A080 preserves stable FA-space high-frequency information and the disease-sensitive corrector improves medical consistency.
+## Safe Dual-Dataset Interpretation
 
-## Safe Conclusion
+The dual-dataset results suggest that synthetic FA is better framed as a complementary white-matter representation to T1, rather than a replacement for T1 or real DTI/FA. The final method selection should be justified by integrated balance across reconstruction quality, white-matter/ROI medical consistency, texture preservation, and downstream utility.
 
-The final conclusion should state that A080+DS Full provides dual-dataset reconstruction evidence and ADNI downstream utility evidence, while private downstream results suggest synthetic FA should be interpreted as a complementary representation to T1. Do not claim that generated FA fully replaces T1 or that the method is first on every metric.
-
-
-## 2026-07-01 Dual-Dataset Fair Full-Heavy Downstream Closure
-
-No new image-generation model was trained in this update. Missing train-full prediction folders were completed where needed, and the private dataset was re-audited using fair subject-level train/test downstream evaluation. ADNI uses the latest `outputs/icdm2026/downstream_adni_fair_full_all_methods/method_average_summary.csv`, while the private dataset uses `outputs/icdm2026/downstream_private_fair_full_heavy_all_methods/method_average_summary.csv`.
-
-On ADNI, `ADNI_A080_DS_FULL` achieves the highest average Macro-AUC. On the private dataset, `PRIVATE_DS_HYBRID_FROM_STAGE1_E030_FULL` is not the best single downstream method by Macro-AUC. Therefore, the paper should frame synthetic FA as a complementary representation to T1 and justify final method selection by integrated balance across reconstruction, medical fidelity, texture preservation, and downstream utility, not by claiming every single metric is best.
+The manuscript should not claim that the method is first on every metric, that both datasets achieve downstream superiority, or that generated FA can fully replace real FA.

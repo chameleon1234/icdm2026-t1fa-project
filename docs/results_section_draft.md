@@ -27,3 +27,10 @@ The ablation results suggest that simply increasing LPIPS or GAN pressure does n
 ## Safe Conclusion
 
 The final conclusion should state that A080+DS Full provides dual-dataset reconstruction evidence and ADNI downstream utility evidence, while private downstream results suggest synthetic FA should be interpreted as a complementary representation to T1. Do not claim that generated FA fully replaces T1 or that the method is first on every metric.
+
+
+## 2026-07-01 Dual-Dataset Fair Full-Heavy Downstream Closure
+
+No new image-generation model was trained in this update. Missing train-full prediction folders were completed where needed, and the private dataset was re-audited using fair subject-level train/test downstream evaluation. ADNI uses the latest `outputs/icdm2026/downstream_adni_fair_full_all_methods/method_average_summary.csv`, while the private dataset uses `outputs/icdm2026/downstream_private_fair_full_heavy_all_methods/method_average_summary.csv`.
+
+On ADNI, `ADNI_A080_DS_FULL` achieves the highest average Macro-AUC. On the private dataset, `PRIVATE_DS_HYBRID_FROM_STAGE1_E030_FULL` is not the best single downstream method by Macro-AUC. Therefore, the paper should frame synthetic FA as a complementary representation to T1 and justify final method selection by integrated balance across reconstruction, medical fidelity, texture preservation, and downstream utility, not by claiming every single metric is best.

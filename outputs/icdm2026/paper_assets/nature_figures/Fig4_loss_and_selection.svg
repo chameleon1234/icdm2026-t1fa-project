@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="628.2pt" height="335.952pt" viewBox="0 0 628.2 335.952" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-07-01T14:11:41.307660</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.8, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 335.952 
+L 628.2 335.952 
+L 628.2 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 7.2 328.752 
+L 621 328.752 
+L 621 7.2 
+L 7.2 7.2 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 162.015797 143.716805 
+Q 230.753114 217.30243 311.385319 275.35169 
+" clip-path="url(#p66b7703cac)" style="fill: none; stroke: #767676; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 309.3076 271.391503 
+L 311.385319 275.35169 
+L 306.970538 274.637754 
+z
+" clip-path="url(#p66b7703cac)" style="fill: #767676; stroke: #767676; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 453.701134 143.484126 
+Q 378.071791 202.860234 316.277403 274.766859 
+" clip-path="url(#p66b7703cac)" style="fill: none; stroke: #767676; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 320.401304 273.036703 
+L 316.277403 274.766859 
+L 317.367618 270.429645 
+z
+" clip-path="url(#p66b7703cac)" style="fill: #767676; stroke: #767676; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 162.566419 248.925074 
+Q 235.962957 270.313134 310.77162 277.008332 
+" clip-path="url(#p66b7703cac)" style="fill: none; stroke: #767676; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 306.965827 274.659729 
+L 310.77162 277.008332 
+L 306.609261 278.643805 
+z
+" clip-path="url(#p66b7703cac)" style="fill: #767676; stroke: #767676; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 453.282891 248.571608 
+Q 383.278712 255.967688 317.292807 276.316227 
+" clip-path="url(#p66b7703cac)" style="fill: none; stroke: #767676; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 321.704553 277.048683 
+L 317.292807 276.316227 
+L 320.525819 273.226303 
+z
+" clip-path="url(#p66b7703cac)" style="fill: #767676; stroke: #767676; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="matplotlib.axis_1"/>
+   <g id="matplotlib.axis_2"/>
+   <g id="patch_7">
+    <path d="M 41.5728 146.110464 
+L 279.7272 146.110464 
+Q 290.7756 146.110464 290.7756 140.322528 
+L 290.7756 67.008672 
+Q 290.7756 61.220736 279.7272 61.220736 
+L 41.5728 61.220736 
+Q 30.5244 61.220736 30.5244 67.008672 
+L 30.5244 140.322528 
+Q 30.5244 146.110464 41.5728 146.110464 
+z
+" clip-path="url(#p66b7703cac)" style="fill: #dce8f7; stroke: #555555; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 336.1968 146.110464 
+L 574.3512 146.110464 
+Q 585.3996 146.110464 585.3996 140.322528 
+L 585.3996 67.008672 
+Q 585.3996 61.220736 574.3512 61.220736 
+L 336.1968 61.220736 
+Q 325.1484 61.220736 325.1484 67.008672 
+L 325.1484 140.322528 
+Q 325.1484 146.110464 336.1968 146.110464 
+z
+" clip-path="url(#p66b7703cac)" style="fill: #ddf3de; stroke: #555555; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 41.5728 252.222624 
+L 279.7272 252.222624 
+Q 290.7756 252.222624 290.7756 246.434688 
+L 290.7756 173.120832 
+Q 290.7756 167.332896 279.7272 167.332896 
+L 41.5728 167.332896 
+Q 30.5244 167.332896 30.5244 173.120832 
+L 30.5244 246.434688 
+Q 30.5244 252.222624 41.5728 252.222624 
+z
+" clip-path="url(#p66b7703cac)" style="fill: #eee2f0; stroke: #555555; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 336.1968 252.222624 
+L 574.3512 252.222624 
+Q 585.3996 252.222624 585.3996 246.434688 
+L 585.3996 173.120832 
+Q 585.3996 167.332896 574.3512 167.332896 
+L 336.1968 167.332896 
+Q 325.1484 167.332896 325.1484 173.120832 
+L 325.1484 246.434688 
+Q 325.1484 252.222624 336.1968 252.222624 
+z
+" clip-path="url(#p66b7703cac)" style="fill: #fff1e5; stroke: #555555; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 158.1948 322.964064 
+L 470.0052 322.964064 
+Q 481.0536 322.964064 481.0536 317.176128 
+L 481.0536 279.232992 
+Q 481.0536 273.445056 470.0052 273.445056 
+L 158.1948 273.445056 
+Q 147.1464 273.445056 147.1464 279.232992 
+L 147.1464 317.176128 
+Q 147.1464 322.964064 158.1948 322.964064 
+z
+" clip-path="url(#p66b7703cac)" style="fill: #f7f8fa; stroke: #aaaaaa; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: start" x="25.614" y="29.70864" transform="rotate(-0 25.614 29.70864)">Loss grouping and checkpoint selection</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(121.523125 88.8126)">Reconstruction fidelity</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(160.65 97.36785)"/>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(147.7525 105.82935)">final L1</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(143.533125 114.29085)">final MSE</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(142.421875 122.75235)">final SSIM</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(429.04275 88.704225)">Medical fidelity</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(455.274 97.259475)"/>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(442.6065 105.720975)">WM L1</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(426.154 114.305475)">ROI consistency</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(433.26525 122.860725)">disease ROI</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(124.414375 199.153635)">Texture preservation</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(160.65 207.615135)"/>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(133.96875 216.076635)">sharp retention</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(138.645625 224.538135)">HF preserve</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(429.710875 194.922885)">Artifact control</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(455.274 203.384385)"/>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(445.493375 211.845885)">stripe</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(421.030875 220.307385)">bounded correction</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(423.48525 228.768885)">smooth correction</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(275.583594 292.464341)">Joint checkpoint criterion</text>
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(180.562422 299.975779)">DeltaPSNR + DeltaSSIM + DeltaWM_L1 + DeltaROI + DeltaDiseaseROI + DeltaStripe</text>
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(255.544453 307.481966)">with sharp-retention and artifact gates</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: start; fill: #767676" x="31.752" y="42.57072" transform="rotate(-0 31.752 42.57072)">The final checkpoint is not selected by PSNR alone.</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p66b7703cac">
+   <rect x="7.2" y="7.2" width="613.8" height="321.552"/>
+  </clipPath>
+ </defs>
+</svg>

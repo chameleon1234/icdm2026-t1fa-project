@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="656.1pt" height="297.144pt" viewBox="0 0 656.1 297.144" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-07-01T14:11:40.183076</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.8, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 297.144 
+L 656.1 297.144 
+L 656.1 -0 
+L 0 -0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 7.2 289.944 
+L 648.9 289.944 
+L 648.9 7.2 
+L 7.2 7.2 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 150.376179 86.36832 
+Q 174.0419 86.36832 196.365979 86.36832 
+" clip-path="url(#p4d685d23da)" style="fill: none; stroke: #3775ba; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 192.365979 84.36832 
+L 196.365979 86.36832 
+L 192.365979 88.36832 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #3775ba; stroke: #3775ba; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 150.376179 174.01896 
+Q 174.0419 174.01896 196.365979 174.01896 
+" clip-path="url(#p4d685d23da)" style="fill: none; stroke: #9a4d8e; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 192.365979 172.01896 
+L 196.365979 174.01896 
+L 192.365979 176.01896 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #9a4d8e; stroke: #9a4d8e; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 304.035208 87.501436 
+Q 331.261618 106.162537 357.381378 124.065135 
+" clip-path="url(#p4d685d23da)" style="fill: none; stroke: #3775ba; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 355.212694 120.154021 
+L 357.381378 124.065135 
+L 352.951276 123.453413 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #3775ba; stroke: #3775ba; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 304.140957 173.071705 
+Q 331.257945 158.468339 357.193692 144.501108 
+" clip-path="url(#p4d685d23da)" style="fill: none; stroke: #9a4d8e; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 352.723616 144.63681 
+L 357.193692 144.501108 
+L 354.620207 148.158591 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #9a4d8e; stroke: #9a4d8e; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 477.639654 134.336951 
+Q 504.518054 133.021053 530.056418 131.77076 
+" clip-path="url(#p4d685d23da)" style="fill: none; stroke: #b64342; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 525.963405 129.968748 
+L 530.056418 131.77076 
+L 526.159001 133.963963 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #b64342; stroke: #b64342; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="matplotlib.axis_1"/>
+   <g id="matplotlib.axis_2"/>
+   <g id="patch_8">
+    <path d="M 36.7182 112.380768 
+L 144.5238 112.380768 
+Q 156.0744 112.380768 156.0744 107.291376 
+L 156.0744 65.445264 
+Q 156.0744 60.355872 144.5238 60.355872 
+L 36.7182 60.355872 
+Q 25.1676 60.355872 25.1676 65.445264 
+L 25.1676 107.291376 
+Q 25.1676 112.380768 36.7182 112.380768 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #dce8f7; stroke: #3775ba; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 36.7182 200.031408 
+L 144.5238 200.031408 
+Q 156.0744 200.031408 156.0744 194.942016 
+L 156.0744 153.095904 
+Q 156.0744 148.006512 144.5238 148.006512 
+L 36.7182 148.006512 
+Q 25.1676 148.006512 25.1676 153.095904 
+L 25.1676 194.942016 
+Q 25.1676 200.031408 36.7182 200.031408 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #eee2f0; stroke: #9a4d8e; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 203.5602 112.380768 
+L 298.5318 112.380768 
+Q 310.0824 112.380768 310.0824 107.291376 
+L 310.0824 65.445264 
+Q 310.0824 60.355872 298.5318 60.355872 
+L 203.5602 60.355872 
+Q 192.0096 60.355872 192.0096 65.445264 
+L 192.0096 107.291376 
+Q 192.0096 112.380768 203.5602 112.380768 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #f6f8fa; stroke: #555555; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 203.5602 200.031408 
+L 298.5318 200.031408 
+Q 310.0824 200.031408 310.0824 194.942016 
+L 310.0824 153.095904 
+Q 310.0824 148.006512 298.5318 148.006512 
+L 203.5602 148.006512 
+Q 192.0096 148.006512 192.0096 153.095904 
+L 192.0096 194.942016 
+Q 192.0096 200.031408 203.5602 200.031408 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #f6f8fa; stroke: #555555; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 363.9852 163.274688 
+L 471.7908 163.274688 
+Q 483.3414 163.274688 483.3414 158.185296 
+L 483.3414 110.684304 
+Q 483.3414 105.594912 471.7908 105.594912 
+L 363.9852 105.594912 
+Q 352.4346 105.594912 352.4346 110.684304 
+L 352.4346 158.185296 
+Q 352.4346 163.274688 363.9852 163.274688 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #fff0f0; stroke: #b64342; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 537.2442 157.619808 
+L 619.3818 157.619808 
+Q 630.9324 157.619808 630.9324 152.530416 
+L 630.9324 110.684304 
+Q 630.9324 105.594912 619.3818 105.594912 
+L 537.2442 105.594912 
+Q 525.6936 105.594912 525.6936 110.684304 
+L 525.6936 152.530416 
+Q 525.6936 157.619808 537.2442 157.619808 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #e7f0fb; stroke: #3775ba; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 198.4266 273.544848 
+L 470.5074 273.544848 
+Q 476.9244 273.544848 476.9244 270.717408 
+L 476.9244 213.037632 
+Q 476.9244 210.210192 470.5074 210.210192 
+L 198.4266 210.210192 
+Q 192.0096 210.210192 192.0096 213.037632 
+L 192.0096 270.717408 
+Q 192.0096 273.544848 198.4266 273.544848 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #ffffff; stroke: #bbbbbb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 498.7422 267.889968 
+L 606.5478 267.889968 
+Q 618.0984 267.889968 618.0984 262.800576 
+L 618.0984 220.954464 
+Q 618.0984 215.865072 606.5478 215.865072 
+L 498.7422 215.865072 
+Q 487.1916 215.865072 487.1916 220.954464 
+L 487.1916 262.800576 
+Q 487.1916 267.889968 498.7422 267.889968 
+z
+" clip-path="url(#p4d685d23da)" style="fill: #fff8e8; stroke: #ee9b45; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: start" x="26.451" y="32.64696" transform="rotate(-0 26.451 32.64696)">A080 frequency-aware sharp FA prior construction</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 7.5px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(55.604203 80.2775)">Stable low-frequency</text>
+    <text style="font-size: 7.5px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(73.945219 88.298047)">FA source</text>
+    <text style="font-size: 7.5px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(79.576664 96.34039)">(Base)</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 7.5px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(48.933891 167.92814)">FA-space high-frequency</text>
+    <text style="font-size: 7.5px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(69.360258 175.948687)">detail source</text>
+    <text style="font-size: 7.5px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(78.536625 183.99103)">(Detail)</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(231.911938 84.426476)">LP / HP split</text>
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(207.952797 91.932664)">base_hp = Base - LP(Base)</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(231.911938 172.077116)">LP / HP split</text>
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(205.233734 179.583304)">detail_hp = Detail - LP(Detail)</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(398.236047 128.656191)">clipped delta</text>
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(379.754953 136.162378)">clip(detail_hp - base_hp,</text>
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(399.989875 143.750597)">-0.06, 0.06)</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(559.85925 129.45661)">A080 prior</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(546.624875 137.91811)">Base + 0.8 * delta</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 7.2px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(290.142563 232.07517)">base_hp = Base - LP(Base)</text>
+    <text style="font-size: 7.2px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(287.345813 239.880195)">detail_hp = Detail - LP(Detail)</text>
+    <text style="font-size: 7.2px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(257.920313 247.68522)">delta_hp = clip(detail_hp - base_hp, -0.06, 0.06)</text>
+    <text style="font-size: 7.2px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(287.431875 255.490245)">A080 = Base + 0.8 * delta_hp</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 7.5px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(533.984063 235.881504)">alpha = 0.8</text>
+    <text style="font-size: 7.5px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(536.07293 243.814161)">kernel = 9</text>
+    <text style="font-size: 7.5px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; fill: #222222" transform="translate(525.230156 251.773536)">clip_delta = 0.06</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: start; fill: #767676" x="32.868" y="230.56776" transform="rotate(-0 32.868 230.56776)">Base preserves stable FA low-frequency structure and intensity space.</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: start; fill: #767676" x="32.868" y="244.70496" transform="rotate(-0 32.868 244.70496)">Detail provides FA-space texture candidates; clipping suppresses local over-bright bursts.</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 7px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: start; fill: #767676" x="32.868" y="258.84216" transform="rotate(-0 32.868 258.84216)">A080 is a frozen frequency-aware prior, not an online trainable Stage1 checkpoint.</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p4d685d23da">
+   <rect x="7.2" y="7.2" width="641.7" height="282.744"/>
+  </clipPath>
+ </defs>
+</svg>

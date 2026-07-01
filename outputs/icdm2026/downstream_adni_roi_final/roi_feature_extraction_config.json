@@ -1,0 +1,80 @@
+{
+  "manifest": "data\\adni_processed\\adni_slice_manifest.csv",
+  "roi_protocol": "2x3 coarse grid within brain bounding box, with brain and WM masks",
+  "roi_rows": 2,
+  "roi_cols": 3,
+  "brain_threshold": 0.02,
+  "wm_quantile": 0.65,
+  "min_pixels": 8,
+  "classifiers": [
+    "logistic",
+    "linear_svm"
+  ],
+  "tasks": [
+    "cn_vs_mci_spectrum",
+    "cn_vs_ad",
+    "mci_spectrum_vs_ad"
+  ],
+  "methods": [
+    {
+      "method": "T1_ONLY",
+      "train_dir": "data\\adni_processed\\train\\t1_slices",
+      "test_dir": "data\\adni_processed\\test\\t1_slices",
+      "runnable": true,
+      "train_png": 19552,
+      "train_split_counts": "{\"train\": 19552}",
+      "train_subjects": 376,
+      "test_png": 5616,
+      "test_split_counts": "{\"test\": 5616}",
+      "test_subjects": 108
+    },
+    {
+      "method": "FA_GT",
+      "train_dir": "data\\adni_processed\\train\\fa_slices",
+      "test_dir": "data\\adni_processed\\test\\fa_slices",
+      "runnable": true,
+      "train_png": 19552,
+      "train_split_counts": "{\"train\": 19552}",
+      "train_subjects": 376,
+      "test_png": 5616,
+      "test_split_counts": "{\"test\": 5616}",
+      "test_subjects": 108
+    },
+    {
+      "method": "Old Fidelity Flow",
+      "train_dir": "outputs\\icdm2026\\predictions\\ADNI_PM_DIRF_FIDELITY_FLOW_FULL_TRAIN_FULL",
+      "test_dir": "outputs\\icdm2026\\predictions\\ADNI_PM_DIRF_FIDELITY_FLOW_FULL",
+      "runnable": true,
+      "train_png": 19552,
+      "train_split_counts": "{\"train\": 19552}",
+      "train_subjects": 376,
+      "test_png": 5616,
+      "test_split_counts": "{\"test\": 5616}",
+      "test_subjects": 108
+    },
+    {
+      "method": "A080 Base",
+      "train_dir": "outputs\\icdm2026\\predictions\\ADNI_BLEND_LOWGUARD_LOW_LIGHTGUARD_HF_A080_TRAIN_FULL",
+      "test_dir": "outputs\\icdm2026\\predictions\\ADNI_BLEND_LOWGUARD_LOW_LIGHTGUARD_HF_A080",
+      "runnable": true,
+      "train_png": 19552,
+      "train_split_counts": "{\"train\": 19552}",
+      "train_subjects": 376,
+      "test_png": 5616,
+      "test_split_counts": "{\"test\": 5616}",
+      "test_subjects": 108
+    },
+    {
+      "method": "A080+DS Full",
+      "train_dir": "outputs\\icdm2026\\predictions\\ADNI_A080_DS_CORRECTOR_DISEASEROI_HFPRESERVE_FULL_E12_SCOREBEST_TRAIN_FULL",
+      "test_dir": "outputs\\icdm2026\\predictions\\ADNI_A080_DS_CORRECTOR_DISEASEROI_HFPRESERVE_FULL_E12_SCOREBEST",
+      "runnable": true,
+      "train_png": 19552,
+      "train_split_counts": "{\"train\": 19552}",
+      "train_subjects": 376,
+      "test_png": 5616,
+      "test_split_counts": "{\"test\": 5616}",
+      "test_subjects": 108
+    }
+  ]
+}

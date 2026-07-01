@@ -1,0 +1,13 @@
+# ADNI ROI resource audit
+
+No anatomical atlas mask could be verified as directly aligned to the ADNI final prediction folders. The repository contains raw AAL3 resources and private_aal3 masks, but they are not verified per-slice ADNI masks. Therefore, this safe first version uses the project-native 2x3 coarse grid brain/WM ROI features and does not describe them as an anatomical atlas.
+
+## Folder coverage
+
+| method            | train_dir                                                                                               | test_dir                                                                                     | runnable | train_png | train_split_counts | train_subjects | test_png | test_split_counts | test_subjects |
+| ----------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------- | --------- | ------------------ | -------------- | -------- | ----------------- | ------------- |
+| T1_ONLY           | data\adni_processed\train\t1_slices                                                                     | data\adni_processed\test\t1_slices                                                           | True     | 19552     | {"train": 19552}   | 376            | 5616     | {"test": 5616}    | 108           |
+| FA_GT             | data\adni_processed\train\fa_slices                                                                     | data\adni_processed\test\fa_slices                                                           | True     | 19552     | {"train": 19552}   | 376            | 5616     | {"test": 5616}    | 108           |
+| Old Fidelity Flow | outputs\icdm2026\predictions\ADNI_PM_DIRF_FIDELITY_FLOW_FULL_TRAIN_FULL                                 | outputs\icdm2026\predictions\ADNI_PM_DIRF_FIDELITY_FLOW_FULL                                 | True     | 19552     | {"train": 19552}   | 376            | 5616     | {"test": 5616}    | 108           |
+| A080 Base         | outputs\icdm2026\predictions\ADNI_BLEND_LOWGUARD_LOW_LIGHTGUARD_HF_A080_TRAIN_FULL                      | outputs\icdm2026\predictions\ADNI_BLEND_LOWGUARD_LOW_LIGHTGUARD_HF_A080                      | True     | 19552     | {"train": 19552}   | 376            | 5616     | {"test": 5616}    | 108           |
+| A080+DS Full      | outputs\icdm2026\predictions\ADNI_A080_DS_CORRECTOR_DISEASEROI_HFPRESERVE_FULL_E12_SCOREBEST_TRAIN_FULL | outputs\icdm2026\predictions\ADNI_A080_DS_CORRECTOR_DISEASEROI_HFPRESERVE_FULL_E12_SCOREBEST | True     | 19552     | {"train": 19552}   | 376            | 5616     | {"test": 5616}    | 108           |

@@ -1,0 +1,302 @@
+{
+  "A080 Base::cn_vs_mci_spectrum::logistic": {
+    "pred_0": {
+      "true_0": 22,
+      "true_1": 9
+    },
+    "pred_1": {
+      "true_0": 21,
+      "true_1": 21
+    }
+  },
+  "A080 Base::cn_vs_mci_spectrum::linear_svm": {
+    "pred_0": {
+      "true_0": 19,
+      "true_1": 8
+    },
+    "pred_1": {
+      "true_0": 24,
+      "true_1": 22
+    }
+  },
+  "A080 Base::cn_vs_ad::logistic": {
+    "pred_0": {
+      "true_0": 40,
+      "true_1": 2
+    },
+    "pred_1": {
+      "true_0": 3,
+      "true_1": 3
+    }
+  },
+  "A080 Base::cn_vs_ad::linear_svm": {
+    "pred_0": {
+      "true_0": 41,
+      "true_1": 3
+    },
+    "pred_1": {
+      "true_0": 2,
+      "true_1": 2
+    }
+  },
+  "A080 Base::mci_spectrum_vs_ad::logistic": {
+    "pred_0": {
+      "true_0": 25,
+      "true_1": 5
+    },
+    "pred_1": {
+      "true_0": 5,
+      "true_1": 0
+    }
+  },
+  "A080 Base::mci_spectrum_vs_ad::linear_svm": {
+    "pred_0": {
+      "true_0": 28,
+      "true_1": 5
+    },
+    "pred_1": {
+      "true_0": 2,
+      "true_1": 0
+    }
+  },
+  "A080+DS Full::cn_vs_mci_spectrum::logistic": {
+    "pred_0": {
+      "true_0": 19,
+      "true_1": 11
+    },
+    "pred_1": {
+      "true_0": 24,
+      "true_1": 19
+    }
+  },
+  "A080+DS Full::cn_vs_mci_spectrum::linear_svm": {
+    "pred_0": {
+      "true_0": 20,
+      "true_1": 14
+    },
+    "pred_1": {
+      "true_0": 23,
+      "true_1": 16
+    }
+  },
+  "A080+DS Full::cn_vs_ad::logistic": {
+    "pred_0": {
+      "true_0": 38,
+      "true_1": 2
+    },
+    "pred_1": {
+      "true_0": 5,
+      "true_1": 3
+    }
+  },
+  "A080+DS Full::cn_vs_ad::linear_svm": {
+    "pred_0": {
+      "true_0": 41,
+      "true_1": 2
+    },
+    "pred_1": {
+      "true_0": 2,
+      "true_1": 3
+    }
+  },
+  "A080+DS Full::mci_spectrum_vs_ad::logistic": {
+    "pred_0": {
+      "true_0": 26,
+      "true_1": 5
+    },
+    "pred_1": {
+      "true_0": 4,
+      "true_1": 0
+    }
+  },
+  "A080+DS Full::mci_spectrum_vs_ad::linear_svm": {
+    "pred_0": {
+      "true_0": 29,
+      "true_1": 5
+    },
+    "pred_1": {
+      "true_0": 1,
+      "true_1": 0
+    }
+  },
+  "FA_GT::cn_vs_mci_spectrum::logistic": {
+    "pred_0": {
+      "true_0": 25,
+      "true_1": 12
+    },
+    "pred_1": {
+      "true_0": 18,
+      "true_1": 18
+    }
+  },
+  "FA_GT::cn_vs_mci_spectrum::linear_svm": {
+    "pred_0": {
+      "true_0": 26,
+      "true_1": 14
+    },
+    "pred_1": {
+      "true_0": 17,
+      "true_1": 16
+    }
+  },
+  "FA_GT::cn_vs_ad::logistic": {
+    "pred_0": {
+      "true_0": 38,
+      "true_1": 3
+    },
+    "pred_1": {
+      "true_0": 5,
+      "true_1": 2
+    }
+  },
+  "FA_GT::cn_vs_ad::linear_svm": {
+    "pred_0": {
+      "true_0": 40,
+      "true_1": 4
+    },
+    "pred_1": {
+      "true_0": 3,
+      "true_1": 1
+    }
+  },
+  "FA_GT::mci_spectrum_vs_ad::logistic": {
+    "pred_0": {
+      "true_0": 27,
+      "true_1": 4
+    },
+    "pred_1": {
+      "true_0": 3,
+      "true_1": 1
+    }
+  },
+  "FA_GT::mci_spectrum_vs_ad::linear_svm": {
+    "pred_0": {
+      "true_0": 26,
+      "true_1": 4
+    },
+    "pred_1": {
+      "true_0": 4,
+      "true_1": 1
+    }
+  },
+  "Old Fidelity Flow::cn_vs_mci_spectrum::logistic": {
+    "pred_0": {
+      "true_0": 19,
+      "true_1": 11
+    },
+    "pred_1": {
+      "true_0": 24,
+      "true_1": 19
+    }
+  },
+  "Old Fidelity Flow::cn_vs_mci_spectrum::linear_svm": {
+    "pred_0": {
+      "true_0": 18,
+      "true_1": 11
+    },
+    "pred_1": {
+      "true_0": 25,
+      "true_1": 19
+    }
+  },
+  "Old Fidelity Flow::cn_vs_ad::logistic": {
+    "pred_0": {
+      "true_0": 38,
+      "true_1": 2
+    },
+    "pred_1": {
+      "true_0": 5,
+      "true_1": 3
+    }
+  },
+  "Old Fidelity Flow::cn_vs_ad::linear_svm": {
+    "pred_0": {
+      "true_0": 40,
+      "true_1": 2
+    },
+    "pred_1": {
+      "true_0": 3,
+      "true_1": 3
+    }
+  },
+  "Old Fidelity Flow::mci_spectrum_vs_ad::logistic": {
+    "pred_0": {
+      "true_0": 24,
+      "true_1": 3
+    },
+    "pred_1": {
+      "true_0": 6,
+      "true_1": 2
+    }
+  },
+  "Old Fidelity Flow::mci_spectrum_vs_ad::linear_svm": {
+    "pred_0": {
+      "true_0": 26,
+      "true_1": 5
+    },
+    "pred_1": {
+      "true_0": 4,
+      "true_1": 0
+    }
+  },
+  "T1_ONLY::cn_vs_mci_spectrum::logistic": {
+    "pred_0": {
+      "true_0": 25,
+      "true_1": 12
+    },
+    "pred_1": {
+      "true_0": 18,
+      "true_1": 18
+    }
+  },
+  "T1_ONLY::cn_vs_mci_spectrum::linear_svm": {
+    "pred_0": {
+      "true_0": 21,
+      "true_1": 11
+    },
+    "pred_1": {
+      "true_0": 22,
+      "true_1": 19
+    }
+  },
+  "T1_ONLY::cn_vs_ad::logistic": {
+    "pred_0": {
+      "true_0": 39,
+      "true_1": 3
+    },
+    "pred_1": {
+      "true_0": 4,
+      "true_1": 2
+    }
+  },
+  "T1_ONLY::cn_vs_ad::linear_svm": {
+    "pred_0": {
+      "true_0": 38,
+      "true_1": 3
+    },
+    "pred_1": {
+      "true_0": 5,
+      "true_1": 2
+    }
+  },
+  "T1_ONLY::mci_spectrum_vs_ad::logistic": {
+    "pred_0": {
+      "true_0": 25,
+      "true_1": 3
+    },
+    "pred_1": {
+      "true_0": 5,
+      "true_1": 2
+    }
+  },
+  "T1_ONLY::mci_spectrum_vs_ad::linear_svm": {
+    "pred_0": {
+      "true_0": 26,
+      "true_1": 3
+    },
+    "pred_1": {
+      "true_0": 4,
+      "true_1": 2
+    }
+  }
+}

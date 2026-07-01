@@ -1,0 +1,1561 @@
+method,subject_id,group_id,group_name,split,task,classifier,y_true,y_pred,decision_score
+A080 Base,sub-002_S_4213,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.08264946
+A080 Base,sub-002_S_4229,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.4046533
+A080 Base,sub-002_S_6009,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.71253335
+A080 Base,sub-002_S_6030,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.02821349
+A080 Base,sub-002_S_6680,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.5008906
+A080 Base,sub-002_S_6695,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.3922946
+A080 Base,sub-003_S_4441,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.02703894
+A080 Base,sub-003_S_6256,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.6432534
+A080 Base,sub-003_S_6678,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.076144
+A080 Base,sub-003_S_7010,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.3455247
+A080 Base,sub-006_S_6651,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.4955091
+A080 Base,sub-006_S_6681,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.41105628
+A080 Base,sub-007_S_4387,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.0156894
+A080 Base,sub-007_S_4637,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.2102485
+A080 Base,sub-007_S_6323,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.0470884
+A080 Base,sub-007_S_6455,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.42091203
+A080 Base,sub-009_S_0751,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-3.5793345
+A080 Base,sub-009_S_4388,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.4264255
+A080 Base,sub-009_S_6163,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.4184172
+A080 Base,sub-009_S_6286,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.2216075
+A080 Base,sub-011_S_4105,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.8814017
+A080 Base,sub-011_S_4278,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.9805385
+A080 Base,sub-011_S_7028,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-3.5390527
+A080 Base,sub-012_S_4188,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.7484274
+A080 Base,sub-012_S_6760,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.25575897
+A080 Base,sub-013_S_2389,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.9441082
+A080 Base,sub-013_S_4268,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-4.3710046
+A080 Base,sub-013_S_6206,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.67881006
+A080 Base,sub-014_S_6920,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.35677752
+A080 Base,sub-014_S_6935,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-5.2760286
+A080 Base,sub-016_S_6802,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.5153333
+A080 Base,sub-016_S_6836,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.70537364
+A080 Base,sub-018_S_2155,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-2.043478
+A080 Base,sub-019_S_6186,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.8685113
+A080 Base,sub-020_S_6185,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.0605745
+A080 Base,sub-022_S_2263,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.0739207
+A080 Base,sub-023_S_4164,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.7396332
+A080 Base,sub-023_S_6369,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-3.061736
+A080 Base,sub-023_S_6547,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.3273316
+A080 Base,sub-023_S_6702,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.3291787
+A080 Base,sub-024_S_4084,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.8205229
+A080 Base,sub-024_S_6184,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-3.5596654
+A080 Base,sub-024_S_6202,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.17307669
+A080 Base,sub-024_S_6846,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.4945822
+A080 Base,sub-024_S_7025,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.3478965
+A080 Base,sub-027_S_4919,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.37791294
+A080 Base,sub-027_S_6317,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.7122029
+A080 Base,sub-027_S_6643,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.08020518
+A080 Base,sub-027_S_7071,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.1136847
+A080 Base,sub-032_S_6709,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.4720883
+A080 Base,sub-036_S_2380,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.6639702
+A080 Base,sub-036_S_4389,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.754521
+A080 Base,sub-036_S_6189,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.8414305
+A080 Base,sub-036_S_6466,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-3.5934973
+A080 Base,sub-036_S_6878,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.5863147
+A080 Base,sub-036_S_6887,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.1583476
+A080 Base,sub-037_S_4030,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.5075132
+A080 Base,sub-037_S_4071,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.5780653
+A080 Base,sub-037_S_6031,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.1453722
+A080 Base,sub-037_S_6141,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.0595886
+A080 Base,sub-037_S_6271,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.16051295
+A080 Base,sub-037_S_6627,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.8824422
+A080 Base,sub-037_S_6963,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.6381475
+A080 Base,sub-041_S_4510,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.1496253
+A080 Base,sub-041_S_4876,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,3.2556386
+A080 Base,sub-041_S_4974,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.8542857
+A080 Base,sub-041_S_5253,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.19289105
+A080 Base,sub-041_S_6136,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.9568725
+A080 Base,sub-041_S_6192,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,4.3031273
+A080 Base,sub-041_S_6292,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.1519125
+A080 Base,sub-041_S_6731,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.33187422
+A080 Base,sub-041_S_6785,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.3295844
+A080 Base,sub-041_S_7017,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.30063367
+A080 Base,sub-002_S_4213,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.9224061
+A080 Base,sub-002_S_4229,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.142719
+A080 Base,sub-002_S_6009,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.9819844
+A080 Base,sub-002_S_6030,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.10107642
+A080 Base,sub-002_S_6680,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.19005832
+A080 Base,sub-002_S_6695,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,3.466967
+A080 Base,sub-003_S_4441,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.4589666
+A080 Base,sub-003_S_6256,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.41247907
+A080 Base,sub-003_S_6678,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.381954
+A080 Base,sub-003_S_7010,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.3480842
+A080 Base,sub-006_S_6651,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.5321755
+A080 Base,sub-006_S_6681,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.9915137
+A080 Base,sub-007_S_4387,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.7895797
+A080 Base,sub-007_S_4637,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.4310104
+A080 Base,sub-007_S_6323,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.13905753
+A080 Base,sub-007_S_6455,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.044272494
+A080 Base,sub-009_S_0751,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-3.4176743
+A080 Base,sub-009_S_4388,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.4611416
+A080 Base,sub-009_S_6163,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.34162918
+A080 Base,sub-009_S_6286,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.0038243057
+A080 Base,sub-011_S_4105,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.8096663
+A080 Base,sub-011_S_4278,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.4013195
+A080 Base,sub-011_S_7028,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-3.158158
+A080 Base,sub-012_S_4188,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.7001314
+A080 Base,sub-012_S_6760,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.193399
+A080 Base,sub-013_S_2389,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-1.5357877
+A080 Base,sub-013_S_4268,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-2.3996022
+A080 Base,sub-013_S_6206,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.4588786
+A080 Base,sub-014_S_6920,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.4433115
+A080 Base,sub-014_S_6935,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-4.3509073
+A080 Base,sub-016_S_6802,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.12976253
+A080 Base,sub-016_S_6836,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.7621334
+A080 Base,sub-018_S_2155,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-1.3762207
+A080 Base,sub-019_S_6186,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.5059314
+A080 Base,sub-020_S_6185,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.6303396
+A080 Base,sub-022_S_2263,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.0007348
+A080 Base,sub-023_S_4164,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.3787727
+A080 Base,sub-023_S_6369,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-2.5324976
+A080 Base,sub-023_S_6547,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.31209347
+A080 Base,sub-023_S_6702,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.3459531
+A080 Base,sub-024_S_4084,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.7724799
+A080 Base,sub-024_S_6184,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.8565228
+A080 Base,sub-024_S_6202,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.7639333
+A080 Base,sub-024_S_6846,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.8630025
+A080 Base,sub-024_S_7025,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.5882862
+A080 Base,sub-027_S_4919,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.81008583
+A080 Base,sub-027_S_6317,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.8447496
+A080 Base,sub-027_S_6643,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.36690748
+A080 Base,sub-027_S_7071,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.3564463
+A080 Base,sub-032_S_6709,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.8084042
+A080 Base,sub-036_S_2380,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.4041178
+A080 Base,sub-036_S_4389,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,3.751621
+A080 Base,sub-036_S_6189,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.9996319
+A080 Base,sub-036_S_6466,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.5324705
+A080 Base,sub-036_S_6878,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,3.1597512
+A080 Base,sub-036_S_6887,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.5840738
+A080 Base,sub-037_S_4030,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.8421016
+A080 Base,sub-037_S_4071,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.1175861
+A080 Base,sub-037_S_6031,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.8050703
+A080 Base,sub-037_S_6141,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.9761364
+A080 Base,sub-037_S_6271,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.1716246
+A080 Base,sub-037_S_6627,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.44002
+A080 Base,sub-037_S_6963,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.6217305
+A080 Base,sub-041_S_4510,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.4710716
+A080 Base,sub-041_S_4876,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,3.2732322
+A080 Base,sub-041_S_4974,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-1.1700569
+A080 Base,sub-041_S_5253,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.52418214
+A080 Base,sub-041_S_6136,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.5494196
+A080 Base,sub-041_S_6192,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.9065757
+A080 Base,sub-041_S_6292,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.7663033
+A080 Base,sub-041_S_6731,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.1737398
+A080 Base,sub-041_S_6785,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.8438187
+A080 Base,sub-041_S_7017,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.7971451
+A080 Base,sub-002_S_4213,1,CN,test,cn_vs_ad,logistic,0,0,-0.38045913
+A080 Base,sub-002_S_6009,1,CN,test,cn_vs_ad,logistic,0,0,-4.406023
+A080 Base,sub-002_S_6030,1,CN,test,cn_vs_ad,logistic,0,0,-2.780491
+A080 Base,sub-002_S_6680,1,CN,test,cn_vs_ad,logistic,0,0,-3.756877
+A080 Base,sub-003_S_4441,1,CN,test,cn_vs_ad,logistic,0,0,-2.2759159
+A080 Base,sub-003_S_6256,1,CN,test,cn_vs_ad,logistic,0,0,-7.6143928
+A080 Base,sub-003_S_7010,1,CN,test,cn_vs_ad,logistic,0,0,-3.5022712
+A080 Base,sub-007_S_4387,1,CN,test,cn_vs_ad,logistic,0,0,-2.0654387
+A080 Base,sub-007_S_4637,1,CN,test,cn_vs_ad,logistic,0,0,-3.377622
+A080 Base,sub-007_S_6323,1,CN,test,cn_vs_ad,logistic,0,0,-6.057489
+A080 Base,sub-007_S_6455,1,CN,test,cn_vs_ad,logistic,0,0,-4.9216356
+A080 Base,sub-009_S_0751,1,CN,test,cn_vs_ad,logistic,0,0,-6.430621
+A080 Base,sub-009_S_4388,1,CN,test,cn_vs_ad,logistic,0,0,-3.8199596
+A080 Base,sub-009_S_6163,1,CN,test,cn_vs_ad,logistic,0,0,-5.3809276
+A080 Base,sub-009_S_6286,1,CN,test,cn_vs_ad,logistic,0,0,-3.922607
+A080 Base,sub-011_S_4105,1,CN,test,cn_vs_ad,logistic,0,0,-1.3088429
+A080 Base,sub-011_S_4278,1,CN,test,cn_vs_ad,logistic,0,0,-1.9703747
+A080 Base,sub-011_S_7028,1,CN,test,cn_vs_ad,logistic,0,0,-5.426416
+A080 Base,sub-014_S_6920,1,CN,test,cn_vs_ad,logistic,0,0,-3.4957676
+A080 Base,sub-014_S_6935,1,CN,test,cn_vs_ad,logistic,0,0,-5.9488316
+A080 Base,sub-016_S_5057,3,AD,test,cn_vs_ad,logistic,1,1,2.6630483
+A080 Base,sub-016_S_6802,1,CN,test,cn_vs_ad,logistic,0,0,-4.740884
+A080 Base,sub-019_S_6186,1,CN,test,cn_vs_ad,logistic,0,0,-1.6207662
+A080 Base,sub-020_S_6185,1,CN,test,cn_vs_ad,logistic,0,0,-2.7742705
+A080 Base,sub-023_S_4164,1,CN,test,cn_vs_ad,logistic,0,1,1.0532004
+A080 Base,sub-023_S_6547,1,CN,test,cn_vs_ad,logistic,0,0,-2.5832388
+A080 Base,sub-024_S_4084,1,CN,test,cn_vs_ad,logistic,0,0,-3.4953244
+A080 Base,sub-024_S_6184,1,CN,test,cn_vs_ad,logistic,0,0,-5.5408463
+A080 Base,sub-024_S_6202,1,CN,test,cn_vs_ad,logistic,0,0,-5.067343
+A080 Base,sub-027_S_6317,1,CN,test,cn_vs_ad,logistic,0,0,-1.9155891
+A080 Base,sub-027_S_6648,3,AD,test,cn_vs_ad,logistic,1,0,-3.1438167
+A080 Base,sub-032_S_6600,3,AD,test,cn_vs_ad,logistic,1,0,-2.809821
+A080 Base,sub-032_S_6602,3,AD,test,cn_vs_ad,logistic,1,1,0.272381
+A080 Base,sub-032_S_6709,1,CN,test,cn_vs_ad,logistic,0,0,-3.390106
+A080 Base,sub-036_S_4389,1,CN,test,cn_vs_ad,logistic,0,0,-5.3390336
+A080 Base,sub-036_S_6189,1,CN,test,cn_vs_ad,logistic,0,0,-4.721639
+A080 Base,sub-036_S_6466,1,CN,test,cn_vs_ad,logistic,0,0,-7.89177
+A080 Base,sub-037_S_4071,1,CN,test,cn_vs_ad,logistic,0,1,0.4365933
+A080 Base,sub-037_S_6031,1,CN,test,cn_vs_ad,logistic,0,0,-3.1679168
+A080 Base,sub-037_S_6271,1,CN,test,cn_vs_ad,logistic,0,0,-5.447235
+A080 Base,sub-037_S_6377,3,AD,test,cn_vs_ad,logistic,1,1,2.7059429
+A080 Base,sub-037_S_6963,1,CN,test,cn_vs_ad,logistic,0,0,-4.335571
+A080 Base,sub-041_S_5253,1,CN,test,cn_vs_ad,logistic,0,0,-3.7332525
+A080 Base,sub-041_S_6136,1,CN,test,cn_vs_ad,logistic,0,0,-2.644119
+A080 Base,sub-041_S_6192,1,CN,test,cn_vs_ad,logistic,0,1,1.4084067
+A080 Base,sub-041_S_6292,1,CN,test,cn_vs_ad,logistic,0,0,-1.0396984
+A080 Base,sub-041_S_6785,1,CN,test,cn_vs_ad,logistic,0,0,-4.244255
+A080 Base,sub-041_S_7017,1,CN,test,cn_vs_ad,logistic,0,0,-0.029408606
+A080 Base,sub-002_S_4213,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.44184086
+A080 Base,sub-002_S_6009,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.970393
+A080 Base,sub-002_S_6030,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.1659387
+A080 Base,sub-002_S_6680,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.7202915
+A080 Base,sub-003_S_4441,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.625589
+A080 Base,sub-003_S_6256,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.4968681
+A080 Base,sub-003_S_7010,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.6742243
+A080 Base,sub-007_S_4387,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.0998268
+A080 Base,sub-007_S_4637,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.5337039
+A080 Base,sub-007_S_6323,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.503453
+A080 Base,sub-007_S_6455,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.3693826
+A080 Base,sub-009_S_0751,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.4315484
+A080 Base,sub-009_S_4388,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.0828598
+A080 Base,sub-009_S_6163,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.4298255
+A080 Base,sub-009_S_6286,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.753774
+A080 Base,sub-011_S_4105,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.117598
+A080 Base,sub-011_S_4278,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.99581194
+A080 Base,sub-011_S_7028,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.1178324
+A080 Base,sub-014_S_6920,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.4233193
+A080 Base,sub-014_S_6935,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.0723197
+A080 Base,sub-016_S_5057,3,AD,test,cn_vs_ad,linear_svm,1,1,0.26814637
+A080 Base,sub-016_S_6802,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.0980031
+A080 Base,sub-019_S_6186,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.7609215
+A080 Base,sub-020_S_6185,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.2278826
+A080 Base,sub-023_S_4164,1,CN,test,cn_vs_ad,linear_svm,0,1,0.27780345
+A080 Base,sub-023_S_6547,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.1944212
+A080 Base,sub-024_S_4084,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.6941036
+A080 Base,sub-024_S_6184,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.5669777
+A080 Base,sub-024_S_6202,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.631257
+A080 Base,sub-027_S_6317,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.8341425
+A080 Base,sub-027_S_6648,3,AD,test,cn_vs_ad,linear_svm,1,0,-1.6313204
+A080 Base,sub-032_S_6600,3,AD,test,cn_vs_ad,linear_svm,1,0,-1.5919172
+A080 Base,sub-032_S_6602,3,AD,test,cn_vs_ad,linear_svm,1,0,-0.26525092
+A080 Base,sub-032_S_6709,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.6313914
+A080 Base,sub-036_S_4389,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.343147
+A080 Base,sub-036_S_6189,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.3184447
+A080 Base,sub-036_S_6466,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.416531
+A080 Base,sub-037_S_4071,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.46603075
+A080 Base,sub-037_S_6031,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.4712381
+A080 Base,sub-037_S_6271,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.3540497
+A080 Base,sub-037_S_6377,3,AD,test,cn_vs_ad,linear_svm,1,1,0.83540136
+A080 Base,sub-037_S_6963,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.9969329
+A080 Base,sub-041_S_5253,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.0230732
+A080 Base,sub-041_S_6136,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.99743146
+A080 Base,sub-041_S_6192,1,CN,test,cn_vs_ad,linear_svm,0,1,0.23448533
+A080 Base,sub-041_S_6292,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.64947194
+A080 Base,sub-041_S_6785,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.2162666
+A080 Base,sub-041_S_7017,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.37222663
+A080 Base,sub-002_S_4229,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,0.49021053
+A080 Base,sub-002_S_6695,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.766818
+A080 Base,sub-003_S_6678,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.7149916
+A080 Base,sub-006_S_6651,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.642066
+A080 Base,sub-006_S_6681,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-7.4500284
+A080 Base,sub-012_S_4188,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,3.3517854
+A080 Base,sub-012_S_6760,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,0.009387164
+A080 Base,sub-013_S_2389,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.094526
+A080 Base,sub-013_S_4268,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-6.710004
+A080 Base,sub-013_S_6206,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.4375868
+A080 Base,sub-016_S_5057,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-1.2248071
+A080 Base,sub-016_S_6836,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.0621421
+A080 Base,sub-018_S_2155,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.7246537
+A080 Base,sub-022_S_2263,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.035824
+A080 Base,sub-023_S_6369,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.7998872
+A080 Base,sub-023_S_6702,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.5325608
+A080 Base,sub-024_S_6846,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.2675667
+A080 Base,sub-024_S_7025,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.2286813
+A080 Base,sub-027_S_4919,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-6.3511834
+A080 Base,sub-027_S_6643,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.2422912
+A080 Base,sub-027_S_6648,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-6.88173
+A080 Base,sub-027_S_7071,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.1967473
+A080 Base,sub-032_S_6600,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-1.8317864
+A080 Base,sub-032_S_6602,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-3.4699318
+A080 Base,sub-036_S_2380,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.765463
+A080 Base,sub-036_S_6878,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-6.2353816
+A080 Base,sub-036_S_6887,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.5723238
+A080 Base,sub-037_S_4030,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.0296652
+A080 Base,sub-037_S_6141,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.0381935
+A080 Base,sub-037_S_6377,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-0.94547117
+A080 Base,sub-037_S_6627,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.1129595
+A080 Base,sub-041_S_4510,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.396831
+A080 Base,sub-041_S_4876,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,0.026184877
+A080 Base,sub-041_S_4974,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,1.3125495
+A080 Base,sub-041_S_6731,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.966328
+A080 Base,sub-002_S_4229,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.6491316
+A080 Base,sub-002_S_6695,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.4626815
+A080 Base,sub-003_S_6678,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.065865
+A080 Base,sub-006_S_6651,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.0455036
+A080 Base,sub-006_S_6681,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-5.6679063
+A080 Base,sub-012_S_4188,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,0.6193649
+A080 Base,sub-012_S_6760,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,0.25761533
+A080 Base,sub-013_S_2389,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.5449672
+A080 Base,sub-013_S_4268,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-4.397276
+A080 Base,sub-013_S_6206,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.7112501
+A080 Base,sub-016_S_5057,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-1.5188136
+A080 Base,sub-016_S_6836,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.6942946
+A080 Base,sub-018_S_2155,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.8398197
+A080 Base,sub-022_S_2263,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.7854946
+A080 Base,sub-023_S_6369,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.1116414
+A080 Base,sub-023_S_6702,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.805938
+A080 Base,sub-024_S_6846,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.1181831
+A080 Base,sub-024_S_7025,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.7361478
+A080 Base,sub-027_S_4919,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-4.9599214
+A080 Base,sub-027_S_6643,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.6728501
+A080 Base,sub-027_S_6648,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-4.2338476
+A080 Base,sub-027_S_7071,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.636197
+A080 Base,sub-032_S_6600,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-1.6265365
+A080 Base,sub-032_S_6602,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-2.6760411
+A080 Base,sub-036_S_2380,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.2765179
+A080 Base,sub-036_S_6878,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-4.16998
+A080 Base,sub-036_S_6887,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.1454153
+A080 Base,sub-037_S_4030,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.570424
+A080 Base,sub-037_S_6141,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.3278832
+A080 Base,sub-037_S_6377,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-1.5595684
+A080 Base,sub-037_S_6627,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.9452771
+A080 Base,sub-041_S_4510,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.6319804
+A080 Base,sub-041_S_4876,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.5359415
+A080 Base,sub-041_S_4974,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.044809066
+A080 Base,sub-041_S_6731,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.0986173
+A080+DS Full,sub-002_S_4213,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.0400243
+A080+DS Full,sub-002_S_4229,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.0204924
+A080+DS Full,sub-002_S_6009,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.814553
+A080+DS Full,sub-002_S_6030,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.6706052
+A080+DS Full,sub-002_S_6680,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.1910745
+A080+DS Full,sub-002_S_6695,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.5815833
+A080+DS Full,sub-003_S_4441,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.69434667
+A080+DS Full,sub-003_S_6256,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.7724359
+A080+DS Full,sub-003_S_6678,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.5236372
+A080+DS Full,sub-003_S_7010,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.91828823
+A080+DS Full,sub-006_S_6651,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.20982097
+A080+DS Full,sub-006_S_6681,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.04039257
+A080+DS Full,sub-007_S_4387,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.6010863
+A080+DS Full,sub-007_S_4637,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.3914726
+A080+DS Full,sub-007_S_6323,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.12849617
+A080+DS Full,sub-007_S_6455,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.57902414
+A080+DS Full,sub-009_S_0751,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.7091124
+A080+DS Full,sub-009_S_4388,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.5320289
+A080+DS Full,sub-009_S_6163,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.19341506
+A080+DS Full,sub-009_S_6286,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.8814713
+A080+DS Full,sub-011_S_4105,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.1580617
+A080+DS Full,sub-011_S_4278,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.6612134
+A080+DS Full,sub-011_S_7028,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-3.4589167
+A080+DS Full,sub-012_S_4188,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,3.0214102
+A080+DS Full,sub-012_S_6760,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.39542183
+A080+DS Full,sub-013_S_2389,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.49263996
+A080+DS Full,sub-013_S_4268,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-3.0574617
+A080+DS Full,sub-013_S_6206,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.4343443
+A080+DS Full,sub-014_S_6920,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.003630666
+A080+DS Full,sub-014_S_6935,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-3.4945426
+A080+DS Full,sub-016_S_6802,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.4717072
+A080+DS Full,sub-016_S_6836,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.86273175
+A080+DS Full,sub-018_S_2155,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.7078047
+A080+DS Full,sub-019_S_6186,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.4547235
+A080+DS Full,sub-020_S_6185,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.037680384
+A080+DS Full,sub-022_S_2263,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.9676183
+A080+DS Full,sub-023_S_4164,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.0206965
+A080+DS Full,sub-023_S_6369,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-2.90543
+A080+DS Full,sub-023_S_6547,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.2654702
+A080+DS Full,sub-023_S_6702,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.62550175
+A080+DS Full,sub-024_S_4084,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.3899154
+A080+DS Full,sub-024_S_6184,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-4.468728
+A080+DS Full,sub-024_S_6202,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.03679406
+A080+DS Full,sub-024_S_6846,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.2592931
+A080+DS Full,sub-024_S_7025,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.2988832
+A080+DS Full,sub-027_S_4919,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.86077523
+A080+DS Full,sub-027_S_6317,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.302091
+A080+DS Full,sub-027_S_6643,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.13565591
+A080+DS Full,sub-027_S_7071,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.4661348
+A080+DS Full,sub-032_S_6709,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.4963536
+A080+DS Full,sub-036_S_2380,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.3989294
+A080+DS Full,sub-036_S_4389,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.6619488
+A080+DS Full,sub-036_S_6189,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.0016024
+A080+DS Full,sub-036_S_6466,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.5406115
+A080+DS Full,sub-036_S_6878,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,3.330564
+A080+DS Full,sub-036_S_6887,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.2909034
+A080+DS Full,sub-037_S_4030,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.0919869
+A080+DS Full,sub-037_S_4071,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.3848398
+A080+DS Full,sub-037_S_6031,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.6507631
+A080+DS Full,sub-037_S_6141,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.9922624
+A080+DS Full,sub-037_S_6271,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.5386997
+A080+DS Full,sub-037_S_6627,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.8780982
+A080+DS Full,sub-037_S_6963,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.3520253
+A080+DS Full,sub-041_S_4510,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.3183885
+A080+DS Full,sub-041_S_4876,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.1183248
+A080+DS Full,sub-041_S_4974,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.40152505
+A080+DS Full,sub-041_S_5253,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.33140177
+A080+DS Full,sub-041_S_6136,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.4039738
+A080+DS Full,sub-041_S_6192,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.9200459
+A080+DS Full,sub-041_S_6292,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.0132912
+A080+DS Full,sub-041_S_6731,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.9876615
+A080+DS Full,sub-041_S_6785,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.8174688
+A080+DS Full,sub-041_S_7017,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.05923038
+A080+DS Full,sub-002_S_4213,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.661148
+A080+DS Full,sub-002_S_4229,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-1.6242278
+A080+DS Full,sub-002_S_6009,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.298201
+A080+DS Full,sub-002_S_6030,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.6479696
+A080+DS Full,sub-002_S_6680,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.8643071
+A080+DS Full,sub-002_S_6695,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.5552218
+A080+DS Full,sub-003_S_4441,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.9310141
+A080+DS Full,sub-003_S_6256,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.6825489
+A080+DS Full,sub-003_S_6678,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.56590706
+A080+DS Full,sub-003_S_7010,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.0876231
+A080+DS Full,sub-006_S_6651,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.44361293
+A080+DS Full,sub-006_S_6681,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.8160505
+A080+DS Full,sub-007_S_4387,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.3039956
+A080+DS Full,sub-007_S_4637,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.436687
+A080+DS Full,sub-007_S_6323,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.33887026
+A080+DS Full,sub-007_S_6455,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.6094087
+A080+DS Full,sub-009_S_0751,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.8305498
+A080+DS Full,sub-009_S_4388,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.9193312
+A080+DS Full,sub-009_S_6163,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.03319555
+A080+DS Full,sub-009_S_6286,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.2196614
+A080+DS Full,sub-011_S_4105,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.11734869
+A080+DS Full,sub-011_S_4278,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.1964934
+A080+DS Full,sub-011_S_7028,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-3.2762725
+A080+DS Full,sub-012_S_4188,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.2881107
+A080+DS Full,sub-012_S_6760,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.32016152
+A080+DS Full,sub-013_S_2389,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.42935872
+A080+DS Full,sub-013_S_4268,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-2.459028
+A080+DS Full,sub-013_S_6206,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.7939862
+A080+DS Full,sub-014_S_6920,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.4418564
+A080+DS Full,sub-014_S_6935,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-3.327206
+A080+DS Full,sub-016_S_6802,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.61733484
+A080+DS Full,sub-016_S_6836,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.9712475
+A080+DS Full,sub-018_S_2155,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-2.6134336
+A080+DS Full,sub-019_S_6186,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.5275556
+A080+DS Full,sub-020_S_6185,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.43376318
+A080+DS Full,sub-022_S_2263,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.991547
+A080+DS Full,sub-023_S_4164,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.2357259
+A080+DS Full,sub-023_S_6369,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-3.1718082
+A080+DS Full,sub-023_S_6547,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.4452496
+A080+DS Full,sub-023_S_6702,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.41342002
+A080+DS Full,sub-024_S_4084,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.03445457
+A080+DS Full,sub-024_S_6184,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-4.42551
+A080+DS Full,sub-024_S_6202,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.2899929
+A080+DS Full,sub-024_S_6846,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.6815711
+A080+DS Full,sub-024_S_7025,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.6707683
+A080+DS Full,sub-027_S_4919,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.8018447
+A080+DS Full,sub-027_S_6317,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.6821786
+A080+DS Full,sub-027_S_6643,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.10857657
+A080+DS Full,sub-027_S_7071,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.43589276
+A080+DS Full,sub-032_S_6709,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.6592674
+A080+DS Full,sub-036_S_2380,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.945772
+A080+DS Full,sub-036_S_4389,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.280742
+A080+DS Full,sub-036_S_6189,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.93436897
+A080+DS Full,sub-036_S_6466,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.0202732
+A080+DS Full,sub-036_S_6878,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.4415958
+A080+DS Full,sub-036_S_6887,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.06274019
+A080+DS Full,sub-037_S_4030,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.14450331
+A080+DS Full,sub-037_S_4071,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.983746
+A080+DS Full,sub-037_S_6031,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.6501588
+A080+DS Full,sub-037_S_6141,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-1.7150471
+A080+DS Full,sub-037_S_6271,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.0051716194
+A080+DS Full,sub-037_S_6627,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.67673254
+A080+DS Full,sub-037_S_6963,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.770796
+A080+DS Full,sub-041_S_4510,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.8138806
+A080+DS Full,sub-041_S_4876,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.6971316
+A080+DS Full,sub-041_S_4974,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.5723187
+A080+DS Full,sub-041_S_5253,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.2482795
+A080+DS Full,sub-041_S_6136,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.2530359
+A080+DS Full,sub-041_S_6192,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.8913894
+A080+DS Full,sub-041_S_6292,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.6809385
+A080+DS Full,sub-041_S_6731,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.2216287
+A080+DS Full,sub-041_S_6785,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.1330526
+A080+DS Full,sub-041_S_7017,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.3161827
+A080+DS Full,sub-002_S_4213,1,CN,test,cn_vs_ad,logistic,0,1,0.25187278
+A080+DS Full,sub-002_S_6009,1,CN,test,cn_vs_ad,logistic,0,0,-5.316039
+A080+DS Full,sub-002_S_6030,1,CN,test,cn_vs_ad,logistic,0,0,-1.7075284
+A080+DS Full,sub-002_S_6680,1,CN,test,cn_vs_ad,logistic,0,0,-4.349459
+A080+DS Full,sub-003_S_4441,1,CN,test,cn_vs_ad,logistic,0,0,-2.2338614
+A080+DS Full,sub-003_S_6256,1,CN,test,cn_vs_ad,logistic,0,0,-7.866366
+A080+DS Full,sub-003_S_7010,1,CN,test,cn_vs_ad,logistic,0,0,-2.1334655
+A080+DS Full,sub-007_S_4387,1,CN,test,cn_vs_ad,logistic,0,0,-2.1486063
+A080+DS Full,sub-007_S_4637,1,CN,test,cn_vs_ad,logistic,0,0,-3.0540712
+A080+DS Full,sub-007_S_6323,1,CN,test,cn_vs_ad,logistic,0,0,-5.743898
+A080+DS Full,sub-007_S_6455,1,CN,test,cn_vs_ad,logistic,0,0,-4.007853
+A080+DS Full,sub-009_S_0751,1,CN,test,cn_vs_ad,logistic,0,0,-5.2153707
+A080+DS Full,sub-009_S_4388,1,CN,test,cn_vs_ad,logistic,0,0,-2.783588
+A080+DS Full,sub-009_S_6163,1,CN,test,cn_vs_ad,logistic,0,0,-4.318808
+A080+DS Full,sub-009_S_6286,1,CN,test,cn_vs_ad,logistic,0,0,-4.6665993
+A080+DS Full,sub-011_S_4105,1,CN,test,cn_vs_ad,logistic,0,0,-1.0077395
+A080+DS Full,sub-011_S_4278,1,CN,test,cn_vs_ad,logistic,0,0,-2.3241434
+A080+DS Full,sub-011_S_7028,1,CN,test,cn_vs_ad,logistic,0,0,-6.126949
+A080+DS Full,sub-014_S_6920,1,CN,test,cn_vs_ad,logistic,0,0,-3.5347831
+A080+DS Full,sub-014_S_6935,1,CN,test,cn_vs_ad,logistic,0,0,-5.457566
+A080+DS Full,sub-016_S_5057,3,AD,test,cn_vs_ad,logistic,1,1,3.8984358
+A080+DS Full,sub-016_S_6802,1,CN,test,cn_vs_ad,logistic,0,0,-2.2600698
+A080+DS Full,sub-019_S_6186,1,CN,test,cn_vs_ad,logistic,0,0,-1.4675969
+A080+DS Full,sub-020_S_6185,1,CN,test,cn_vs_ad,logistic,0,0,-2.3251207
+A080+DS Full,sub-023_S_4164,1,CN,test,cn_vs_ad,logistic,0,1,2.3382337
+A080+DS Full,sub-023_S_6547,1,CN,test,cn_vs_ad,logistic,0,0,-2.2528548
+A080+DS Full,sub-024_S_4084,1,CN,test,cn_vs_ad,logistic,0,0,-3.5775435
+A080+DS Full,sub-024_S_6184,1,CN,test,cn_vs_ad,logistic,0,0,-6.9686174
+A080+DS Full,sub-024_S_6202,1,CN,test,cn_vs_ad,logistic,0,0,-5.1068406
+A080+DS Full,sub-027_S_6317,1,CN,test,cn_vs_ad,logistic,0,0,-2.4161577
+A080+DS Full,sub-027_S_6648,3,AD,test,cn_vs_ad,logistic,1,0,-1.3648725
+A080+DS Full,sub-032_S_6600,3,AD,test,cn_vs_ad,logistic,1,0,-3.909456
+A080+DS Full,sub-032_S_6602,3,AD,test,cn_vs_ad,logistic,1,1,0.9595096
+A080+DS Full,sub-032_S_6709,1,CN,test,cn_vs_ad,logistic,0,0,-2.8475502
+A080+DS Full,sub-036_S_4389,1,CN,test,cn_vs_ad,logistic,0,0,-3.847736
+A080+DS Full,sub-036_S_6189,1,CN,test,cn_vs_ad,logistic,0,0,-4.514278
+A080+DS Full,sub-036_S_6466,1,CN,test,cn_vs_ad,logistic,0,0,-7.9086404
+A080+DS Full,sub-037_S_4071,1,CN,test,cn_vs_ad,logistic,0,1,0.8050904
+A080+DS Full,sub-037_S_6031,1,CN,test,cn_vs_ad,logistic,0,0,-4.005624
+A080+DS Full,sub-037_S_6271,1,CN,test,cn_vs_ad,logistic,0,0,-5.204909
+A080+DS Full,sub-037_S_6377,3,AD,test,cn_vs_ad,logistic,1,1,1.1495913
+A080+DS Full,sub-037_S_6963,1,CN,test,cn_vs_ad,logistic,0,0,-4.067378
+A080+DS Full,sub-041_S_5253,1,CN,test,cn_vs_ad,logistic,0,0,-3.3670807
+A080+DS Full,sub-041_S_6136,1,CN,test,cn_vs_ad,logistic,0,0,-2.416628
+A080+DS Full,sub-041_S_6192,1,CN,test,cn_vs_ad,logistic,0,1,0.8590685
+A080+DS Full,sub-041_S_6292,1,CN,test,cn_vs_ad,logistic,0,0,-1.5367988
+A080+DS Full,sub-041_S_6785,1,CN,test,cn_vs_ad,logistic,0,0,-5.63038
+A080+DS Full,sub-041_S_7017,1,CN,test,cn_vs_ad,logistic,0,1,0.8947897
+A080+DS Full,sub-002_S_4213,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.27295268
+A080+DS Full,sub-002_S_6009,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.62452
+A080+DS Full,sub-002_S_6030,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.86997235
+A080+DS Full,sub-002_S_6680,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.0204322
+A080+DS Full,sub-003_S_4441,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.0247227
+A080+DS Full,sub-003_S_6256,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.6752374
+A080+DS Full,sub-003_S_7010,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.0535927
+A080+DS Full,sub-007_S_4387,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.2758105
+A080+DS Full,sub-007_S_4637,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.5426432
+A080+DS Full,sub-007_S_6323,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.372352
+A080+DS Full,sub-007_S_6455,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.1385586
+A080+DS Full,sub-009_S_0751,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.6120803
+A080+DS Full,sub-009_S_4388,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.5292263
+A080+DS Full,sub-009_S_6163,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.075243
+A080+DS Full,sub-009_S_6286,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.8565555
+A080+DS Full,sub-011_S_4105,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.1704149
+A080+DS Full,sub-011_S_4278,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.4061526
+A080+DS Full,sub-011_S_7028,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.5636709
+A080+DS Full,sub-014_S_6920,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.868732
+A080+DS Full,sub-014_S_6935,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.6000795
+A080+DS Full,sub-016_S_5057,3,AD,test,cn_vs_ad,linear_svm,1,1,1.1885277
+A080+DS Full,sub-016_S_6802,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.9244129
+A080+DS Full,sub-019_S_6186,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.70551574
+A080+DS Full,sub-020_S_6185,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.1707867
+A080+DS Full,sub-023_S_4164,1,CN,test,cn_vs_ad,linear_svm,0,1,1.1781904
+A080+DS Full,sub-023_S_6547,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.2312514
+A080+DS Full,sub-024_S_4084,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.7234979
+A080+DS Full,sub-024_S_6184,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.3987882
+A080+DS Full,sub-024_S_6202,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.1654336
+A080+DS Full,sub-027_S_6317,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.3025357
+A080+DS Full,sub-027_S_6648,3,AD,test,cn_vs_ad,linear_svm,1,0,-0.5915211
+A080+DS Full,sub-032_S_6600,3,AD,test,cn_vs_ad,linear_svm,1,0,-2.1512418
+A080+DS Full,sub-032_S_6602,3,AD,test,cn_vs_ad,linear_svm,1,1,0.10448922
+A080+DS Full,sub-032_S_6709,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.4385253
+A080+DS Full,sub-036_S_4389,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.9896792
+A080+DS Full,sub-036_S_6189,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.237525
+A080+DS Full,sub-036_S_6466,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.5641873
+A080+DS Full,sub-037_S_4071,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.3531627
+A080+DS Full,sub-037_S_6031,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.8528727
+A080+DS Full,sub-037_S_6271,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.5546298
+A080+DS Full,sub-037_S_6377,3,AD,test,cn_vs_ad,linear_svm,1,1,0.20553254
+A080+DS Full,sub-037_S_6963,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.0953345
+A080+DS Full,sub-041_S_5253,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.7068372
+A080+DS Full,sub-041_S_6136,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.996937
+A080+DS Full,sub-041_S_6192,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.2030188
+A080+DS Full,sub-041_S_6292,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.9010048
+A080+DS Full,sub-041_S_6785,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.8906727
+A080+DS Full,sub-041_S_7017,1,CN,test,cn_vs_ad,linear_svm,0,1,0.06775312
+A080+DS Full,sub-002_S_4229,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-0.6984111
+A080+DS Full,sub-002_S_6695,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.8009734
+A080+DS Full,sub-003_S_6678,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.9310452
+A080+DS Full,sub-006_S_6651,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.2471435
+A080+DS Full,sub-006_S_6681,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-5.57303
+A080+DS Full,sub-012_S_4188,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,0.7360392
+A080+DS Full,sub-012_S_6760,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.4410591
+A080+DS Full,sub-013_S_2389,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.3774921
+A080+DS Full,sub-013_S_4268,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-7.4143105
+A080+DS Full,sub-013_S_6206,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-0.6801264
+A080+DS Full,sub-016_S_5057,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-0.2880111
+A080+DS Full,sub-016_S_6836,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.9833366
+A080+DS Full,sub-018_S_2155,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.6894093
+A080+DS Full,sub-022_S_2263,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.5087303
+A080+DS Full,sub-023_S_6369,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.5279922
+A080+DS Full,sub-023_S_6702,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.6352267
+A080+DS Full,sub-024_S_6846,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.6271124
+A080+DS Full,sub-024_S_7025,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.1114902
+A080+DS Full,sub-027_S_4919,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.688907
+A080+DS Full,sub-027_S_6643,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.9249904
+A080+DS Full,sub-027_S_6648,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-4.5378456
+A080+DS Full,sub-027_S_7071,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.5077882
+A080+DS Full,sub-032_S_6600,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-1.6811035
+A080+DS Full,sub-032_S_6602,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-1.826173
+A080+DS Full,sub-036_S_2380,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.213403
+A080+DS Full,sub-036_S_6878,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-5.610582
+A080+DS Full,sub-036_S_6887,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.8433995
+A080+DS Full,sub-037_S_4030,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.866012
+A080+DS Full,sub-037_S_6141,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.3109028
+A080+DS Full,sub-037_S_6377,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-2.2335467
+A080+DS Full,sub-037_S_6627,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,0.8550894
+A080+DS Full,sub-041_S_4510,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.5161536
+A080+DS Full,sub-041_S_4876,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,0.8137299
+A080+DS Full,sub-041_S_4974,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,0.0697059
+A080+DS Full,sub-041_S_6731,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.2001457
+A080+DS Full,sub-002_S_4229,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.6762799
+A080+DS Full,sub-002_S_6695,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.1983702
+A080+DS Full,sub-003_S_6678,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.5036622
+A080+DS Full,sub-006_S_6651,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.8919581
+A080+DS Full,sub-006_S_6681,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-4.3179283
+A080+DS Full,sub-012_S_4188,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.2360868
+A080+DS Full,sub-012_S_6760,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.3392013
+A080+DS Full,sub-013_S_2389,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.8143834
+A080+DS Full,sub-013_S_4268,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-5.5259666
+A080+DS Full,sub-013_S_6206,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.18882047
+A080+DS Full,sub-016_S_5057,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-0.794313
+A080+DS Full,sub-016_S_6836,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.9214959
+A080+DS Full,sub-018_S_2155,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.8500042
+A080+DS Full,sub-022_S_2263,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.4862862
+A080+DS Full,sub-023_S_6369,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.3023837
+A080+DS Full,sub-023_S_6702,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.2542522
+A080+DS Full,sub-024_S_6846,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.4721591
+A080+DS Full,sub-024_S_7025,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.791184
+A080+DS Full,sub-027_S_4919,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-4.1051126
+A080+DS Full,sub-027_S_6643,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.8294591
+A080+DS Full,sub-027_S_6648,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-3.1314728
+A080+DS Full,sub-027_S_7071,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.1545727
+A080+DS Full,sub-032_S_6600,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-1.1447961
+A080+DS Full,sub-032_S_6602,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-2.218493
+A080+DS Full,sub-036_S_2380,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.6064274
+A080+DS Full,sub-036_S_6878,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-4.4403234
+A080+DS Full,sub-036_S_6887,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.2247664
+A080+DS Full,sub-037_S_4030,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.8120582
+A080+DS Full,sub-037_S_6141,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.87268066
+A080+DS Full,sub-037_S_6377,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-2.6769674
+A080+DS Full,sub-037_S_6627,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,0.10750197
+A080+DS Full,sub-041_S_4510,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.2158113
+A080+DS Full,sub-041_S_4876,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.8212267
+A080+DS Full,sub-041_S_4974,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.6444946
+A080+DS Full,sub-041_S_6731,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.4933527
+FA_GT,sub-002_S_4213,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.903377
+FA_GT,sub-002_S_4229,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.5517652
+FA_GT,sub-002_S_6009,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.4751441
+FA_GT,sub-002_S_6030,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.71204144
+FA_GT,sub-002_S_6680,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.6272481
+FA_GT,sub-002_S_6695,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.1647284
+FA_GT,sub-003_S_4441,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-3.204999
+FA_GT,sub-003_S_6256,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.9914199
+FA_GT,sub-003_S_6678,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.1383718
+FA_GT,sub-003_S_7010,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.6609464
+FA_GT,sub-006_S_6651,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,4.0644684
+FA_GT,sub-006_S_6681,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.314256
+FA_GT,sub-007_S_4387,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.6609877
+FA_GT,sub-007_S_4637,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.6277276
+FA_GT,sub-007_S_6323,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.1154592
+FA_GT,sub-007_S_6455,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.1949549
+FA_GT,sub-009_S_0751,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.8861393
+FA_GT,sub-009_S_4388,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.7545886
+FA_GT,sub-009_S_6163,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.9480169
+FA_GT,sub-009_S_6286,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.8267812
+FA_GT,sub-011_S_4105,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.9239755
+FA_GT,sub-011_S_4278,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,3.059209
+FA_GT,sub-011_S_7028,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-3.7373416
+FA_GT,sub-012_S_4188,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,3.1982346
+FA_GT,sub-012_S_6760,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.489733
+FA_GT,sub-013_S_2389,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-2.873079
+FA_GT,sub-013_S_4268,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.4492517
+FA_GT,sub-013_S_6206,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.8579934
+FA_GT,sub-014_S_6920,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-4.2378535
+FA_GT,sub-014_S_6935,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-3.813928
+FA_GT,sub-016_S_6802,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.40012
+FA_GT,sub-016_S_6836,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.09116375
+FA_GT,sub-018_S_2155,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.3959578
+FA_GT,sub-019_S_6186,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.3054557
+FA_GT,sub-020_S_6185,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.1791347
+FA_GT,sub-022_S_2263,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.9748948
+FA_GT,sub-023_S_4164,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.73202294
+FA_GT,sub-023_S_6369,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.44603857
+FA_GT,sub-023_S_6547,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.30684337
+FA_GT,sub-023_S_6702,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-3.1488206
+FA_GT,sub-024_S_4084,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.1109803
+FA_GT,sub-024_S_6184,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.0190761
+FA_GT,sub-024_S_6202,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.13824768
+FA_GT,sub-024_S_6846,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.27092028
+FA_GT,sub-024_S_7025,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.94418913
+FA_GT,sub-027_S_4919,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.25377542
+FA_GT,sub-027_S_6317,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.33024737
+FA_GT,sub-027_S_6643,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-2.2738967
+FA_GT,sub-027_S_7071,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.7017484
+FA_GT,sub-032_S_6709,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.7345284
+FA_GT,sub-036_S_2380,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.5420395
+FA_GT,sub-036_S_4389,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.16611277
+FA_GT,sub-036_S_6189,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.9492375
+FA_GT,sub-036_S_6466,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.0458057
+FA_GT,sub-036_S_6878,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-4.4208617
+FA_GT,sub-036_S_6887,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.0129199
+FA_GT,sub-037_S_4030,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.7848746
+FA_GT,sub-037_S_4071,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.0268395
+FA_GT,sub-037_S_6031,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.24025336
+FA_GT,sub-037_S_6141,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.5011306
+FA_GT,sub-037_S_6271,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.31831172
+FA_GT,sub-037_S_6627,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.9633143
+FA_GT,sub-037_S_6963,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.7074531
+FA_GT,sub-041_S_4510,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.0956604
+FA_GT,sub-041_S_4876,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,4.005891
+FA_GT,sub-041_S_4974,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.6434328
+FA_GT,sub-041_S_5253,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.1232185
+FA_GT,sub-041_S_6136,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.0863242
+FA_GT,sub-041_S_6192,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.4826006
+FA_GT,sub-041_S_6292,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.31159583
+FA_GT,sub-041_S_6731,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.62133145
+FA_GT,sub-041_S_6785,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.37009242
+FA_GT,sub-041_S_7017,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.2178196
+FA_GT,sub-002_S_4213,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.30601192
+FA_GT,sub-002_S_4229,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.81612706
+FA_GT,sub-002_S_6009,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.1123102
+FA_GT,sub-002_S_6030,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.30427182
+FA_GT,sub-002_S_6680,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.12929891
+FA_GT,sub-002_S_6695,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.1698804
+FA_GT,sub-003_S_4441,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.5994372
+FA_GT,sub-003_S_6256,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.3155079
+FA_GT,sub-003_S_6678,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.147839
+FA_GT,sub-003_S_7010,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.2980852
+FA_GT,sub-006_S_6651,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,3.047276
+FA_GT,sub-006_S_6681,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.61069
+FA_GT,sub-007_S_4387,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.5633796
+FA_GT,sub-007_S_4637,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.3557893
+FA_GT,sub-007_S_6323,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.0468367
+FA_GT,sub-007_S_6455,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.69571495
+FA_GT,sub-009_S_0751,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.89151365
+FA_GT,sub-009_S_4388,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.5432744
+FA_GT,sub-009_S_6163,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.6946291
+FA_GT,sub-009_S_6286,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.5831524
+FA_GT,sub-011_S_4105,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.1719131
+FA_GT,sub-011_S_4278,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.3962398
+FA_GT,sub-011_S_7028,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-3.5958698
+FA_GT,sub-012_S_4188,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.9657106
+FA_GT,sub-012_S_6760,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.863199
+FA_GT,sub-013_S_2389,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-2.9077585
+FA_GT,sub-013_S_4268,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-1.2067397
+FA_GT,sub-013_S_6206,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.0003495
+FA_GT,sub-014_S_6920,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-3.3914557
+FA_GT,sub-014_S_6935,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-3.2768004
+FA_GT,sub-016_S_6802,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.0523013
+FA_GT,sub-016_S_6836,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.36882365
+FA_GT,sub-018_S_2155,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.86994916
+FA_GT,sub-019_S_6186,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.6785289
+FA_GT,sub-020_S_6185,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.90390044
+FA_GT,sub-022_S_2263,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.92984825
+FA_GT,sub-023_S_4164,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.2232966
+FA_GT,sub-023_S_6369,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.2991498
+FA_GT,sub-023_S_6547,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.09556881
+FA_GT,sub-023_S_6702,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-2.1520293
+FA_GT,sub-024_S_4084,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.05767544
+FA_GT,sub-024_S_6184,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.066686
+FA_GT,sub-024_S_6202,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.35322964
+FA_GT,sub-024_S_6846,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.1544522
+FA_GT,sub-024_S_7025,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.446627
+FA_GT,sub-027_S_4919,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.15335044
+FA_GT,sub-027_S_6317,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.3522527
+FA_GT,sub-027_S_6643,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-2.568313
+FA_GT,sub-027_S_7071,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-1.4265139
+FA_GT,sub-032_S_6709,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.76246524
+FA_GT,sub-036_S_2380,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.7426962
+FA_GT,sub-036_S_4389,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.55714417
+FA_GT,sub-036_S_6189,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.1359942
+FA_GT,sub-036_S_6466,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.092657015
+FA_GT,sub-036_S_6878,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-1.458379
+FA_GT,sub-036_S_6887,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.4903717
+FA_GT,sub-037_S_4030,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.9934699
+FA_GT,sub-037_S_4071,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.1928704
+FA_GT,sub-037_S_6031,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.83570486
+FA_GT,sub-037_S_6141,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.32799563
+FA_GT,sub-037_S_6271,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.5370728
+FA_GT,sub-037_S_6627,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.2690811
+FA_GT,sub-037_S_6963,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.018243432
+FA_GT,sub-041_S_4510,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.5635743
+FA_GT,sub-041_S_4876,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,3.6798813
+FA_GT,sub-041_S_4974,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.009212899
+FA_GT,sub-041_S_5253,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.7928302
+FA_GT,sub-041_S_6136,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.5643639
+FA_GT,sub-041_S_6192,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.013542287
+FA_GT,sub-041_S_6292,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.06853672
+FA_GT,sub-041_S_6731,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.15910155
+FA_GT,sub-041_S_6785,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.36148524
+FA_GT,sub-041_S_7017,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.0237896
+FA_GT,sub-002_S_4213,1,CN,test,cn_vs_ad,logistic,0,0,-1.5962002
+FA_GT,sub-002_S_6009,1,CN,test,cn_vs_ad,logistic,0,0,-5.3181696
+FA_GT,sub-002_S_6030,1,CN,test,cn_vs_ad,logistic,0,0,-3.0952802
+FA_GT,sub-002_S_6680,1,CN,test,cn_vs_ad,logistic,0,0,-5.86155
+FA_GT,sub-003_S_4441,1,CN,test,cn_vs_ad,logistic,0,0,-8.630743
+FA_GT,sub-003_S_6256,1,CN,test,cn_vs_ad,logistic,0,0,-2.652577
+FA_GT,sub-003_S_7010,1,CN,test,cn_vs_ad,logistic,0,0,-8.496095
+FA_GT,sub-007_S_4387,1,CN,test,cn_vs_ad,logistic,0,0,-0.9541345
+FA_GT,sub-007_S_4637,1,CN,test,cn_vs_ad,logistic,0,0,-2.893182
+FA_GT,sub-007_S_6323,1,CN,test,cn_vs_ad,logistic,0,0,-4.6652355
+FA_GT,sub-007_S_6455,1,CN,test,cn_vs_ad,logistic,0,0,-4.449457
+FA_GT,sub-009_S_0751,1,CN,test,cn_vs_ad,logistic,0,0,-3.9470148
+FA_GT,sub-009_S_4388,1,CN,test,cn_vs_ad,logistic,0,0,-4.7052555
+FA_GT,sub-009_S_6163,1,CN,test,cn_vs_ad,logistic,0,0,-7.4113083
+FA_GT,sub-009_S_6286,1,CN,test,cn_vs_ad,logistic,0,0,-9.276139
+FA_GT,sub-011_S_4105,1,CN,test,cn_vs_ad,logistic,0,1,3.8865445
+FA_GT,sub-011_S_4278,1,CN,test,cn_vs_ad,logistic,0,0,-0.16590899
+FA_GT,sub-011_S_7028,1,CN,test,cn_vs_ad,logistic,0,0,-6.9802465
+FA_GT,sub-014_S_6920,1,CN,test,cn_vs_ad,logistic,0,0,-3.8981035
+FA_GT,sub-014_S_6935,1,CN,test,cn_vs_ad,logistic,0,0,-16.192945
+FA_GT,sub-016_S_5057,3,AD,test,cn_vs_ad,logistic,1,1,4.596342
+FA_GT,sub-016_S_6802,1,CN,test,cn_vs_ad,logistic,0,0,-2.2631192
+FA_GT,sub-019_S_6186,1,CN,test,cn_vs_ad,logistic,0,0,-5.821744
+FA_GT,sub-020_S_6185,1,CN,test,cn_vs_ad,logistic,0,0,-3.1822555
+FA_GT,sub-023_S_4164,1,CN,test,cn_vs_ad,logistic,0,1,0.9829855
+FA_GT,sub-023_S_6547,1,CN,test,cn_vs_ad,logistic,0,0,-3.2757611
+FA_GT,sub-024_S_4084,1,CN,test,cn_vs_ad,logistic,0,0,-1.1675966
+FA_GT,sub-024_S_6184,1,CN,test,cn_vs_ad,logistic,0,0,-1.1398146
+FA_GT,sub-024_S_6202,1,CN,test,cn_vs_ad,logistic,0,0,-4.2436223
+FA_GT,sub-027_S_6317,1,CN,test,cn_vs_ad,logistic,0,0,-5.674349
+FA_GT,sub-027_S_6648,3,AD,test,cn_vs_ad,logistic,1,0,-1.3290511
+FA_GT,sub-032_S_6600,3,AD,test,cn_vs_ad,logistic,1,0,-2.4691432
+FA_GT,sub-032_S_6602,3,AD,test,cn_vs_ad,logistic,1,1,0.7775252
+FA_GT,sub-032_S_6709,1,CN,test,cn_vs_ad,logistic,0,0,-6.80798
+FA_GT,sub-036_S_4389,1,CN,test,cn_vs_ad,logistic,0,1,0.88798183
+FA_GT,sub-036_S_6189,1,CN,test,cn_vs_ad,logistic,0,0,-4.3047514
+FA_GT,sub-036_S_6466,1,CN,test,cn_vs_ad,logistic,0,0,-9.811844
+FA_GT,sub-037_S_4071,1,CN,test,cn_vs_ad,logistic,0,0,-4.7838683
+FA_GT,sub-037_S_6031,1,CN,test,cn_vs_ad,logistic,0,0,-6.5098734
+FA_GT,sub-037_S_6271,1,CN,test,cn_vs_ad,logistic,0,0,-6.1333094
+FA_GT,sub-037_S_6377,3,AD,test,cn_vs_ad,logistic,1,0,-2.0831826
+FA_GT,sub-037_S_6963,1,CN,test,cn_vs_ad,logistic,0,0,-4.5838695
+FA_GT,sub-041_S_5253,1,CN,test,cn_vs_ad,logistic,0,0,-7.4255567
+FA_GT,sub-041_S_6136,1,CN,test,cn_vs_ad,logistic,0,0,-6.4082775
+FA_GT,sub-041_S_6192,1,CN,test,cn_vs_ad,logistic,0,1,0.64199996
+FA_GT,sub-041_S_6292,1,CN,test,cn_vs_ad,logistic,0,0,-0.765354
+FA_GT,sub-041_S_6785,1,CN,test,cn_vs_ad,logistic,0,0,-5.5538793
+FA_GT,sub-041_S_7017,1,CN,test,cn_vs_ad,logistic,0,1,2.5640507
+FA_GT,sub-002_S_4213,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.1944861
+FA_GT,sub-002_S_6009,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.4250522
+FA_GT,sub-002_S_6030,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.5734231
+FA_GT,sub-002_S_6680,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.8941252
+FA_GT,sub-003_S_4441,1,CN,test,cn_vs_ad,linear_svm,0,0,-4.670362
+FA_GT,sub-003_S_6256,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.7330035
+FA_GT,sub-003_S_7010,1,CN,test,cn_vs_ad,linear_svm,0,0,-4.0196204
+FA_GT,sub-007_S_4387,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.31139085
+FA_GT,sub-007_S_4637,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.9778901
+FA_GT,sub-007_S_6323,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.3500402
+FA_GT,sub-007_S_6455,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.2461667
+FA_GT,sub-009_S_0751,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.6736847
+FA_GT,sub-009_S_4388,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.7611523
+FA_GT,sub-009_S_6163,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.8272996
+FA_GT,sub-009_S_6286,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.925721
+FA_GT,sub-011_S_4105,1,CN,test,cn_vs_ad,linear_svm,0,1,1.2414696
+FA_GT,sub-011_S_4278,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.75081384
+FA_GT,sub-011_S_7028,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.7073183
+FA_GT,sub-014_S_6920,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.180827
+FA_GT,sub-014_S_6935,1,CN,test,cn_vs_ad,linear_svm,0,0,-8.989158
+FA_GT,sub-016_S_5057,3,AD,test,cn_vs_ad,linear_svm,1,1,1.7175087
+FA_GT,sub-016_S_6802,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.39771017
+FA_GT,sub-019_S_6186,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.3725905
+FA_GT,sub-020_S_6185,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.8831155
+FA_GT,sub-023_S_4164,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.14187418
+FA_GT,sub-023_S_6547,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.9273041
+FA_GT,sub-024_S_4084,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.8321805
+FA_GT,sub-024_S_6184,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.5868685
+FA_GT,sub-024_S_6202,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.944392
+FA_GT,sub-027_S_6317,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.8952627
+FA_GT,sub-027_S_6648,3,AD,test,cn_vs_ad,linear_svm,1,0,-1.7013903
+FA_GT,sub-032_S_6600,3,AD,test,cn_vs_ad,linear_svm,1,0,-1.2437236
+FA_GT,sub-032_S_6602,3,AD,test,cn_vs_ad,linear_svm,1,0,-0.33471468
+FA_GT,sub-032_S_6709,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.1763036
+FA_GT,sub-036_S_4389,1,CN,test,cn_vs_ad,linear_svm,0,1,1.2498603
+FA_GT,sub-036_S_6189,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.9151056
+FA_GT,sub-036_S_6466,1,CN,test,cn_vs_ad,linear_svm,0,0,-5.4763107
+FA_GT,sub-037_S_4071,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.3859675
+FA_GT,sub-037_S_6031,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.9756658
+FA_GT,sub-037_S_6271,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.008502
+FA_GT,sub-037_S_6377,3,AD,test,cn_vs_ad,linear_svm,1,0,-0.5712999
+FA_GT,sub-037_S_6963,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.8801005
+FA_GT,sub-041_S_5253,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.4824467
+FA_GT,sub-041_S_6136,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.4459794
+FA_GT,sub-041_S_6192,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.15761931
+FA_GT,sub-041_S_6292,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.3796858
+FA_GT,sub-041_S_6785,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.2236042
+FA_GT,sub-041_S_7017,1,CN,test,cn_vs_ad,linear_svm,0,1,1.078229
+FA_GT,sub-002_S_4229,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-0.78436655
+FA_GT,sub-002_S_6695,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-0.63155377
+FA_GT,sub-003_S_6678,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.2967771
+FA_GT,sub-006_S_6651,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.748127
+FA_GT,sub-006_S_6681,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.257162
+FA_GT,sub-012_S_4188,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.960735
+FA_GT,sub-012_S_6760,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.3528283
+FA_GT,sub-013_S_2389,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.5458038
+FA_GT,sub-013_S_4268,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-8.208721
+FA_GT,sub-013_S_6206,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.015257
+FA_GT,sub-016_S_5057,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-0.37667996
+FA_GT,sub-016_S_6836,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.2121422
+FA_GT,sub-018_S_2155,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-7.393118
+FA_GT,sub-022_S_2263,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.685036
+FA_GT,sub-023_S_6369,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.1387062
+FA_GT,sub-023_S_6702,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-5.1442857
+FA_GT,sub-024_S_6846,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.8450432
+FA_GT,sub-024_S_7025,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.2965307
+FA_GT,sub-027_S_4919,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,0.97958267
+FA_GT,sub-027_S_6643,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-6.146459
+FA_GT,sub-027_S_6648,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-2.373699
+FA_GT,sub-027_S_7071,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-6.468396
+FA_GT,sub-032_S_6600,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-4.1696005
+FA_GT,sub-032_S_6602,3,AD,test,mci_spectrum_vs_ad,logistic,1,1,1.0924304
+FA_GT,sub-036_S_2380,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.4456435
+FA_GT,sub-036_S_6878,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-6.865403
+FA_GT,sub-036_S_6887,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,1.9376117
+FA_GT,sub-037_S_4030,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,2.110386
+FA_GT,sub-037_S_6141,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.4738758
+FA_GT,sub-037_S_6377,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-4.286319
+FA_GT,sub-037_S_6627,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.7095864
+FA_GT,sub-041_S_4510,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.7321237
+FA_GT,sub-041_S_4876,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.2845554
+FA_GT,sub-041_S_4974,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.7649298
+FA_GT,sub-041_S_6731,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.703758
+FA_GT,sub-002_S_4229,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,0.0674259
+FA_GT,sub-002_S_6695,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.90490377
+FA_GT,sub-003_S_6678,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.76097476
+FA_GT,sub-006_S_6651,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.5946589
+FA_GT,sub-006_S_6681,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.233596
+FA_GT,sub-012_S_4188,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.2028713
+FA_GT,sub-012_S_6760,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.918178
+FA_GT,sub-013_S_2389,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.1165633
+FA_GT,sub-013_S_4268,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-5.6463475
+FA_GT,sub-013_S_6206,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.6565533
+FA_GT,sub-016_S_5057,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-1.3375148
+FA_GT,sub-016_S_6836,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.7265933
+FA_GT,sub-018_S_2155,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-4.098437
+FA_GT,sub-022_S_2263,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.1366303
+FA_GT,sub-023_S_6369,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.7770199
+FA_GT,sub-023_S_6702,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.8418415
+FA_GT,sub-024_S_6846,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-4.0667086
+FA_GT,sub-024_S_7025,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.2537591
+FA_GT,sub-027_S_4919,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,1.1149719
+FA_GT,sub-027_S_6643,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-4.865662
+FA_GT,sub-027_S_6648,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-2.5235906
+FA_GT,sub-027_S_7071,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.6901937
+FA_GT,sub-032_S_6600,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-3.3904321
+FA_GT,sub-032_S_6602,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,1,0.7377564
+FA_GT,sub-036_S_2380,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.1853967
+FA_GT,sub-036_S_6878,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-4.351408
+FA_GT,sub-036_S_6887,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,0.6142209
+FA_GT,sub-037_S_4030,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,0.73488444
+FA_GT,sub-037_S_6141,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.6530666
+FA_GT,sub-037_S_6377,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-3.1235874
+FA_GT,sub-037_S_6627,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.6931018
+FA_GT,sub-041_S_4510,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.3012445
+FA_GT,sub-041_S_4876,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.7083648
+FA_GT,sub-041_S_4974,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.54830325
+FA_GT,sub-041_S_6731,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.6605232
+Old Fidelity Flow,sub-002_S_4213,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.6850774
+Old Fidelity Flow,sub-002_S_4229,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.6579891
+Old Fidelity Flow,sub-002_S_6009,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.32553232
+Old Fidelity Flow,sub-002_S_6030,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.47053263
+Old Fidelity Flow,sub-002_S_6680,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.5440933
+Old Fidelity Flow,sub-002_S_6695,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.092030406
+Old Fidelity Flow,sub-003_S_4441,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.42014557
+Old Fidelity Flow,sub-003_S_6256,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.39958933
+Old Fidelity Flow,sub-003_S_6678,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.713133
+Old Fidelity Flow,sub-003_S_7010,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.8055258
+Old Fidelity Flow,sub-006_S_6651,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.0015942
+Old Fidelity Flow,sub-006_S_6681,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.5092957
+Old Fidelity Flow,sub-007_S_4387,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.8166934
+Old Fidelity Flow,sub-007_S_4637,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.1665175
+Old Fidelity Flow,sub-007_S_6323,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.5746663
+Old Fidelity Flow,sub-007_S_6455,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.09165672
+Old Fidelity Flow,sub-009_S_0751,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.5430082
+Old Fidelity Flow,sub-009_S_4388,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.634287
+Old Fidelity Flow,sub-009_S_6163,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.1853243
+Old Fidelity Flow,sub-009_S_6286,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.0329483
+Old Fidelity Flow,sub-011_S_4105,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.4283731
+Old Fidelity Flow,sub-011_S_4278,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.004994698
+Old Fidelity Flow,sub-011_S_7028,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.5879502
+Old Fidelity Flow,sub-012_S_4188,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.6161427
+Old Fidelity Flow,sub-012_S_6760,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.9296625
+Old Fidelity Flow,sub-013_S_2389,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.60642576
+Old Fidelity Flow,sub-013_S_4268,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-3.5619185
+Old Fidelity Flow,sub-013_S_6206,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.58485734
+Old Fidelity Flow,sub-014_S_6920,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.0247221
+Old Fidelity Flow,sub-014_S_6935,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-3.133349
+Old Fidelity Flow,sub-016_S_6802,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.5440501
+Old Fidelity Flow,sub-016_S_6836,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.649819
+Old Fidelity Flow,sub-018_S_2155,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.5112792
+Old Fidelity Flow,sub-019_S_6186,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.0325491
+Old Fidelity Flow,sub-020_S_6185,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.51621556
+Old Fidelity Flow,sub-022_S_2263,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.8261049
+Old Fidelity Flow,sub-023_S_4164,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.5651881
+Old Fidelity Flow,sub-023_S_6369,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-4.936318
+Old Fidelity Flow,sub-023_S_6547,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.5675262
+Old Fidelity Flow,sub-023_S_6702,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.4002678
+Old Fidelity Flow,sub-024_S_4084,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.7354746
+Old Fidelity Flow,sub-024_S_6184,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.0164607
+Old Fidelity Flow,sub-024_S_6202,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.43274376
+Old Fidelity Flow,sub-024_S_6846,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.7216809
+Old Fidelity Flow,sub-024_S_7025,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.6697894
+Old Fidelity Flow,sub-027_S_4919,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.5603609
+Old Fidelity Flow,sub-027_S_6317,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.1005614
+Old Fidelity Flow,sub-027_S_6643,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.24724443
+Old Fidelity Flow,sub-027_S_7071,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.6112244
+Old Fidelity Flow,sub-032_S_6709,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-4.7740927
+Old Fidelity Flow,sub-036_S_2380,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.9896305
+Old Fidelity Flow,sub-036_S_4389,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.8073702
+Old Fidelity Flow,sub-036_S_6189,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.4968431
+Old Fidelity Flow,sub-036_S_6466,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-3.899338
+Old Fidelity Flow,sub-036_S_6878,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.1038796
+Old Fidelity Flow,sub-036_S_6887,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.39887416
+Old Fidelity Flow,sub-037_S_4030,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.49001414
+Old Fidelity Flow,sub-037_S_4071,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.523789
+Old Fidelity Flow,sub-037_S_6031,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.5401694
+Old Fidelity Flow,sub-037_S_6141,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.47295752
+Old Fidelity Flow,sub-037_S_6271,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.28342575
+Old Fidelity Flow,sub-037_S_6627,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.2371528
+Old Fidelity Flow,sub-037_S_6963,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.4167532
+Old Fidelity Flow,sub-041_S_4510,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.068531
+Old Fidelity Flow,sub-041_S_4876,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.7393136
+Old Fidelity Flow,sub-041_S_4974,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.10941903
+Old Fidelity Flow,sub-041_S_5253,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.8517699
+Old Fidelity Flow,sub-041_S_6136,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.198211
+Old Fidelity Flow,sub-041_S_6192,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.9336038
+Old Fidelity Flow,sub-041_S_6292,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.8882545
+Old Fidelity Flow,sub-041_S_6731,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.803954
+Old Fidelity Flow,sub-041_S_6785,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.94582933
+Old Fidelity Flow,sub-041_S_7017,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.4156119
+Old Fidelity Flow,sub-002_S_4213,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.2773826
+Old Fidelity Flow,sub-002_S_4229,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.1724212
+Old Fidelity Flow,sub-002_S_6009,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.0068239467
+Old Fidelity Flow,sub-002_S_6030,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.61403453
+Old Fidelity Flow,sub-002_S_6680,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.7516204
+Old Fidelity Flow,sub-002_S_6695,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.05201202
+Old Fidelity Flow,sub-003_S_4441,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.26017746
+Old Fidelity Flow,sub-003_S_6256,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.3405849
+Old Fidelity Flow,sub-003_S_6678,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.7440339
+Old Fidelity Flow,sub-003_S_7010,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.0308633
+Old Fidelity Flow,sub-006_S_6651,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.40434
+Old Fidelity Flow,sub-006_S_6681,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.9005418
+Old Fidelity Flow,sub-007_S_4387,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.1129518
+Old Fidelity Flow,sub-007_S_4637,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.0303483
+Old Fidelity Flow,sub-007_S_6323,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.12706399
+Old Fidelity Flow,sub-007_S_6455,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.91973037
+Old Fidelity Flow,sub-009_S_0751,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.77046
+Old Fidelity Flow,sub-009_S_4388,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.0402762
+Old Fidelity Flow,sub-009_S_6163,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.5863404
+Old Fidelity Flow,sub-009_S_6286,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.1027415
+Old Fidelity Flow,sub-011_S_4105,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.9202491
+Old Fidelity Flow,sub-011_S_4278,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.046586435
+Old Fidelity Flow,sub-011_S_7028,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.4837165
+Old Fidelity Flow,sub-012_S_4188,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,3.1868763
+Old Fidelity Flow,sub-012_S_6760,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.4902042
+Old Fidelity Flow,sub-013_S_2389,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.4859436
+Old Fidelity Flow,sub-013_S_4268,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-3.4817998
+Old Fidelity Flow,sub-013_S_6206,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.87304753
+Old Fidelity Flow,sub-014_S_6920,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.76436555
+Old Fidelity Flow,sub-014_S_6935,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.4785008
+Old Fidelity Flow,sub-016_S_6802,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.6750181
+Old Fidelity Flow,sub-016_S_6836,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.0812292
+Old Fidelity Flow,sub-018_S_2155,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.1839614
+Old Fidelity Flow,sub-019_S_6186,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.6660566
+Old Fidelity Flow,sub-020_S_6185,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.7681119
+Old Fidelity Flow,sub-022_S_2263,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.95557374
+Old Fidelity Flow,sub-023_S_4164,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.4245062
+Old Fidelity Flow,sub-023_S_6369,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-5.0288363
+Old Fidelity Flow,sub-023_S_6547,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.900668
+Old Fidelity Flow,sub-023_S_6702,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-1.5081178
+Old Fidelity Flow,sub-024_S_4084,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.3260475
+Old Fidelity Flow,sub-024_S_6184,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.5252568
+Old Fidelity Flow,sub-024_S_6202,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.33658487
+Old Fidelity Flow,sub-024_S_6846,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-1.7973968
+Old Fidelity Flow,sub-024_S_7025,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.6779402
+Old Fidelity Flow,sub-027_S_4919,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.0245414
+Old Fidelity Flow,sub-027_S_6317,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.7062945
+Old Fidelity Flow,sub-027_S_6643,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.3132888
+Old Fidelity Flow,sub-027_S_7071,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.1801543
+Old Fidelity Flow,sub-032_S_6709,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-4.302948
+Old Fidelity Flow,sub-036_S_2380,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.8175118
+Old Fidelity Flow,sub-036_S_4389,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.993233
+Old Fidelity Flow,sub-036_S_6189,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.89985466
+Old Fidelity Flow,sub-036_S_6466,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-3.3045392
+Old Fidelity Flow,sub-036_S_6878,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.3380798
+Old Fidelity Flow,sub-036_S_6887,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.21950656
+Old Fidelity Flow,sub-037_S_4030,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.6476712
+Old Fidelity Flow,sub-037_S_4071,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.17788891
+Old Fidelity Flow,sub-037_S_6031,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.93448913
+Old Fidelity Flow,sub-037_S_6141,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.28085878
+Old Fidelity Flow,sub-037_S_6271,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.035313185
+Old Fidelity Flow,sub-037_S_6627,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.3219507
+Old Fidelity Flow,sub-037_S_6963,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.20611764
+Old Fidelity Flow,sub-041_S_4510,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.9873434
+Old Fidelity Flow,sub-041_S_4876,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.4173352
+Old Fidelity Flow,sub-041_S_4974,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.8198675
+Old Fidelity Flow,sub-041_S_5253,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.6160083
+Old Fidelity Flow,sub-041_S_6136,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.6743968
+Old Fidelity Flow,sub-041_S_6192,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.8640351
+Old Fidelity Flow,sub-041_S_6292,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.3190928
+Old Fidelity Flow,sub-041_S_6731,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.3314238
+Old Fidelity Flow,sub-041_S_6785,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.88882935
+Old Fidelity Flow,sub-041_S_7017,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.10558232
+Old Fidelity Flow,sub-002_S_4213,1,CN,test,cn_vs_ad,logistic,0,1,0.4167142
+Old Fidelity Flow,sub-002_S_6009,1,CN,test,cn_vs_ad,logistic,0,0,-4.7912774
+Old Fidelity Flow,sub-002_S_6030,1,CN,test,cn_vs_ad,logistic,0,0,-5.7532787
+Old Fidelity Flow,sub-002_S_6680,1,CN,test,cn_vs_ad,logistic,0,0,-4.8806343
+Old Fidelity Flow,sub-003_S_4441,1,CN,test,cn_vs_ad,logistic,0,0,-2.9184403
+Old Fidelity Flow,sub-003_S_6256,1,CN,test,cn_vs_ad,logistic,0,0,-5.1675243
+Old Fidelity Flow,sub-003_S_7010,1,CN,test,cn_vs_ad,logistic,0,0,-3.3799577
+Old Fidelity Flow,sub-007_S_4387,1,CN,test,cn_vs_ad,logistic,0,0,-0.07838991
+Old Fidelity Flow,sub-007_S_4637,1,CN,test,cn_vs_ad,logistic,0,0,-1.1293744
+Old Fidelity Flow,sub-007_S_6323,1,CN,test,cn_vs_ad,logistic,0,0,-6.8657575
+Old Fidelity Flow,sub-007_S_6455,1,CN,test,cn_vs_ad,logistic,0,0,-4.0452557
+Old Fidelity Flow,sub-009_S_0751,1,CN,test,cn_vs_ad,logistic,0,0,-3.3294837
+Old Fidelity Flow,sub-009_S_4388,1,CN,test,cn_vs_ad,logistic,0,0,-1.6315651
+Old Fidelity Flow,sub-009_S_6163,1,CN,test,cn_vs_ad,logistic,0,0,-5.6938734
+Old Fidelity Flow,sub-009_S_6286,1,CN,test,cn_vs_ad,logistic,0,0,-2.6553574
+Old Fidelity Flow,sub-011_S_4105,1,CN,test,cn_vs_ad,logistic,0,0,-1.0901437
+Old Fidelity Flow,sub-011_S_4278,1,CN,test,cn_vs_ad,logistic,0,0,-4.5612364
+Old Fidelity Flow,sub-011_S_7028,1,CN,test,cn_vs_ad,logistic,0,0,-5.995449
+Old Fidelity Flow,sub-014_S_6920,1,CN,test,cn_vs_ad,logistic,0,0,-6.7707734
+Old Fidelity Flow,sub-014_S_6935,1,CN,test,cn_vs_ad,logistic,0,0,-4.4971538
+Old Fidelity Flow,sub-016_S_5057,3,AD,test,cn_vs_ad,logistic,1,1,4.885557
+Old Fidelity Flow,sub-016_S_6802,1,CN,test,cn_vs_ad,logistic,0,0,-4.0673447
+Old Fidelity Flow,sub-019_S_6186,1,CN,test,cn_vs_ad,logistic,0,0,-0.7727235
+Old Fidelity Flow,sub-020_S_6185,1,CN,test,cn_vs_ad,logistic,0,0,-0.8997005
+Old Fidelity Flow,sub-023_S_4164,1,CN,test,cn_vs_ad,logistic,0,1,4.094765
+Old Fidelity Flow,sub-023_S_6547,1,CN,test,cn_vs_ad,logistic,0,0,-2.0312529
+Old Fidelity Flow,sub-024_S_4084,1,CN,test,cn_vs_ad,logistic,0,0,-2.5984008
+Old Fidelity Flow,sub-024_S_6184,1,CN,test,cn_vs_ad,logistic,0,0,-7.9602127
+Old Fidelity Flow,sub-024_S_6202,1,CN,test,cn_vs_ad,logistic,0,0,-2.3123705
+Old Fidelity Flow,sub-027_S_6317,1,CN,test,cn_vs_ad,logistic,0,0,-2.0939343
+Old Fidelity Flow,sub-027_S_6648,3,AD,test,cn_vs_ad,logistic,1,0,-3.7806132
+Old Fidelity Flow,sub-032_S_6600,3,AD,test,cn_vs_ad,logistic,1,0,-1.7659402
+Old Fidelity Flow,sub-032_S_6602,3,AD,test,cn_vs_ad,logistic,1,1,0.5600919
+Old Fidelity Flow,sub-032_S_6709,1,CN,test,cn_vs_ad,logistic,0,0,-4.4983525
+Old Fidelity Flow,sub-036_S_4389,1,CN,test,cn_vs_ad,logistic,0,0,-6.2267814
+Old Fidelity Flow,sub-036_S_6189,1,CN,test,cn_vs_ad,logistic,0,0,-5.2863035
+Old Fidelity Flow,sub-036_S_6466,1,CN,test,cn_vs_ad,logistic,0,0,-10.495516
+Old Fidelity Flow,sub-037_S_4071,1,CN,test,cn_vs_ad,logistic,0,1,1.8786352
+Old Fidelity Flow,sub-037_S_6031,1,CN,test,cn_vs_ad,logistic,0,0,-4.169963
+Old Fidelity Flow,sub-037_S_6271,1,CN,test,cn_vs_ad,logistic,0,0,-6.5439696
+Old Fidelity Flow,sub-037_S_6377,3,AD,test,cn_vs_ad,logistic,1,1,3.3361788
+Old Fidelity Flow,sub-037_S_6963,1,CN,test,cn_vs_ad,logistic,0,0,-5.79714
+Old Fidelity Flow,sub-041_S_5253,1,CN,test,cn_vs_ad,logistic,0,0,-3.30118
+Old Fidelity Flow,sub-041_S_6136,1,CN,test,cn_vs_ad,logistic,0,0,-3.1994717
+Old Fidelity Flow,sub-041_S_6192,1,CN,test,cn_vs_ad,logistic,0,1,0.4059569
+Old Fidelity Flow,sub-041_S_6292,1,CN,test,cn_vs_ad,logistic,0,0,-1.4244003
+Old Fidelity Flow,sub-041_S_6785,1,CN,test,cn_vs_ad,logistic,0,0,-4.541078
+Old Fidelity Flow,sub-041_S_7017,1,CN,test,cn_vs_ad,logistic,0,1,0.51955307
+Old Fidelity Flow,sub-002_S_4213,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.8271605
+Old Fidelity Flow,sub-002_S_6009,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.4526923
+Old Fidelity Flow,sub-002_S_6030,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.376609
+Old Fidelity Flow,sub-002_S_6680,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.8681589
+Old Fidelity Flow,sub-003_S_4441,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.1816149
+Old Fidelity Flow,sub-003_S_6256,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.7980437
+Old Fidelity Flow,sub-003_S_7010,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.978308
+Old Fidelity Flow,sub-007_S_4387,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.40143326
+Old Fidelity Flow,sub-007_S_4637,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.035055
+Old Fidelity Flow,sub-007_S_6323,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.6935349
+Old Fidelity Flow,sub-007_S_6455,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.186359
+Old Fidelity Flow,sub-009_S_0751,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.0692272
+Old Fidelity Flow,sub-009_S_4388,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.0333058
+Old Fidelity Flow,sub-009_S_6163,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.8484006
+Old Fidelity Flow,sub-009_S_6286,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.0488933
+Old Fidelity Flow,sub-011_S_4105,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.091591
+Old Fidelity Flow,sub-011_S_4278,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.271272
+Old Fidelity Flow,sub-011_S_7028,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.536366
+Old Fidelity Flow,sub-014_S_6920,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.8028877
+Old Fidelity Flow,sub-014_S_6935,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.048201
+Old Fidelity Flow,sub-016_S_5057,3,AD,test,cn_vs_ad,linear_svm,1,1,1.5512506
+Old Fidelity Flow,sub-016_S_6802,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.001824
+Old Fidelity Flow,sub-019_S_6186,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.25005463
+Old Fidelity Flow,sub-020_S_6185,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.8122776
+Old Fidelity Flow,sub-023_S_4164,1,CN,test,cn_vs_ad,linear_svm,0,1,1.6619443
+Old Fidelity Flow,sub-023_S_6547,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.816904
+Old Fidelity Flow,sub-024_S_4084,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.3839965
+Old Fidelity Flow,sub-024_S_6184,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.6290686
+Old Fidelity Flow,sub-024_S_6202,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.7364152
+Old Fidelity Flow,sub-027_S_6317,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.1130576
+Old Fidelity Flow,sub-027_S_6648,3,AD,test,cn_vs_ad,linear_svm,1,0,-1.8184817
+Old Fidelity Flow,sub-032_S_6600,3,AD,test,cn_vs_ad,linear_svm,1,0,-0.8319514
+Old Fidelity Flow,sub-032_S_6602,3,AD,test,cn_vs_ad,linear_svm,1,1,0.2696884
+Old Fidelity Flow,sub-032_S_6709,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.007613
+Old Fidelity Flow,sub-036_S_4389,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.6783695
+Old Fidelity Flow,sub-036_S_6189,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.4301274
+Old Fidelity Flow,sub-036_S_6466,1,CN,test,cn_vs_ad,linear_svm,0,0,-4.612336
+Old Fidelity Flow,sub-037_S_4071,1,CN,test,cn_vs_ad,linear_svm,0,1,0.7055258
+Old Fidelity Flow,sub-037_S_6031,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.9831015
+Old Fidelity Flow,sub-037_S_6271,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.0205872
+Old Fidelity Flow,sub-037_S_6377,3,AD,test,cn_vs_ad,linear_svm,1,1,0.990076
+Old Fidelity Flow,sub-037_S_6963,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.0626495
+Old Fidelity Flow,sub-041_S_5253,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.8627623
+Old Fidelity Flow,sub-041_S_6136,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.97400874
+Old Fidelity Flow,sub-041_S_6192,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.25074396
+Old Fidelity Flow,sub-041_S_6292,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.1576351
+Old Fidelity Flow,sub-041_S_6785,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.4832852
+Old Fidelity Flow,sub-041_S_7017,1,CN,test,cn_vs_ad,linear_svm,0,1,0.09615554
+Old Fidelity Flow,sub-002_S_4229,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,1.1388885
+Old Fidelity Flow,sub-002_S_6695,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.9338899
+Old Fidelity Flow,sub-003_S_6678,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-5.041234
+Old Fidelity Flow,sub-006_S_6651,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.8220268
+Old Fidelity Flow,sub-006_S_6681,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.785883
+Old Fidelity Flow,sub-012_S_4188,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,6.2240744
+Old Fidelity Flow,sub-012_S_6760,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.1905841
+Old Fidelity Flow,sub-013_S_2389,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.3420737
+Old Fidelity Flow,sub-013_S_4268,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-5.871427
+Old Fidelity Flow,sub-013_S_6206,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-0.8257599
+Old Fidelity Flow,sub-016_S_5057,3,AD,test,mci_spectrum_vs_ad,logistic,1,1,0.85630924
+Old Fidelity Flow,sub-016_S_6836,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,1.20586
+Old Fidelity Flow,sub-018_S_2155,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.4165323
+Old Fidelity Flow,sub-022_S_2263,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.6887159
+Old Fidelity Flow,sub-023_S_6369,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.0773466
+Old Fidelity Flow,sub-023_S_6702,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.9599192
+Old Fidelity Flow,sub-024_S_6846,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.1718652
+Old Fidelity Flow,sub-024_S_7025,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-0.21014553
+Old Fidelity Flow,sub-027_S_4919,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.625679
+Old Fidelity Flow,sub-027_S_6643,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.7501807
+Old Fidelity Flow,sub-027_S_6648,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-6.2638826
+Old Fidelity Flow,sub-027_S_7071,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.5664303
+Old Fidelity Flow,sub-032_S_6600,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-0.7374824
+Old Fidelity Flow,sub-032_S_6602,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-0.25634295
+Old Fidelity Flow,sub-036_S_2380,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,1.6566159
+Old Fidelity Flow,sub-036_S_6878,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.040252
+Old Fidelity Flow,sub-036_S_6887,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.8129843
+Old Fidelity Flow,sub-037_S_4030,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.2630703
+Old Fidelity Flow,sub-037_S_6141,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.025013
+Old Fidelity Flow,sub-037_S_6377,3,AD,test,mci_spectrum_vs_ad,logistic,1,1,0.22629774
+Old Fidelity Flow,sub-037_S_6627,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,0.8328957
+Old Fidelity Flow,sub-041_S_4510,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.0716721
+Old Fidelity Flow,sub-041_S_4876,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-0.75440824
+Old Fidelity Flow,sub-041_S_4974,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,1.8426881
+Old Fidelity Flow,sub-041_S_6731,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.164547
+Old Fidelity Flow,sub-002_S_4229,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.0245737
+Old Fidelity Flow,sub-002_S_6695,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.069008
+Old Fidelity Flow,sub-003_S_6678,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.868387
+Old Fidelity Flow,sub-006_S_6651,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.8756939
+Old Fidelity Flow,sub-006_S_6681,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.6722612
+Old Fidelity Flow,sub-012_S_4188,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,3.339178
+Old Fidelity Flow,sub-012_S_6760,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.86130303
+Old Fidelity Flow,sub-013_S_2389,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.4666328
+Old Fidelity Flow,sub-013_S_4268,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.7113
+Old Fidelity Flow,sub-013_S_6206,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.7432916
+Old Fidelity Flow,sub-016_S_5057,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-0.8242289
+Old Fidelity Flow,sub-016_S_6836,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,0.45964992
+Old Fidelity Flow,sub-018_S_2155,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.4839773
+Old Fidelity Flow,sub-022_S_2263,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.32186028
+Old Fidelity Flow,sub-023_S_6369,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.236649
+Old Fidelity Flow,sub-023_S_6702,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.4231819
+Old Fidelity Flow,sub-024_S_6846,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.5034246
+Old Fidelity Flow,sub-024_S_7025,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.0775776
+Old Fidelity Flow,sub-027_S_4919,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-4.421355
+Old Fidelity Flow,sub-027_S_6643,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.8020068
+Old Fidelity Flow,sub-027_S_6648,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-4.911478
+Old Fidelity Flow,sub-027_S_7071,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.9116103
+Old Fidelity Flow,sub-032_S_6600,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-0.70625216
+Old Fidelity Flow,sub-032_S_6602,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-1.4538692
+Old Fidelity Flow,sub-036_S_2380,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,1.0562071
+Old Fidelity Flow,sub-036_S_6878,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.72985
+Old Fidelity Flow,sub-036_S_6887,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.4360805
+Old Fidelity Flow,sub-037_S_4030,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.7759817
+Old Fidelity Flow,sub-037_S_6141,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.3353312
+Old Fidelity Flow,sub-037_S_6377,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-0.27708715
+Old Fidelity Flow,sub-037_S_6627,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.90633136
+Old Fidelity Flow,sub-041_S_4510,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.037709
+Old Fidelity Flow,sub-041_S_4876,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.4849355
+Old Fidelity Flow,sub-041_S_4974,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,0.4977858
+Old Fidelity Flow,sub-041_S_6731,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.6208725
+T1_ONLY,sub-002_S_4213,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.2579185
+T1_ONLY,sub-002_S_4229,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.1580616
+T1_ONLY,sub-002_S_6009,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.41862553
+T1_ONLY,sub-002_S_6030,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.8440669
+T1_ONLY,sub-002_S_6680,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.4693935
+T1_ONLY,sub-002_S_6695,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.4138589
+T1_ONLY,sub-003_S_4441,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.5227982
+T1_ONLY,sub-003_S_6256,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.9925766
+T1_ONLY,sub-003_S_6678,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.13827306
+T1_ONLY,sub-003_S_7010,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.34399524
+T1_ONLY,sub-006_S_6651,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.8450667
+T1_ONLY,sub-006_S_6681,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.0928457
+T1_ONLY,sub-007_S_4387,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.68551487
+T1_ONLY,sub-007_S_4637,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.0101717105
+T1_ONLY,sub-007_S_6323,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.4505432
+T1_ONLY,sub-007_S_6455,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.6007336
+T1_ONLY,sub-009_S_0751,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.85299796
+T1_ONLY,sub-009_S_4388,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.4263103
+T1_ONLY,sub-009_S_6163,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,3.9992757
+T1_ONLY,sub-009_S_6286,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.7360561
+T1_ONLY,sub-011_S_4105,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.5191417
+T1_ONLY,sub-011_S_4278,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.7486066
+T1_ONLY,sub-011_S_7028,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.8738301
+T1_ONLY,sub-012_S_4188,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.5409687
+T1_ONLY,sub-012_S_6760,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.456035
+T1_ONLY,sub-013_S_2389,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-2.6869583
+T1_ONLY,sub-013_S_4268,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-3.4452934
+T1_ONLY,sub-013_S_6206,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-2.8178716
+T1_ONLY,sub-014_S_6920,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.9600867
+T1_ONLY,sub-014_S_6935,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.8315719
+T1_ONLY,sub-016_S_6802,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.0599273
+T1_ONLY,sub-016_S_6836,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.10803571
+T1_ONLY,sub-018_S_2155,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.1061707
+T1_ONLY,sub-019_S_6186,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.1060809
+T1_ONLY,sub-020_S_6185,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.1830666
+T1_ONLY,sub-022_S_2263,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,3.759931
+T1_ONLY,sub-023_S_4164,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.2930987
+T1_ONLY,sub-023_S_6369,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.46810904
+T1_ONLY,sub-023_S_6547,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.6514492
+T1_ONLY,sub-023_S_6702,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-2.705963
+T1_ONLY,sub-024_S_4084,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.39594775
+T1_ONLY,sub-024_S_6184,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.8691496
+T1_ONLY,sub-024_S_6202,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-3.13948
+T1_ONLY,sub-024_S_6846,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-2.2110758
+T1_ONLY,sub-024_S_7025,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-0.5874452
+T1_ONLY,sub-027_S_4919,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.58457327
+T1_ONLY,sub-027_S_6317,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.6619074
+T1_ONLY,sub-027_S_6643,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-2.357556
+T1_ONLY,sub-027_S_7071,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.3169055
+T1_ONLY,sub-032_S_6709,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-7.593573
+T1_ONLY,sub-036_S_2380,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.1087748
+T1_ONLY,sub-036_S_4389,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,0.2567371
+T1_ONLY,sub-036_S_6189,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.625371
+T1_ONLY,sub-036_S_6466,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-5.0765576
+T1_ONLY,sub-036_S_6878,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.2161022
+T1_ONLY,sub-036_S_6887,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,0,-1.513219
+T1_ONLY,sub-037_S_4030,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,4.2895737
+T1_ONLY,sub-037_S_4071,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,1.1833167
+T1_ONLY,sub-037_S_6031,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.4927778
+T1_ONLY,sub-037_S_6141,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.864603
+T1_ONLY,sub-037_S_6271,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-2.1330132
+T1_ONLY,sub-037_S_6627,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,1.6010001
+T1_ONLY,sub-037_S_6963,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-1.2991067
+T1_ONLY,sub-041_S_4510,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,2.6220996
+T1_ONLY,sub-041_S_4876,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,3.5122614
+T1_ONLY,sub-041_S_4974,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,3.0246058
+T1_ONLY,sub-041_S_5253,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.65217257
+T1_ONLY,sub-041_S_6136,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.8624538
+T1_ONLY,sub-041_S_6192,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,3.3430243
+T1_ONLY,sub-041_S_6292,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,2.0266123
+T1_ONLY,sub-041_S_6731,2,MCI_spectrum,test,cn_vs_mci_spectrum,logistic,1,1,0.64552
+T1_ONLY,sub-041_S_6785,1,CN,test,cn_vs_mci_spectrum,logistic,0,0,-0.10888669
+T1_ONLY,sub-041_S_7017,1,CN,test,cn_vs_mci_spectrum,logistic,0,1,3.8382587
+T1_ONLY,sub-002_S_4213,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.64135844
+T1_ONLY,sub-002_S_4229,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.31850904
+T1_ONLY,sub-002_S_6009,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.09293465
+T1_ONLY,sub-002_S_6030,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.39991552
+T1_ONLY,sub-002_S_6680,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.6943972
+T1_ONLY,sub-002_S_6695,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.72034967
+T1_ONLY,sub-003_S_4441,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.76841915
+T1_ONLY,sub-003_S_6256,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.1781641
+T1_ONLY,sub-003_S_6678,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.2291806
+T1_ONLY,sub-003_S_7010,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.5597527
+T1_ONLY,sub-006_S_6651,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.18691
+T1_ONLY,sub-006_S_6681,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.11977182
+T1_ONLY,sub-007_S_4387,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.2190893
+T1_ONLY,sub-007_S_4637,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.3072467
+T1_ONLY,sub-007_S_6323,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.6749322
+T1_ONLY,sub-007_S_6455,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.293661
+T1_ONLY,sub-009_S_0751,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.9522805
+T1_ONLY,sub-009_S_4388,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.0767515
+T1_ONLY,sub-009_S_6163,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,3.1172678
+T1_ONLY,sub-009_S_6286,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.0733957
+T1_ONLY,sub-011_S_4105,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.3633733
+T1_ONLY,sub-011_S_4278,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.78946215
+T1_ONLY,sub-011_S_7028,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.3074703
+T1_ONLY,sub-012_S_4188,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.34615788
+T1_ONLY,sub-012_S_6760,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.8981307
+T1_ONLY,sub-013_S_2389,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-1.868395
+T1_ONLY,sub-013_S_4268,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-3.2784553
+T1_ONLY,sub-013_S_6206,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-1.934291
+T1_ONLY,sub-014_S_6920,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.607696
+T1_ONLY,sub-014_S_6935,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.4253223
+T1_ONLY,sub-016_S_6802,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.5970912
+T1_ONLY,sub-016_S_6836,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.48468128
+T1_ONLY,sub-018_S_2155,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.9733934
+T1_ONLY,sub-019_S_6186,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.41073582
+T1_ONLY,sub-020_S_6185,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.1780688
+T1_ONLY,sub-022_S_2263,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.7632945
+T1_ONLY,sub-023_S_4164,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.1193855
+T1_ONLY,sub-023_S_6369,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.78443694
+T1_ONLY,sub-023_S_6547,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.5207503
+T1_ONLY,sub-023_S_6702,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-2.2385962
+T1_ONLY,sub-024_S_4084,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.046108216
+T1_ONLY,sub-024_S_6184,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.66727
+T1_ONLY,sub-024_S_6202,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-1.6784257
+T1_ONLY,sub-024_S_6846,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-2.3976207
+T1_ONLY,sub-024_S_7025,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.3298276
+T1_ONLY,sub-027_S_4919,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.15503323
+T1_ONLY,sub-027_S_6317,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.6871419
+T1_ONLY,sub-027_S_6643,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-2.636507
+T1_ONLY,sub-027_S_7071,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.3334203
+T1_ONLY,sub-032_S_6709,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-6.3475404
+T1_ONLY,sub-036_S_2380,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-2.249165
+T1_ONLY,sub-036_S_4389,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.17679638
+T1_ONLY,sub-036_S_6189,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,1.8451082
+T1_ONLY,sub-036_S_6466,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-4.5621357
+T1_ONLY,sub-036_S_6878,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.39432228
+T1_ONLY,sub-036_S_6887,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,0,-0.8169286
+T1_ONLY,sub-037_S_4030,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,4.4377627
+T1_ONLY,sub-037_S_4071,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,2.0141702
+T1_ONLY,sub-037_S_6031,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.8387418
+T1_ONLY,sub-037_S_6141,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.1630954
+T1_ONLY,sub-037_S_6271,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-2.040721
+T1_ONLY,sub-037_S_6627,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,1.8822685
+T1_ONLY,sub-037_S_6963,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.9569997
+T1_ONLY,sub-041_S_4510,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,2.3413231
+T1_ONLY,sub-041_S_4876,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,4.7025037
+T1_ONLY,sub-041_S_4974,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,3.215166
+T1_ONLY,sub-041_S_5253,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.008236087
+T1_ONLY,sub-041_S_6136,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,0.19856438
+T1_ONLY,sub-041_S_6192,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,3.5751102
+T1_ONLY,sub-041_S_6292,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,3.5425756
+T1_ONLY,sub-041_S_6731,2,MCI_spectrum,test,cn_vs_mci_spectrum,linear_svm,1,1,0.8021331
+T1_ONLY,sub-041_S_6785,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,0,-0.23588297
+T1_ONLY,sub-041_S_7017,1,CN,test,cn_vs_mci_spectrum,linear_svm,0,1,3.055977
+T1_ONLY,sub-002_S_4213,1,CN,test,cn_vs_ad,logistic,0,0,-4.7322426
+T1_ONLY,sub-002_S_6009,1,CN,test,cn_vs_ad,logistic,0,0,-3.787651
+T1_ONLY,sub-002_S_6030,1,CN,test,cn_vs_ad,logistic,0,0,-6.1868114
+T1_ONLY,sub-002_S_6680,1,CN,test,cn_vs_ad,logistic,0,0,-9.246397
+T1_ONLY,sub-003_S_4441,1,CN,test,cn_vs_ad,logistic,0,1,1.3722998
+T1_ONLY,sub-003_S_6256,1,CN,test,cn_vs_ad,logistic,0,0,-2.205374
+T1_ONLY,sub-003_S_7010,1,CN,test,cn_vs_ad,logistic,0,0,-6.6287866
+T1_ONLY,sub-007_S_4387,1,CN,test,cn_vs_ad,logistic,0,0,-2.8383675
+T1_ONLY,sub-007_S_4637,1,CN,test,cn_vs_ad,logistic,0,0,-2.3227577
+T1_ONLY,sub-007_S_6323,1,CN,test,cn_vs_ad,logistic,0,0,-4.292113
+T1_ONLY,sub-007_S_6455,1,CN,test,cn_vs_ad,logistic,0,0,-2.1628761
+T1_ONLY,sub-009_S_0751,1,CN,test,cn_vs_ad,logistic,0,0,-9.349691
+T1_ONLY,sub-009_S_4388,1,CN,test,cn_vs_ad,logistic,0,0,-4.691758
+T1_ONLY,sub-009_S_6163,1,CN,test,cn_vs_ad,logistic,0,0,-6.27618
+T1_ONLY,sub-009_S_6286,1,CN,test,cn_vs_ad,logistic,0,0,-5.8741226
+T1_ONLY,sub-011_S_4105,1,CN,test,cn_vs_ad,logistic,0,1,4.1433945
+T1_ONLY,sub-011_S_4278,1,CN,test,cn_vs_ad,logistic,0,0,-2.4283946
+T1_ONLY,sub-011_S_7028,1,CN,test,cn_vs_ad,logistic,0,0,-5.1604548
+T1_ONLY,sub-014_S_6920,1,CN,test,cn_vs_ad,logistic,0,0,-6.7004156
+T1_ONLY,sub-014_S_6935,1,CN,test,cn_vs_ad,logistic,0,0,-10.968452
+T1_ONLY,sub-016_S_5057,3,AD,test,cn_vs_ad,logistic,1,1,0.46280372
+T1_ONLY,sub-016_S_6802,1,CN,test,cn_vs_ad,logistic,0,0,-8.1201725
+T1_ONLY,sub-019_S_6186,1,CN,test,cn_vs_ad,logistic,0,0,-5.378479
+T1_ONLY,sub-020_S_6185,1,CN,test,cn_vs_ad,logistic,0,0,-0.033055875
+T1_ONLY,sub-023_S_4164,1,CN,test,cn_vs_ad,logistic,0,0,-3.1464152
+T1_ONLY,sub-023_S_6547,1,CN,test,cn_vs_ad,logistic,0,0,-1.8298575
+T1_ONLY,sub-024_S_4084,1,CN,test,cn_vs_ad,logistic,0,0,-5.480896
+T1_ONLY,sub-024_S_6184,1,CN,test,cn_vs_ad,logistic,0,0,-2.8577702
+T1_ONLY,sub-024_S_6202,1,CN,test,cn_vs_ad,logistic,0,0,-9.262777
+T1_ONLY,sub-027_S_6317,1,CN,test,cn_vs_ad,logistic,0,0,-8.327423
+T1_ONLY,sub-027_S_6648,3,AD,test,cn_vs_ad,logistic,1,0,-3.1300528
+T1_ONLY,sub-032_S_6600,3,AD,test,cn_vs_ad,logistic,1,0,-1.8653677
+T1_ONLY,sub-032_S_6602,3,AD,test,cn_vs_ad,logistic,1,1,5.7054815
+T1_ONLY,sub-032_S_6709,1,CN,test,cn_vs_ad,logistic,0,0,-8.0787
+T1_ONLY,sub-036_S_4389,1,CN,test,cn_vs_ad,logistic,0,0,-3.6935422
+T1_ONLY,sub-036_S_6189,1,CN,test,cn_vs_ad,logistic,0,0,-5.0277176
+T1_ONLY,sub-036_S_6466,1,CN,test,cn_vs_ad,logistic,0,0,-4.236923
+T1_ONLY,sub-037_S_4071,1,CN,test,cn_vs_ad,logistic,0,1,6.6008162
+T1_ONLY,sub-037_S_6031,1,CN,test,cn_vs_ad,logistic,0,0,-9.639901
+T1_ONLY,sub-037_S_6271,1,CN,test,cn_vs_ad,logistic,0,0,-9.00515
+T1_ONLY,sub-037_S_6377,3,AD,test,cn_vs_ad,logistic,1,0,-3.0613647
+T1_ONLY,sub-037_S_6963,1,CN,test,cn_vs_ad,logistic,0,0,-12.076876
+T1_ONLY,sub-041_S_5253,1,CN,test,cn_vs_ad,logistic,0,0,-5.994566
+T1_ONLY,sub-041_S_6136,1,CN,test,cn_vs_ad,logistic,0,0,-5.4975195
+T1_ONLY,sub-041_S_6192,1,CN,test,cn_vs_ad,logistic,0,0,-0.9420083
+T1_ONLY,sub-041_S_6292,1,CN,test,cn_vs_ad,logistic,0,1,2.5402517
+T1_ONLY,sub-041_S_6785,1,CN,test,cn_vs_ad,logistic,0,0,-2.821442
+T1_ONLY,sub-041_S_7017,1,CN,test,cn_vs_ad,logistic,0,0,-0.6148408
+T1_ONLY,sub-002_S_4213,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.1537957
+T1_ONLY,sub-002_S_6009,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.681245
+T1_ONLY,sub-002_S_6030,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.236331
+T1_ONLY,sub-002_S_6680,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.0139349
+T1_ONLY,sub-003_S_4441,1,CN,test,cn_vs_ad,linear_svm,0,1,0.65402144
+T1_ONLY,sub-003_S_6256,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.62508494
+T1_ONLY,sub-003_S_7010,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.9706261
+T1_ONLY,sub-007_S_4387,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.4997864
+T1_ONLY,sub-007_S_4637,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.5945486
+T1_ONLY,sub-007_S_6323,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.4051235
+T1_ONLY,sub-007_S_6455,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.53247637
+T1_ONLY,sub-009_S_0751,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.3674898
+T1_ONLY,sub-009_S_4388,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.3394082
+T1_ONLY,sub-009_S_6163,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.8000953
+T1_ONLY,sub-009_S_6286,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.10306
+T1_ONLY,sub-011_S_4105,1,CN,test,cn_vs_ad,linear_svm,0,1,0.5086514
+T1_ONLY,sub-011_S_4278,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.3543726
+T1_ONLY,sub-011_S_7028,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.577765
+T1_ONLY,sub-014_S_6920,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.3443336
+T1_ONLY,sub-014_S_6935,1,CN,test,cn_vs_ad,linear_svm,0,0,-4.08386
+T1_ONLY,sub-016_S_5057,3,AD,test,cn_vs_ad,linear_svm,1,1,0.1195517
+T1_ONLY,sub-016_S_6802,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.3260887
+T1_ONLY,sub-019_S_6186,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.4005368
+T1_ONLY,sub-020_S_6185,1,CN,test,cn_vs_ad,linear_svm,0,1,0.4025675
+T1_ONLY,sub-023_S_4164,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.298013
+T1_ONLY,sub-023_S_6547,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.57001203
+T1_ONLY,sub-024_S_4084,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.1045175
+T1_ONLY,sub-024_S_6184,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.9819752
+T1_ONLY,sub-024_S_6202,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.1624222
+T1_ONLY,sub-027_S_6317,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.3293145
+T1_ONLY,sub-027_S_6648,3,AD,test,cn_vs_ad,linear_svm,1,0,-1.6776099
+T1_ONLY,sub-032_S_6600,3,AD,test,cn_vs_ad,linear_svm,1,0,-0.44492707
+T1_ONLY,sub-032_S_6602,3,AD,test,cn_vs_ad,linear_svm,1,1,1.8557369
+T1_ONLY,sub-032_S_6709,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.2048466
+T1_ONLY,sub-036_S_4389,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.93678415
+T1_ONLY,sub-036_S_6189,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.6611927
+T1_ONLY,sub-036_S_6466,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.6663655
+T1_ONLY,sub-037_S_4071,1,CN,test,cn_vs_ad,linear_svm,0,1,2.0971267
+T1_ONLY,sub-037_S_6031,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.4456942
+T1_ONLY,sub-037_S_6271,1,CN,test,cn_vs_ad,linear_svm,0,0,-3.1819212
+T1_ONLY,sub-037_S_6377,3,AD,test,cn_vs_ad,linear_svm,1,0,-1.5388469
+T1_ONLY,sub-037_S_6963,1,CN,test,cn_vs_ad,linear_svm,0,0,-4.173915
+T1_ONLY,sub-041_S_5253,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.4126134
+T1_ONLY,sub-041_S_6136,1,CN,test,cn_vs_ad,linear_svm,0,0,-2.2548757
+T1_ONLY,sub-041_S_6192,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.62636447
+T1_ONLY,sub-041_S_6292,1,CN,test,cn_vs_ad,linear_svm,0,1,0.54682076
+T1_ONLY,sub-041_S_6785,1,CN,test,cn_vs_ad,linear_svm,0,0,-1.233196
+T1_ONLY,sub-041_S_7017,1,CN,test,cn_vs_ad,linear_svm,0,0,-0.25458056
+T1_ONLY,sub-002_S_4229,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,0.107868165
+T1_ONLY,sub-002_S_6695,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,1.8558623
+T1_ONLY,sub-003_S_6678,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.3150688
+T1_ONLY,sub-006_S_6651,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-6.3290524
+T1_ONLY,sub-006_S_6681,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-4.2367887
+T1_ONLY,sub-012_S_4188,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-0.40906668
+T1_ONLY,sub-012_S_6760,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-0.69328547
+T1_ONLY,sub-013_S_2389,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,1.3232195
+T1_ONLY,sub-013_S_4268,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-0.50200737
+T1_ONLY,sub-013_S_6206,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.2521352
+T1_ONLY,sub-016_S_5057,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-5.001257
+T1_ONLY,sub-016_S_6836,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,1.0584389
+T1_ONLY,sub-018_S_2155,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-5.702404
+T1_ONLY,sub-022_S_2263,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-0.769718
+T1_ONLY,sub-023_S_6369,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-2.2175014
+T1_ONLY,sub-023_S_6702,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.370942
+T1_ONLY,sub-024_S_6846,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-5.776814
+T1_ONLY,sub-024_S_7025,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.922948
+T1_ONLY,sub-027_S_4919,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-6.3019967
+T1_ONLY,sub-027_S_6643,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-9.723462
+T1_ONLY,sub-027_S_6648,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-5.762583
+T1_ONLY,sub-027_S_7071,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-10.280256
+T1_ONLY,sub-032_S_6600,3,AD,test,mci_spectrum_vs_ad,logistic,1,1,2.944761
+T1_ONLY,sub-032_S_6602,3,AD,test,mci_spectrum_vs_ad,logistic,1,1,3.2218194
+T1_ONLY,sub-036_S_2380,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.706427
+T1_ONLY,sub-036_S_6878,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.0670896
+T1_ONLY,sub-036_S_6887,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-6.151051
+T1_ONLY,sub-037_S_4030,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,1,0.8927111
+T1_ONLY,sub-037_S_6141,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-6.355468
+T1_ONLY,sub-037_S_6377,3,AD,test,mci_spectrum_vs_ad,logistic,1,0,-9.47588
+T1_ONLY,sub-037_S_6627,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.3750616
+T1_ONLY,sub-041_S_4510,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.758786
+T1_ONLY,sub-041_S_4876,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-3.014304
+T1_ONLY,sub-041_S_4974,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.7361325
+T1_ONLY,sub-041_S_6731,2,MCI_spectrum,test,mci_spectrum_vs_ad,logistic,0,0,-1.7015371
+T1_ONLY,sub-002_S_4229,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.19923155
+T1_ONLY,sub-002_S_6695,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,0.88311565
+T1_ONLY,sub-003_S_6678,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.9587685
+T1_ONLY,sub-006_S_6651,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.503877
+T1_ONLY,sub-006_S_6681,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.0112698
+T1_ONLY,sub-012_S_4188,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.91202253
+T1_ONLY,sub-012_S_6760,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.59625626
+T1_ONLY,sub-013_S_2389,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,0.1820346
+T1_ONLY,sub-013_S_4268,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.86238205
+T1_ONLY,sub-013_S_6206,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.1642647
+T1_ONLY,sub-016_S_5057,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-1.9006569
+T1_ONLY,sub-016_S_6836,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,0.61712813
+T1_ONLY,sub-018_S_2155,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.918626
+T1_ONLY,sub-022_S_2263,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.65167814
+T1_ONLY,sub-023_S_6369,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.3348231
+T1_ONLY,sub-023_S_6702,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.1665362
+T1_ONLY,sub-024_S_6846,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.377884
+T1_ONLY,sub-024_S_7025,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-2.8432171
+T1_ONLY,sub-027_S_4919,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.1740777
+T1_ONLY,sub-027_S_6643,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.8819535
+T1_ONLY,sub-027_S_6648,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-3.4294555
+T1_ONLY,sub-027_S_7071,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-4.5185614
+T1_ONLY,sub-032_S_6600,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,1,1.2632922
+T1_ONLY,sub-032_S_6602,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,1,2.5272648
+T1_ONLY,sub-036_S_2380,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.8931589
+T1_ONLY,sub-036_S_6878,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.8378432
+T1_ONLY,sub-036_S_6887,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.713263
+T1_ONLY,sub-037_S_4030,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,1,0.8346899
+T1_ONLY,sub-037_S_6141,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-3.5592053
+T1_ONLY,sub-037_S_6377,3,AD,test,mci_spectrum_vs_ad,linear_svm,1,0,-4.0614295
+T1_ONLY,sub-037_S_6627,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.6215616
+T1_ONLY,sub-041_S_4510,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.884135
+T1_ONLY,sub-041_S_4876,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.64861447
+T1_ONLY,sub-041_S_4974,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-0.9279302
+T1_ONLY,sub-041_S_6731,2,MCI_spectrum,test,mci_spectrum_vs_ad,linear_svm,0,0,-1.2214845

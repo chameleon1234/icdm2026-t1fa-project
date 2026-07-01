@@ -1,0 +1,8 @@
+ADNI ROI-level downstream final run
+manifest=data\adni_processed\adni_slice_manifest.csv
+output_dir=outputs\icdm2026\downstream_adni_roi_final
+image_generation_training=no
+final_method_changed=no
+runnable_methods=T1_ONLY, FA_GT, Old Fidelity Flow, A080 Base, A080+DS Full
+tasks=cn_vs_mci_spectrum, cn_vs_ad, mci_spectrum_vs_ad
+classifiers=logistic, linear_svm

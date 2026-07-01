@@ -11,6 +11,8 @@ import cv2
 import numpy as np
 import pandas as pd
 from sklearn.impute import SimpleImputer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
@@ -267,14 +269,28 @@ def prepare_task(train_df: pd.DataFrame, test_df: pd.DataFrame, task: str) -> tu
     return train, test, y_train, y_test
 
 
-def build_classifier(name: str):
+def build_classifier(name: str, max_features: int = 0):
     if name == "logistic":
         estimator = LogisticRegression(max_iter=3000, class_weight="balanced", solver="lbfgs", random_state=2026)
     elif name == "linear_svm":
         estimator = SVC(kernel="linear", class_weight="balanced", probability=False, random_state=2026)
+    elif name == "rbf_svm":
+        estimator = SVC(kernel="rbf", class_weight="balanced", probability=False, gamma="scale", random_state=2026)
+    elif name == "random_forest":
+        estimator = RandomForestClassifier(
+            n_estimators=300,
+            class_weight="balanced",
+            random_state=2026,
+            min_samples_leaf=2,
+            n_jobs=-1,
+        )
     else:
         raise ValueError(f"Unsupported classifier: {name}")
-    return make_pipeline(SimpleImputer(strategy="mean"), StandardScaler(), estimator)
+    steps: list[Any] = [SimpleImputer(strategy="mean"), StandardScaler()]
+    if max_features > 0:
+        steps.append(SelectKBest(score_func=f_classif, k=max_features))
+    steps.append(estimator)
+    return make_pipeline(*steps)
 
 
 def decision_scores(model: Any, x_test: np.ndarray) -> np.ndarray:
@@ -286,18 +302,49 @@ def decision_scores(model: Any, x_test: np.ndarray) -> np.ndarray:
     raise ValueError("Classifier has neither decision_function nor predict_proba")
 
 
+def build_fused_table(frame: pd.DataFrame, fused_name: str, left_name: str, right_name: str) -> pd.DataFrame:
+    left = frame.loc[frame["method"].eq(left_name)].copy()
+    right = frame.loc[frame["method"].eq(right_name)].copy()
+    if left.empty:
+        raise ValueError(f"Missing left fusion method: {left_name}")
+    if right.empty:
+        raise ValueError(f"Missing right fusion method: {right_name}")
+    join_cols = ["subject_id", "group_id", "group_name", "split", "n_slices"]
+    left_features = feature_columns(left)
+    right_features = feature_columns(right)
+    left_part = left[join_cols + left_features].rename(columns={col: f"{left_name}__{col}" for col in left_features})
+    right_part = right[["subject_id"] + right_features].rename(
+        columns={col: f"{right_name}__{col}" for col in right_features}
+    )
+    fused = left_part.merge(right_part, on="subject_id", how="inner", validate="one_to_one")
+    if fused.empty:
+        raise ValueError(f"No overlapping subjects for fusion {left_name}+{right_name}")
+    fused.insert(0, "method", fused_name)
+    return fused.sort_values("subject_id").reset_index(drop=True)
+
+
+def parse_fusion_spec(spec: str) -> tuple[str, str, str]:
+    if "=" not in spec or "+" not in spec:
+        raise ValueError(f"Fusion spec must be NAME=LEFT+RIGHT, got {spec!r}")
+    name, pair = spec.split("=", 1)
+    left, right = pair.split("+", 1)
+    return name.strip(), left.strip(), right.strip()
+
+
 def evaluate_pair(
     train_df: pd.DataFrame,
     test_df: pd.DataFrame,
     method: str,
     task: str,
     classifier: str,
+    max_features: int = 0,
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, list[dict[str, Any]]]:
     train, test, y_train, y_test = prepare_task(train_df, test_df, task)
     cols = [col for col in feature_columns(train) if col in set(feature_columns(test))]
     x_train = train[cols].to_numpy(dtype=np.float32)
     x_test = test[cols].to_numpy(dtype=np.float32)
-    model = build_classifier(classifier)
+    selected_count = int(min(len(cols), max_features)) if max_features > 0 else int(len(cols))
+    model = build_classifier(classifier, max_features=selected_count if max_features > 0 else 0)
     model.fit(x_train, y_train)
     y_pred = model.predict(x_test)
     scores = decision_scores(model, x_test)
@@ -316,6 +363,7 @@ def evaluate_pair(
         "n_train_subjects": int(train["subject_id"].nunique()),
         "n_test_subjects": int(test["subject_id"].nunique()),
         "n_features": int(len(cols)),
+        "n_selected_features": int(selected_count),
         "accuracy": float(accuracy_score(y_test, y_pred)),
         "balanced_accuracy": float(balanced_accuracy_score(y_test, y_pred)),
         "macro_f1": float(f1_score(y_test, y_pred, average="macro", zero_division=0)),
@@ -333,6 +381,11 @@ def evaluate_pair(
     cm_df = pd.DataFrame(cm, index=[f"true_{x}" for x in labels], columns=[f"pred_{x}" for x in labels])
     top_rows: list[dict[str, Any]] = []
     final_est = model.steps[-1][1]
+    selected_cols = cols
+    for _, step in model.steps:
+        if isinstance(step, SelectKBest):
+            selected_cols = [col for col, keep in zip(cols, step.get_support()) if keep]
+            break
     coefs = getattr(final_est, "coef_", None)
     if coefs is not None:
         coef = np.ravel(coefs)
@@ -343,7 +396,7 @@ def evaluate_pair(
                     "method": method,
                     "task": task,
                     "classifier": classifier,
-                    "feature": cols[int(idx)],
+                    "feature": selected_cols[int(idx)] if int(idx) < len(selected_cols) else f"selected_feature_{idx}",
                     "coefficient": float(coef[int(idx)]),
                     "abs_coefficient": float(abs(coef[int(idx)])),
                 }
@@ -451,6 +504,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min_pixels", type=int, default=8)
     parser.add_argument("--classifiers", default="logistic,linear_svm")
     parser.add_argument("--tasks", default="cn_vs_mci_spectrum,cn_vs_ad,mci_spectrum_vs_ad")
+    parser.add_argument("--max_features", type=int, default=0, help="Train-only SelectKBest feature cap. 0 keeps all features.")
+    parser.add_argument(
+        "--fusion",
+        action="append",
+        default=[],
+        help="Optional fused ROI feature table in NAME=LEFT+RIGHT format. Uses train/test separately.",
+    )
     return parser.parse_args()
 
 
@@ -551,6 +611,8 @@ def main() -> None:
         "min_pixels": args.min_pixels,
         "classifiers": [item.strip() for item in args.classifiers.split(",") if item.strip()],
         "tasks": [item.strip() for item in args.tasks.split(",") if item.strip()],
+        "max_features": args.max_features,
+        "fusion": args.fusion,
         "methods": audit_rows,
     }
     (output_dir / "roi_feature_extraction_config.json").write_text(json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -586,6 +648,18 @@ def main() -> None:
         combined = pd.concat([train_df, test_df], ignore_index=True)
         combined.to_csv(output_dir / f"roi_feature_table_{safe_name}.csv", index=False, encoding="utf-8")
 
+    if args.fusion:
+        train_base = pd.concat(train_tables.values(), ignore_index=True)
+        test_base = pd.concat(test_tables.values(), ignore_index=True)
+        for raw in args.fusion:
+            fused_name, left, right = parse_fusion_spec(raw)
+            train_tables[fused_name] = build_fused_table(train_base, fused_name, left, right)
+            test_tables[fused_name] = build_fused_table(test_base, fused_name, left, right)
+            safe_name = fused_name.replace("+", "_").replace(" ", "_").replace("-", "_")
+            pd.concat([train_tables[fused_name], test_tables[fused_name]], ignore_index=True).to_csv(
+                output_dir / f"roi_feature_table_{safe_name}.csv", index=False, encoding="utf-8"
+            )
+
     summaries: list[dict[str, Any]] = []
     predictions: list[pd.DataFrame] = []
     confusion_json: dict[str, Any] = {}
@@ -601,6 +675,7 @@ def main() -> None:
                     method,
                     task,
                     classifier,
+                    max_features=args.max_features,
                 )
                 summaries.append(summary)
                 predictions.append(pred_df)
@@ -658,6 +733,8 @@ def main() -> None:
         f"runnable_methods={', '.join([p.name for p in runnable_methods])}",
         f"tasks={', '.join(tasks)}",
         f"classifiers={', '.join(classifiers)}",
+        f"max_features={args.max_features}",
+        f"fusion={'; '.join(args.fusion)}",
     ]
     (output_dir / "run_log.txt").write_text("\n".join(run_log) + "\n", encoding="utf-8")
     print(f"Saved ROI classification summary to: {output_dir / 'roi_classification_subject_summary.csv'}")
